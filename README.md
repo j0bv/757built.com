@@ -4,7 +4,7 @@ An interactive map of the Hampton Roads region in Virginia using Leaflet.js.
 
 ## Official Government Links
 - **Virginia Beach**  
-  • Main site: [vbgov.com](https://www.vbgov.com)  
+  • Official site: [https://virginiabeach.gov](https://virginiabeach.gov)  
   • Public Works: [pw.virginiabeach.gov](https://pw.virginiabeach.gov)
 
 - **Chesapeake**  
@@ -45,7 +45,7 @@ An interactive map of the Hampton Roads region in Virginia using Leaflet.js.
   • Official site: [isleofwightcounty.com](https://www.isleofwightcounty.com)  
 
 - **Surry County**  
-  • Likely official site: [surrycountyva.gov](https://www.surrycountyva.gov)  
+  • Official site: [surrycountyva.gov](https://www.surrycountyva.gov)  
 
 - **Southampton County**  
   • Official site (if available): [southamptoncountyva.gov](https://www.southamptoncountyva.gov)  
@@ -66,14 +66,16 @@ An interactive map of the Hampton Roads region in Virginia using Leaflet.js.
 - Administrative Boundaries
 https://vginmaps.vdem.virginia.gov/arcgis/rest/services/VA_Base_Layers/VA_Admin_Boundaries/FeatureServer/1/query
 
+
 ## Setup
 1. Clone this repository
 2. Open index.html in your browser
 
+## Features
+GeoJSON boundary data for more accurate city borders
+
 ## Future Improvements
-- ~~Add actual GeoJSON boundary data for more accurate city borders~~ // Commit 2 - 3/27/2025
 - Add information popups with tech development news and key role players
 - Add search functionality
-- ~~Remove city icons and replace with name within boundary lines, clicked upon for the report.~~
 - Video interviews with key role players
 - Add audio and video to the map
