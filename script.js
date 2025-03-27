@@ -1,4 +1,210 @@
-// Initialize the map centered on Hampton Roads region
+// Calendar Heatmap implementation inspired by StretchCalendarHeatmap React component
+document.addEventListener('DOMContentLoaded', function() {
+    // Configuration elements
+    const currentYearEl = document.getElementById('currentYear');
+    const prevYearBtn = document.getElementById('prevYear');
+    const nextYearBtn = document.getElementById('nextYear');
+    
+    // Create popup element for contributions
+    const popup = document.createElement('div');
+    popup.className = 'contribution-popup';
+    popup.style.display = 'none';
+    document.body.appendChild(popup);
+    
+    // Set initial year to current year
+    let currentYear = new Date().getFullYear();
+    currentYearEl.textContent = currentYear;
+    
+    // Sample data - in a real app, this would come from an API
+    const sampleData = {
+        2023: {
+            total: 12,
+            contributions: [
+                { date: "2023-01-05", count: 1 },
+                { date: "2023-02-15", count: 2 },
+                { date: "2023-04-10", count: 3 },
+                { date: "2023-06-22", count: 1 },
+                { date: "2023-08-30", count: 2 },
+                { date: "2023-09-15", count: 1 },
+                { date: "2023-10-12", count: 3 },
+                { date: "2023-11-12", count: 3 },
+            ],
+        },
+        2024: {
+            total: 8,
+            contributions: [
+                { date: "2024-01-20", count: 2 },
+                { date: "2024-03-15", count: 1 },
+                { date: "2024-05-10", count: 3 },
+                { date: "2024-07-05", count: 2 },
+                { date: "2024-08-12", count: 1 },
+                { date: "2024-10-25", count: 2 },
+                { date: "2024-12-01", count: 3 },
+            ],
+        },
+        2025: {
+            total: 10,
+            contributions: [
+                { date: "2025-01-15", count: 1 },
+                { date: "2025-03-10", count: 1 },
+                { date: "2025-03-27", count: 3 },
+                { date: "2025-05-05", count: 1 },
+                { date: "2025-07-20", count: 2 },
+                { date: "2025-08-15", count: 1 },
+                { date: "2025-10-10", count: 3 },
+                { date: "2025-11-25", count: 2 },
+                { date: "2025-12-24", count: 1 },
+            ],
+        },
+        2030: {
+            total: 5,
+            contributions: [
+                { date: "2030-01-10", count: 1 },
+                { date: "2030-02-20", count: 2 },
+                { date: "2030-03-15", count: 1 },
+                { date: "2030-04-05", count: 3 },
+                { date: "2030-05-12", count: 2 },
+            ],
+        }
+    };
+    
+    // Helper function to convert sampleData to Cal-Heatmap format
+    function convertToCalHeatmapFormat(year) {
+        if (!sampleData[year]) return [];
+        
+        return sampleData[year].contributions.map(item => ({
+            date: item.date,
+            count: item.count
+        }));
+    }
+    
+    // Get day suffix (st, nd, rd, th)
+    function getDaySuffix(day) {
+        if (day > 3 && day < 21) return "th";
+        switch (day % 10) {
+            case 1: return "st";
+            case 2: return "nd";
+            case 3: return "rd";
+            default: return "th";
+        }
+    }
+    
+    // Initialize the calendar
+    const cal = new CalHeatmap();
+    
+    // Function to update the calendar
+    function updateCalendar() {
+        // Get data for the current year
+        const data = convertToCalHeatmapFormat(currentYear);
+        
+        // Paint the calendar with options
+        cal.paint({
+            itemSelector: '#cal-heatmap',
+            domain: {
+                type: 'month',
+                gutter: 0, // Reduced gutter to make months appear continuous
+                padding: [15, 0, 0, 0]
+            },
+            subDomain: {
+                type: 'day',
+                radius: 1,
+                width: 10, // Smaller width for tighter layout
+                height: 10, // Smaller height for tighter layout
+                gutter: 2 // Small gutter between days
+            },
+            date: {
+                start: new Date(currentYear, 0, 1),
+                highlight: 'now'
+            },
+            range: 12,
+            scale: {
+                color: {
+                    range: ['#161b22', '#0e4429', '#006d32', '#26a641', '#39d353', 
+                           '#4ade80', '#60d394', '#88d498', '#bfd96c', '#ffe26a'], // Vibrant color scheme
+                    type: 'threshold',
+                    domain: [1, 2, 3, 5, 7] // More gradual color distribution
+                }
+            },
+            data: {
+                source: data,
+                type: 'json',
+                x: 'date',
+                y: 'count',
+                groupY: 'sum'
+            },
+            // Display tooltip on hover
+            tooltip: {
+                text: function(date, value, dayjsDate) {
+                    if (!value || value === 0) {
+                        return `No contributions on ${dayjsDate.format('MMMM D, YYYY')}`;
+                    }
+                    return `${value} contribution${value !== 1 ? 's' : ''} on ${dayjsDate.format('MMMM D, YYYY')}`;
+                }
+            }
+        });
+    }
+    
+    // Initial calendar render
+    updateCalendar();
+    
+    // Add click event to show contribution popup
+    document.querySelector('#cal-heatmap').addEventListener('click', function(e) {
+        // Find the clicked cell
+        const cell = e.target.closest('.ch-subdomain-bg');
+        if (!cell) return;
+        
+        // Get the date from the cell
+        const date = cell.getAttribute('data-date');
+        if (!date) return;
+        
+        // Parse the date
+        const dateObj = new Date(date);
+        const day = dateObj.getDate();
+        const month = dateObj.toLocaleDateString('en-US', { month: 'long' });
+        
+        // Get the contribution count
+        const dataDate = dateObj.toISOString().split('T')[0];
+        let count = 0;
+        
+        // Find the contribution in the yearly data
+        const yearData = sampleData[currentYear];
+        if (yearData) {
+            const contribution = yearData.contributions.find(c => c.date === dataDate);
+            if (contribution) count = contribution.count;
+        }
+        
+        // Update popup content to match React component style
+        popup.innerHTML = `
+            <div>${count} contribution${count !== 1 ? 's' : ''} on ${month} ${day}${getDaySuffix(day)}.</div>
+        `;
+        
+        // Position popup near the clicked cell
+        const rect = cell.getBoundingClientRect();
+        popup.style.left = `${rect.left + window.scrollX}px`;
+        popup.style.top = `${rect.top + window.scrollY - 40}px`;
+        
+        // Show popup
+        popup.style.display = 'block';
+        
+        // Hide popup after 3 seconds
+        setTimeout(() => {
+            popup.style.display = 'none';
+        }, 3000);
+    });
+    
+    // Event listeners for navigation
+    prevYearBtn.addEventListener('click', function() {
+        currentYear--;
+        currentYearEl.textContent = currentYear;
+        updateCalendar();
+    });
+    
+    nextYearBtn.addEventListener('click', function() {
+        currentYear++;
+        currentYearEl.textContent = currentYear;
+        updateCalendar();
+    });
+});// Initialize the map centered on Hampton Roads region
 const map = L.map('map', {
     center: [36.9095, -76.2046],
     zoom: 10,
@@ -20,9 +226,11 @@ const blankLayer = L.tileLayer('data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAA
 }).addTo(map);
 
 // Colors for city polygons
-const cityColor = '#2b3b80'; // Navy blue
+const cityColor = '#2b3b80'; // Navy blue for regular localities
+const sevenCitiesColor = '#d32f2f'; // Red for the Seven Cities
 const cityOutline = '#ffffff'; // White outline
 const cityOpacity = 0.05; // Very light fill for better map visibility
+const sevenCitiesOpacity = 0.15; // Slightly higher opacity for Seven Cities
 const cityWeight = 2; // Slightly thicker border
 
 // Define the Hampton Roads cities/localities
@@ -31,6 +239,12 @@ const hamptonRoadsCities = [
     "SUFFOLK", "HAMPTON", "NEWPORT NEWS", "WILLIAMSBURG",
     "JAMES CITY", "GLOUCESTER", "YORK", "POQUOSON",
     "ISLE OF WIGHT", "SURRY", "SOUTHAMPTON", "SMITHFIELD"
+];
+
+// Define the Seven Cities specifically
+const sevenCities = [
+    "CHESAPEAKE", "HAMPTON", "NEWPORT NEWS", "NORFOLK", 
+    "PORTSMOUTH", "SUFFOLK", "VIRGINIA BEACH"
 ];
 
 // Function to fetch GeoJSON data for Hampton Roads localities
@@ -88,9 +302,14 @@ async function fetchHamptonRoadsData() {
 
 // Function to style the GeoJSON features
 function styleFeature(feature) {
+    // Check if the feature is one of the Seven Cities
+    const isSevenCity = feature.properties && 
+                        feature.properties.NAME && 
+                        sevenCities.includes(feature.properties.NAME);
+    
     return {
-        fillColor: cityColor,
-        fillOpacity: cityOpacity,
+        fillColor: isSevenCity ? sevenCitiesColor : cityColor,
+        fillOpacity: isSevenCity ? sevenCitiesOpacity : cityOpacity,
         color: cityOutline,
         weight: cityWeight,
         dashArray: '5,5', // Dashed border pattern
@@ -104,11 +323,13 @@ function onEachFeature(feature, layer) {
     if (feature.properties && feature.properties.NAME) {
         const name = feature.properties.NAME;
         const type = feature.properties.JURISTYPE === 'CI' ? 'City' : 'County';
+        const isSevenCity = sevenCities.includes(name);
         
         layer.bindPopup(`
             <div class="popup-content">
                 <h3>${name}</h3>
                 <p class="jurisdiction-type">${type}</p>
+                ${isSevenCity ? '<p class="seven-cities-badge">Seven Cities</p>' : ''}
             </div>
         `);
 
@@ -116,8 +337,12 @@ function onEachFeature(feature, layer) {
         layer.on({
             mouseover: function(e) {
                 const layer = e.target;
+                const isSevenCity = feature.properties && 
+                                   feature.properties.NAME && 
+                                   sevenCities.includes(feature.properties.NAME);
+                
                 layer.setStyle({
-                    fillOpacity: 0.2,
+                    fillOpacity: isSevenCity ? 0.4 : 0.2,
                     weight: 3,
                     dashArray: ''
                 });
@@ -125,8 +350,12 @@ function onEachFeature(feature, layer) {
             },
             mouseout: function(e) {
                 const layer = e.target;
+                const isSevenCity = feature.properties && 
+                                   feature.properties.NAME && 
+                                   sevenCities.includes(feature.properties.NAME);
+                
                 layer.setStyle({
-                    fillOpacity: cityOpacity,
+                    fillOpacity: isSevenCity ? sevenCitiesOpacity : cityOpacity,
                     weight: cityWeight,
                     dashArray: '5,5'
                 });
@@ -159,6 +388,9 @@ async function initMap() {
         
         // Store reference to the detailed map layer
         window.detailedMap = detailedMap;
+        
+        // Create spotlight gradient effect around localities
+        const spotlightMask = L.TileLayer.SpotlightMask(geoJsonData).addTo(map);
 
         // Create and add the GeoJSON layer for boundaries
         const geoJsonLayer = L.geoJSON(geoJsonData, {
@@ -170,9 +402,6 @@ async function initMap() {
         const bounds = geoJsonLayer.getBounds();
         map.fitBounds(bounds);
         map.setMaxBounds(bounds);
-        
-        // No longer adding city labels since they're on the underlying map
-        // addCityLabels(geoJsonData);
     } else {
         console.error('Failed to load GeoJSON data');
     }
@@ -278,5 +507,446 @@ L.TileLayer.addInitHook(function() {
     }
 });
 
+// Add spotlight mask extension to Leaflet
+L.TileLayer.SpotlightMask = function(geoJson) {
+    return {
+        addTo: function(map) {
+            // Create SVG overlay for spotlight effect
+            this._map = map;
+            
+            // Create SVG container for the spotlight effect
+            this._container = L.SVG.create('svg');
+            this._container.setAttribute('pointer-events', 'none');
+            this._container.setAttribute('position', 'absolute');
+            this._container.setAttribute('width', '100%');
+            this._container.setAttribute('height', '100%');
+            this._container.classList.add('spotlight-mask');
+            
+            // Add SVG filter for spotlight glow
+            const filterId = 'spotlight-glow';
+            const svgNS = 'http://www.w3.org/2000/svg';
+            
+            // Create defs element
+            const defs = document.createElementNS(svgNS, 'defs');
+            
+            // Create filter
+            const filter = document.createElementNS(svgNS, 'filter');
+            filter.setAttribute('id', filterId);
+            filter.setAttribute('x', '-50%');
+            filter.setAttribute('y', '-50%');
+            filter.setAttribute('width', '200%');
+            filter.setAttribute('height', '200%');
+            
+            // Create filter elements
+            const feGaussianBlur = document.createElementNS(svgNS, 'feGaussianBlur');
+            feGaussianBlur.setAttribute('in', 'SourceGraphic');
+            feGaussianBlur.setAttribute('stdDeviation', '10');
+            feGaussianBlur.setAttribute('result', 'blur');
+            
+            const feColorMatrix = document.createElementNS(svgNS, 'feColorMatrix');
+            feColorMatrix.setAttribute('in', 'blur');
+            feColorMatrix.setAttribute('mode', 'matrix');
+            feColorMatrix.setAttribute('values', '1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 18 -7');
+            feColorMatrix.setAttribute('result', 'glow');
+            
+            const feMerge = document.createElementNS(svgNS, 'feMerge');
+            
+            const feMergeNode1 = document.createElementNS(svgNS, 'feMergeNode');
+            feMergeNode1.setAttribute('in', 'glow');
+            
+            const feMergeNode2 = document.createElementNS(svgNS, 'feMergeNode');
+            feMergeNode2.setAttribute('in', 'SourceGraphic');
+            
+            // Add elements to structure
+            feMerge.appendChild(feMergeNode1);
+            feMerge.appendChild(feMergeNode2);
+            
+            filter.appendChild(feGaussianBlur);
+            filter.appendChild(feColorMatrix);
+            filter.appendChild(feMerge);
+            
+            defs.appendChild(filter);
+            this._container.appendChild(defs);
+            
+            // Use a mask on the SVG for the cutout effect
+            const mask = document.createElementNS(svgNS, 'mask');
+            mask.setAttribute('id', 'locality-mask');
+            
+            // Black background rectangle for the mask
+            const bgRect = document.createElementNS(svgNS, 'rect');
+            bgRect.setAttribute('x', '0');
+            bgRect.setAttribute('y', '0');
+            bgRect.setAttribute('width', '100%');
+            bgRect.setAttribute('height', '100%');
+            bgRect.setAttribute('fill', 'white');
+            
+            mask.appendChild(bgRect);
+            
+            // Add each locality shape to the mask in white
+            if (geoJson && geoJson.features) {
+                geoJson.features.forEach(feature => {
+                    if (feature.geometry && feature.geometry.coordinates) {
+                        if (feature.geometry.type === 'Polygon') {
+                            this._addPolygonToMask(mask, feature.geometry.coordinates, svgNS);
+                        } 
+                        else if (feature.geometry.type === 'MultiPolygon') {
+                            feature.geometry.coordinates.forEach(polygon => {
+                                this._addPolygonToMask(mask, polygon, svgNS);
+                            });
+                        }
+                    }
+                });
+            }
+            
+            defs.appendChild(mask);
+            
+            // Create glow effect element that uses the mask
+            const glowRect = document.createElementNS(svgNS, 'rect');
+            glowRect.setAttribute('x', '0');
+            glowRect.setAttribute('y', '0');
+            glowRect.setAttribute('width', '100%');
+            glowRect.setAttribute('height', '100%');
+            glowRect.setAttribute('fill', 'rgba(43, 59, 128, 0.3)');
+            glowRect.setAttribute('filter', `url(#${filterId})`);
+            glowRect.setAttribute('mask', 'url(#locality-mask)');
+            
+            this._container.appendChild(glowRect);
+            
+            // Add the SVG container to the map
+            map._panes.overlayPane.appendChild(this._container);
+            
+            // Update on map movement
+            map.on('moveend', this._update, this);
+            this._update();
+            
+            return this;
+        },
+        
+        _addPolygonToMask: function(mask, coordinates, svgNS) {
+            // Convert polygon coordinates to SVG path
+            const outerRing = coordinates[0];
+            if (!outerRing || outerRing.length === 0) return;
+            
+            const path = document.createElementNS(svgNS, 'path');
+            let d = '';
+            
+            // Convert the GeoJSON coordinates to SVG coordinates
+            outerRing.forEach((coord, i) => {
+                const point = this._map.latLngToLayerPoint([coord[1], coord[0]]);
+                if (i === 0) {
+                    d += `M${point.x},${point.y}`;
+                } else {
+                    d += `L${point.x},${point.y}`;
+                }
+            });
+            
+            d += 'Z'; // Close the path
+            
+            path.setAttribute('d', d);
+            path.setAttribute('fill', 'black');
+            path.setAttribute('stroke', 'none');
+            
+            mask.appendChild(path);
+        },
+        
+        _update: function() {
+            // Update SVG paths when map moves
+            if (this._map && this._container) {
+                const mask = this._container.querySelector('#locality-mask');
+                if (mask) {
+                    // Remove all path elements
+                    const paths = mask.querySelectorAll('path');
+                    paths.forEach(path => path.remove());
+                    
+                    // Re-add with updated coordinates
+                    const svgNS = 'http://www.w3.org/2000/svg';
+                    const geoJson = window.currentGeoJson; // Store the GeoJSON globally
+                    
+                    if (geoJson && geoJson.features) {
+                        geoJson.features.forEach(feature => {
+                            if (feature.geometry && feature.geometry.coordinates) {
+                                if (feature.geometry.type === 'Polygon') {
+                                    this._addPolygonToMask(mask, feature.geometry.coordinates, svgNS);
+                                } 
+                                else if (feature.geometry.type === 'MultiPolygon') {
+                                    feature.geometry.coordinates.forEach(polygon => {
+                                        this._addPolygonToMask(mask, polygon, svgNS);
+                                    });
+                                }
+                            }
+                        });
+                    }
+                }
+            }
+        }
+    };
+};
+
+// Add global variable to store the GeoJSON data
+window.currentGeoJson = null;
+
 // Start loading the map data
-initMap();
+initMap();// Cal-Heatmap implementation for Hampton Roads Development Activity
+document.addEventListener('DOMContentLoaded', function() {
+    // Configuration elements
+    const currentYearEl = document.getElementById('currentYear');
+    const prevYearBtn = document.getElementById('prevYear');
+    const nextYearBtn = document.getElementById('nextYear');
+    
+    // Create popup element for contributions
+    const popup = document.createElement('div');
+    popup.className = 'contribution-popup';
+    popup.style.display = 'none';
+    document.body.appendChild(popup);
+    
+    // Set initial year to current year
+    let currentYear = new Date().getFullYear();
+    currentYearEl.textContent = currentYear;
+    
+    // Generate sample data for the heatmap
+    const sampleData = generateSampleData();
+    
+    // Initialize the calendar
+    const cal = new CalHeatmap();
+    
+    // Paint the calendar with initial options
+    cal.paint({
+        itemSelector: '#cal-heatmap',
+        domain: {
+            type: 'month',
+            gutter: 4,
+            padding: [15, 0, 0, 0]
+        },
+        subDomain: {
+            type: 'day',
+            radius: 2,
+            width: 12,
+            height: 12,
+            gutter: 2
+        },
+        date: {
+            start: new Date(currentYear, 0, 1),
+            highlight: 'now'
+        },
+        range: 12,
+        scale: {
+            color: {
+                range: ['#161b22', '#0e4429', '#006d32', '#26a641', '#39d353'],
+                type: 'threshold',
+                domain: [1, 3, 6, 10]
+            }
+        },
+        data: {
+            source: sampleData,
+            type: 'json',
+            x: 'date',
+            y: 'count',
+            groupY: 'sum'
+        },
+        // Display tooltip on hover
+        tooltip: {
+            text: function(date, value, dayjsDate) {
+                if (!value || value === 0) {
+                    return `No contributions on ${dayjsDate.format('MMMM D, YYYY')}`;
+                }
+                return `${value} contribution${value !== 1 ? 's' : ''} on ${dayjsDate.format('MMMM D, YYYY')}`;
+            }
+        }
+    });
+    
+    // Add click event to show contribution popup
+    document.querySelector('#cal-heatmap').addEventListener('click', function(e) {
+        // Find the clicked cell
+        const cell = e.target.closest('.ch-subdomain-bg');
+        if (!cell) return;
+        
+        // Get the date from the cell
+        const date = cell.getAttribute('data-date');
+        if (!date) return;
+        
+        // Find contributions for this date
+        const dateObj = new Date(date);
+        const formattedDate = formatDate(dateObj);
+        
+        // Count contributions for this date
+        const dateContributions = sampleData.filter(d => d.date === formattedDate);
+        const count = dateContributions.length;
+        
+        // Format date for display (like "March 27th")
+        const month = dateObj.toLocaleDateString('en-US', { month: 'long' });
+        const day = dateObj.getDate();
+        const daySuffix = getDaySuffix(day);
+        
+        // Update popup content to match GitHub style
+        popup.innerHTML = `
+            <div class="contribution-popup-date">${count} contributions on ${month} ${day}${daySuffix}.</div>
+        `;
+        
+        // Position popup near the clicked cell
+        const rect = cell.getBoundingClientRect();
+        popup.style.left = `${rect.left + window.scrollX}px`;
+        popup.style.top = `${rect.top + window.scrollY - 40}px`;
+        
+        // Show popup
+        popup.style.display = 'block';
+        
+        // Hide popup after 3 seconds
+        setTimeout(() => {
+            popup.style.display = 'none';
+        }, 3000);
+    });
+    
+    // Event listeners for navigation
+    prevYearBtn.addEventListener('click', function() {
+        currentYear--;
+        currentYearEl.textContent = currentYear;
+        cal.paint({
+            date: {
+                start: new Date(currentYear, 0, 1)
+            }
+        });
+    });
+    
+    nextYearBtn.addEventListener('click', function() {
+        currentYear++;
+        currentYearEl.textContent = currentYear;
+        cal.paint({
+            date: {
+                start: new Date(currentYear, 0, 1)
+            }
+        });
+    });
+    
+    // Helper function to get day suffix (st, nd, rd, th)
+    function getDaySuffix(day) {
+        if (day > 3 && day < 21) return 'th';
+        switch (day % 10) {
+            case 1: return 'st';
+            case 2: return 'nd';
+            case 3: return 'rd';
+            default: return 'th';
+        }
+    }
+    
+    // Function to format date as YYYY-MM-DD
+    function formatDate(date) {
+        const year = date.getFullYear();
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const day = String(date.getDate()).padStart(2, '0');
+        return `${year}-${month}-${day}`;
+    }
+    
+    // Generate sample data for testing
+    function generateSampleData() {
+        const localities = [
+            "NORFOLK", "VIRGINIA BEACH", "CHESAPEAKE", "PORTSMOUTH", 
+            "SUFFOLK", "HAMPTON", "NEWPORT NEWS", "WILLIAMSBURG",
+            "JAMES CITY", "GLOUCESTER", "YORK", "POQUOSON",
+            "ISLE OF WIGHT", "SURRY", "SOUTHAMPTON", "SMITHFIELD"
+        ];
+        
+        const sevenCities = [
+            "CHESAPEAKE", "HAMPTON", "NEWPORT NEWS", "NORFOLK", 
+            "PORTSMOUTH", "SUFFOLK", "VIRGINIA BEACH"
+        ];
+        
+        const data = [];
+        const currentYear = new Date().getFullYear();
+        const startDate = new Date(currentYear, 0, 1);
+        const endDate = new Date(currentYear, 11, 31);
+        
+        // Create a biased distribution with more events in recent months
+        for (let i = 0; i < 500; i++) {
+            // Bias toward recent months (higher probability for recent months)
+            const randomBias = Math.pow(Math.random(), 1.5); // Power curve for bias
+            
+            // Create a random date between start and end
+            const dayRange = (endDate - startDate) / (1000 * 60 * 60 * 24);
+            const randomDay = Math.floor(randomBias * dayRange);
+            const date = new Date(startDate);
+            date.setDate(date.getDate() + randomDay);
+            
+            // Choose a locality, with Seven Cities appearing more frequently
+            let randomLocality;
+            if (Math.random() < 0.7) { // 70% chance of selecting a Seven City
+                randomLocality = sevenCities[Math.floor(Math.random() * sevenCities.length)];
+            } else {
+                randomLocality = localities[Math.floor(Math.random() * localities.length)];
+            }
+            
+            // Format the date as YYYY-MM-DD
+            const formattedDate = formatDate(date);
+            
+            data.push({
+                date: formattedDate,
+                count: 1,
+                locality: randomLocality
+            });
+        }
+        
+        return data;
+    }
+});
+
+// Function for future backend integration
+function updateCalendarWithRealData(data) {
+    const cal = new CalHeatmap();
+    const currentYear = parseInt(document.getElementById('currentYear').textContent);
+    
+    cal.paint({
+        itemSelector: '#cal-heatmap',
+        date: {
+            start: new Date(currentYear, 0, 1)
+        },
+        data: {
+            source: data,
+            type: 'json',
+            x: 'date',
+            y: 'count'
+        }
+    });
+}cal.paint({
+    itemSelector: '#cal-heatmap',
+    domain: {
+        type: 'month',
+        gutter: 0, // Reduced gutter to make months appear continuous
+        padding: [15, 0, 0, 0]
+    },
+    subDomain: {
+        type: 'day',
+        radius: 2,
+        width: 11, // Slightly smaller width for tighter layout
+        height: 11, // Slightly smaller height for tighter layout
+        gutter: 2 // Small gutter between days
+    },
+    // Rest of your configuration remains the same
+});// Paint the calendar with initial options
+cal.paint({
+    itemSelector: '#cal-heatmap',
+    domain: {
+        type: 'month',
+        gutter: 0, // Reduced gutter to make months appear continuous
+        padding: [15, 0, 0, 0]
+    },
+    subDomain: {
+        type: 'day',
+        radius: 1,
+        width: 10, // Smaller width to match heatmapex.js
+        height: 10, // Smaller height to match heatmapex.js
+        gutter: 2 // Small gutter between days
+    },
+    date: {
+        start: new Date(currentYear, 0, 1),
+        highlight: 'now'
+    },
+    range: 12,
+    scale: {
+        color: {
+            range: ['#161b22', '#0e4429', '#006d32', '#26a641', '#39d353', 
+                   '#4ade80', '#60d394', '#88d498', '#bfd96c', '#ffe26a'], // Vibrant color scheme
+            type: 'threshold',
+            domain: [1, 2, 3, 5, 7, 10, 15, 20, 25] // More gradual color distribution
+        }
+    },
+    // Rest of your configuration remains the same
+});
