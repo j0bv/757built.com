@@ -2,6 +2,23 @@
 
 An interactive map of the Hampton Roads region in Virginia using Leaflet.js.
 
+## Directory Structure
+/var/www/757built.com/
+├── public_html/                # Web root
+│   ├── index.html              # Main map page
+│   ├── css/                    # Stylesheets
+│   ├── js/                     # JavaScript files
+│   │   ├── map.js              # Leaflet map code
+│   │   └── tech-data.js        # Technology data handling
+│   ├── api/                    # API endpoints
+│   │   └── technology-data.php # Data access endpoint
+│   └── assets/                 # Images, icons, etc.
+├── crawler/                    # Crawler code (not public)
+│   ├── crawler.py              # Main crawler code
+│   ├── README.md               # Documentation
+│   └── requirements.txt        # Python dependencies
+└── .env                        # Environment variable
+
 ## Official Government Links
 - **Virginia Beach**  
   • Official site: [https://virginiabeach.gov](https://virginiabeach.gov)  

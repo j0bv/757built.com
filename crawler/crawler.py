@@ -6,22 +6,50 @@ from datetime import datetime
 import schedule
 import time
 from dotenv import load_dotenv
-import openai  # You'll need to install this package
+import mysql.connector
+from mysql.connector import Error
 
 # Load environment variables
 load_dotenv()
 
 class AIEnhancedCrawler:
     def __init__(self):
-        self.data_dir = 'data'
-        self.ensure_data_directory()
-        # Initialize OpenAI API with key from environment variables
-        openai.api_key = os.getenv('OPENAI_API_KEY')
+        # Ollama endpoint configuration
+        self.ollama_endpoint = os.getenv('OLLAMA_ENDPOINT', 'http://localhost:11434/api/generate')
         
-    def ensure_data_directory(self):
-        """Create data directory if it doesn't exist"""
-        if not os.path.exists(self.data_dir):
-            os.makedirs(self.data_dir)
+        # Database configuration
+        self.db_config = {
+            'host': os.getenv('DB_HOST', 'localhost'),
+            'database': os.getenv('DB_NAME', '757built_db'),
+            'user': os.getenv('DB_USER', 'db_user'),
+            'password': os.getenv('DB_PASSWORD', 'password')
+        }
+        
+        # Ensure database tables exist
+        self.init_database()
+        
+    def init_database(self):
+        """Initialize database connection and ensure tables exist"""
+        try:
+            conn = mysql.connector.connect(**self.db_config)
+            cursor = conn.cursor()
+            
+            # Check if tables exist and create them if needed
+            # (The actual CREATE TABLE statements would be here)
+            
+            cursor.close()
+            conn.close()
+            print("Database initialized successfully")
+        except Error as e:
+            print(f"Database initialization error: {e}")
+    
+    def get_db_connection(self):
+        """Get a database connection"""
+        try:
+            return mysql.connector.connect(**self.db_config)
+        except Error as e:
+            print(f"Error connecting to MySQL: {e}")
+            return None
     
     def fetch_page(self, url):
         """Fetch a webpage and return its content"""
@@ -53,7 +81,7 @@ class AIEnhancedCrawler:
         return structured_data
 
     def analyze_with_ai(self, text_content, title, technology_area):
-        """Use AI to extract structured information about technology development"""
+        """Use Phi3 with Ollama to extract structured information"""
         try:
             # Formulate a prompt for the AI
             prompt = f"""
@@ -75,15 +103,9 @@ class AIEnhancedCrawler:
             """
             
             # Call the AI API
-            response = openai.ChatCompletion.create(
-                model="gpt-4",  # Use the appropriate model
-                messages=[{"role": "system", "content": "You extract structured information about technology developments."},
-                          {"role": "user", "content": prompt}],
-                response_format={"type": "json_object"}
-            )
-            
-            # Parse the AI response
-            ai_analysis = json.loads(response.choices[0].message.content)
+            response = requests.post(self.ollama_endpoint, json={"prompt": prompt})
+            response.raise_for_status()
+            ai_analysis = response.json()
             
             # Add metadata
             ai_analysis["meta"] = {
@@ -106,31 +128,197 @@ class AIEnhancedCrawler:
                 }
             }
 
-    def save_data(self, data, filename):
-        """Save scraped data to a JSON file"""
-        filepath = os.path.join(self.data_dir, filename)
+    def save_to_database(self, data, url, technology_area_name):
+        """Save the extracted data to MySQL database"""
         try:
-            with open(filepath, 'w', encoding='utf-8') as f:
-                json.dump(data, f, ensure_ascii=False, indent=2)
-            print(f"AI-enhanced data saved to {filepath}")
-        except Exception as e:
-            print(f"Error saving data: {e}")
+            conn = self.get_db_connection()
+            if not conn:
+                return False
+                
+            cursor = conn.cursor()
+            
+            # Get technology area ID (or create if doesn't exist)
+            cursor.execute(
+                "SELECT id FROM technology_areas WHERE name = %s", 
+                (technology_area_name,)
+            )
+            result = cursor.fetchone()
+            
+            if result:
+                tech_area_id = result[0]
+            else:
+                # Create new technology area
+                tech_slug = technology_area_name.lower().replace(' ', '-')
+                cursor.execute(
+                    "INSERT INTO technology_areas (name, slug) VALUES (%s, %s)",
+                    (technology_area_name, tech_slug)
+                )
+                tech_area_id = cursor.lastrowid
+            
+            # Check if we already have data for this URL and technology
+            cursor.execute(
+                "SELECT id FROM technology_developments WHERE source_url = %s AND technology_area_id = %s",
+                (url, tech_area_id)
+            )
+            result = cursor.fetchone()
+            
+            # Parse dates (handle various formats)
+            info_date = None
+            if data.get("Date of Information Release") and data["Date of Information Release"] != "Not found in source":
+                try:
+                    # Try to parse date in various formats
+                    from dateutil import parser
+                    info_date = parser.parse(data["Date of Information Release"]).strftime('%Y-%m-%d')
+                except:
+                    info_date = None
+            
+            if result:
+                # Update existing record
+                dev_id = result[0]
+                cursor.execute("""
+                    UPDATE technology_developments 
+                    SET key_players = %s, technological_development = %s, 
+                        project_cost = %s, information_date = %s,
+                        event_location = %s, contact_information = %s,
+                        source_title = %s, extraction_date = %s,
+                        last_updated = NOW()
+                    WHERE id = %s
+                """, (
+                    data.get("Key Role Players", ""),
+                    data.get("Technological Development", ""),
+                    data.get("Project Cost", ""),
+                    info_date,
+                    data.get("Event Location", ""),
+                    data.get("Contact Information", ""),
+                    data["meta"]["source_title"],
+                    data["meta"]["extraction_date"],
+                    dev_id
+                ))
+            else:
+                # Insert new record
+                cursor.execute("""
+                    INSERT INTO technology_developments (
+                        technology_area_id, source_url, source_title,
+                        key_players, technological_development, project_cost,
+                        information_date, event_location, contact_information,
+                        extraction_date
+                    ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                """, (
+                    tech_area_id, url, data["meta"]["source_title"],
+                    data.get("Key Role Players", ""),
+                    data.get("Technological Development", ""),
+                    data.get("Project Cost", ""),
+                    info_date,
+                    data.get("Event Location", ""),
+                    data.get("Contact Information", ""),
+                    data["meta"]["extraction_date"]
+                ))
+            
+            conn.commit()
+            cursor.close()
+            conn.close()
+            return True
+            
+        except Error as e:
+            print(f"Database error while saving data: {e}")
+            return False
 
-    def crawl_website(self, url, technology_area, filename=None):
+    def save_consolidated_to_database(self, data, technology_area_name, source_count):
+        """Save consolidated findings to database"""
+        try:
+            conn = self.get_db_connection()
+            if not conn:
+                return False
+                
+            cursor = conn.cursor()
+            
+            # Get technology area ID
+            cursor.execute(
+                "SELECT id FROM technology_areas WHERE name = %s", 
+                (technology_area_name,)
+            )
+            result = cursor.fetchone()
+            
+            if not result:
+                return False  # Technology area should exist
+                
+            tech_area_id = result[0]
+            
+            # Parse dates
+            info_date = None
+            if data.get("Date of Information Release") and data["Date of Information Release"] != "Not found":
+                try:
+                    from dateutil import parser
+                    info_date = parser.parse(data["Date of Information Release"]).strftime('%Y-%m-%d')
+                except:
+                    info_date = None
+            
+            # Check if we already have consolidated data for this technology area
+            cursor.execute(
+                "SELECT id FROM consolidated_developments WHERE technology_area_id = %s",
+                (tech_area_id,)
+            )
+            result = cursor.fetchone()
+            
+            if result:
+                # Update existing record
+                cons_id = result[0]
+                cursor.execute("""
+                    UPDATE consolidated_developments 
+                    SET key_players = %s, technological_development = %s, 
+                        project_cost = %s, information_date = %s,
+                        event_location = %s, contact_information = %s,
+                        number_of_sources = %s, consolidation_date = %s
+                    WHERE id = %s
+                """, (
+                    data.get("Key Role Players", ""),
+                    data.get("Technological Development", ""),
+                    data.get("Project Cost", ""),
+                    info_date,
+                    data.get("Event Location", ""),
+                    data.get("Contact Information", ""),
+                    source_count,
+                    data["meta"]["consolidation_date"],
+                    cons_id
+                ))
+            else:
+                # Insert new record
+                cursor.execute("""
+                    INSERT INTO consolidated_developments (
+                        technology_area_id, key_players, technological_development,
+                        project_cost, information_date, event_location, 
+                        contact_information, number_of_sources, consolidation_date
+                    ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+                """, (
+                    tech_area_id,
+                    data.get("Key Role Players", ""),
+                    data.get("Technological Development", ""),
+                    data.get("Project Cost", ""),
+                    info_date,
+                    data.get("Event Location", ""),
+                    data.get("Contact Information", ""),
+                    source_count,
+                    data["meta"]["consolidation_date"]
+                ))
+            
+            conn.commit()
+            cursor.close()
+            conn.close()
+            return True
+            
+        except Error as e:
+            print(f"Database error while saving consolidated data: {e}")
+            return False
+
+    def crawl_website(self, url, technology_area):
         """Main crawling function with AI analysis for specific technology areas"""
         print(f"Crawling {url} for information about {technology_area}...")
-        
-        if filename is None:
-            # Generate filename based on technology area and timestamp
-            safe_tech_name = technology_area.replace(" ", "_").lower()
-            timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
-            filename = f"{safe_tech_name}_{timestamp}.json"
         
         html_content = self.fetch_page(url)
         if html_content:
             data = self.parse_content(html_content, technology_area)
             if data:
-                self.save_data(data, filename)
+                self.save_to_database(data, url, technology_area)
                 return data
         return None
 
@@ -147,10 +335,9 @@ class AIEnhancedCrawler:
         # Consolidate results using AI
         if all_results:
             consolidated = self.consolidate_findings(all_results, technology_area)
-            # Save consolidated findings
-            safe_tech_name = technology_area.replace(" ", "_").lower()
-            timestamp = datetime.now().strftime("%Y%m%d")
-            self.save_data(consolidated, f"{safe_tech_name}_consolidated_{timestamp}.json")
+            # Save consolidated findings to database
+            if consolidated:
+                self.save_consolidated_to_database(consolidated, technology_area, len(all_results))
             return consolidated
         
         return None
@@ -178,15 +365,9 @@ class AIEnhancedCrawler:
             """
             
             # Call the AI API
-            response = openai.ChatCompletion.create(
-                model="gpt-4",
-                messages=[{"role": "system", "content": "You consolidate research findings from multiple sources."},
-                          {"role": "user", "content": prompt}],
-                response_format={"type": "json_object"}
-            )
-            
-            # Parse the AI response
-            consolidated = json.loads(response.choices[0].message.content)
+            response = requests.post(self.ollama_endpoint, json={"prompt": prompt})
+            response.raise_for_status()
+            consolidated = response.json()
             
             # Add metadata
             consolidated["meta"] = {

@@ -122,7 +122,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     range: ['#161b22', '#0e4429', '#006d32', '#26a641', '#39d353', 
                            '#4ade80', '#60d394', '#88d498', '#bfd96c', '#ffe26a'], // Vibrant color scheme
                     type: 'threshold',
-                    domain: [1, 2, 3, 5, 7] // More gradual color distribution
+                    domain: [1, 2, 3, 5, 7, 10, 15, 20, 25] // More gradual color distribution
                 }
             },
             data: {
@@ -204,7 +204,9 @@ document.addEventListener('DOMContentLoaded', function() {
         currentYearEl.textContent = currentYear;
         updateCalendar();
     });
-});// Initialize the map centered on Hampton Roads region
+});
+
+// Initialize the map centered on Hampton Roads region
 const map = L.map('map', {
     center: [36.9095, -76.2046],
     zoom: 10,
@@ -686,267 +688,113 @@ L.TileLayer.SpotlightMask = function(geoJson) {
 window.currentGeoJson = null;
 
 // Start loading the map data
-initMap();// Cal-Heatmap implementation for Hampton Roads Development Activity
-document.addEventListener('DOMContentLoaded', function() {
-    // Configuration elements
-    const currentYearEl = document.getElementById('currentYear');
-    const prevYearBtn = document.getElementById('prevYear');
-    const nextYearBtn = document.getElementById('nextYear');
-    
-    // Create popup element for contributions
-    const popup = document.createElement('div');
-    popup.className = 'contribution-popup';
-    popup.style.display = 'none';
-    document.body.appendChild(popup);
-    
-    // Set initial year to current year
-    let currentYear = new Date().getFullYear();
-    currentYearEl.textContent = currentYear;
-    
-    // Generate sample data for the heatmap
-    const sampleData = generateSampleData();
-    
-    // Initialize the calendar
-    const cal = new CalHeatmap();
-    
-    // Paint the calendar with initial options
-    cal.paint({
-        itemSelector: '#cal-heatmap',
-        domain: {
-            type: 'month',
-            gutter: 4,
-            padding: [15, 0, 0, 0]
-        },
-        subDomain: {
-            type: 'day',
-            radius: 2,
-            width: 12,
-            height: 12,
-            gutter: 2
-        },
-        date: {
-            start: new Date(currentYear, 0, 1),
-            highlight: 'now'
-        },
-        range: 12,
-        scale: {
-            color: {
-                range: ['#161b22', '#0e4429', '#006d32', '#26a641', '#39d353'],
-                type: 'threshold',
-                domain: [1, 3, 6, 10]
-            }
-        },
-        data: {
-            source: sampleData,
-            type: 'json',
-            x: 'date',
-            y: 'count',
-            groupY: 'sum'
-        },
-        // Display tooltip on hover
-        tooltip: {
-            text: function(date, value, dayjsDate) {
-                if (!value || value === 0) {
-                    return `No contributions on ${dayjsDate.format('MMMM D, YYYY')}`;
-                }
-                return `${value} contribution${value !== 1 ? 's' : ''} on ${dayjsDate.format('MMMM D, YYYY')}`;
-            }
-        }
-    });
-    
-    // Add click event to show contribution popup
-    document.querySelector('#cal-heatmap').addEventListener('click', function(e) {
-        // Find the clicked cell
-        const cell = e.target.closest('.ch-subdomain-bg');
-        if (!cell) return;
-        
-        // Get the date from the cell
-        const date = cell.getAttribute('data-date');
-        if (!date) return;
-        
-        // Find contributions for this date
-        const dateObj = new Date(date);
-        const formattedDate = formatDate(dateObj);
-        
-        // Count contributions for this date
-        const dateContributions = sampleData.filter(d => d.date === formattedDate);
-        const count = dateContributions.length;
-        
-        // Format date for display (like "March 27th")
-        const month = dateObj.toLocaleDateString('en-US', { month: 'long' });
-        const day = dateObj.getDate();
-        const daySuffix = getDaySuffix(day);
-        
-        // Update popup content to match GitHub style
-        popup.innerHTML = `
-            <div class="contribution-popup-date">${count} contributions on ${month} ${day}${daySuffix}.</div>
-        `;
-        
-        // Position popup near the clicked cell
-        const rect = cell.getBoundingClientRect();
-        popup.style.left = `${rect.left + window.scrollX}px`;
-        popup.style.top = `${rect.top + window.scrollY - 40}px`;
-        
-        // Show popup
-        popup.style.display = 'block';
-        
-        // Hide popup after 3 seconds
-        setTimeout(() => {
-            popup.style.display = 'none';
-        }, 3000);
-    });
-    
-    // Event listeners for navigation
-    prevYearBtn.addEventListener('click', function() {
-        currentYear--;
-        currentYearEl.textContent = currentYear;
-        cal.paint({
-            date: {
-                start: new Date(currentYear, 0, 1)
-            }
-        });
-    });
-    
-    nextYearBtn.addEventListener('click', function() {
-        currentYear++;
-        currentYearEl.textContent = currentYear;
-        cal.paint({
-            date: {
-                start: new Date(currentYear, 0, 1)
-            }
-        });
-    });
-    
-    // Helper function to get day suffix (st, nd, rd, th)
-    function getDaySuffix(day) {
-        if (day > 3 && day < 21) return 'th';
-        switch (day % 10) {
-            case 1: return 'st';
-            case 2: return 'nd';
-            case 3: return 'rd';
-            default: return 'th';
-        }
-    }
-    
-    // Function to format date as YYYY-MM-DD
-    function formatDate(date) {
-        const year = date.getFullYear();
-        const month = String(date.getMonth() + 1).padStart(2, '0');
-        const day = String(date.getDate()).padStart(2, '0');
-        return `${year}-${month}-${day}`;
-    }
-    
-    // Generate sample data for testing
-    function generateSampleData() {
-        const localities = [
-            "NORFOLK", "VIRGINIA BEACH", "CHESAPEAKE", "PORTSMOUTH", 
-            "SUFFOLK", "HAMPTON", "NEWPORT NEWS", "WILLIAMSBURG",
-            "JAMES CITY", "GLOUCESTER", "YORK", "POQUOSON",
-            "ISLE OF WIGHT", "SURRY", "SOUTHAMPTON", "SMITHFIELD"
-        ];
-        
-        const sevenCities = [
-            "CHESAPEAKE", "HAMPTON", "NEWPORT NEWS", "NORFOLK", 
-            "PORTSMOUTH", "SUFFOLK", "VIRGINIA BEACH"
-        ];
-        
-        const data = [];
-        const currentYear = new Date().getFullYear();
-        const startDate = new Date(currentYear, 0, 1);
-        const endDate = new Date(currentYear, 11, 31);
-        
-        // Create a biased distribution with more events in recent months
-        for (let i = 0; i < 500; i++) {
-            // Bias toward recent months (higher probability for recent months)
-            const randomBias = Math.pow(Math.random(), 1.5); // Power curve for bias
-            
-            // Create a random date between start and end
-            const dayRange = (endDate - startDate) / (1000 * 60 * 60 * 24);
-            const randomDay = Math.floor(randomBias * dayRange);
-            const date = new Date(startDate);
-            date.setDate(date.getDate() + randomDay);
-            
-            // Choose a locality, with Seven Cities appearing more frequently
-            let randomLocality;
-            if (Math.random() < 0.7) { // 70% chance of selecting a Seven City
-                randomLocality = sevenCities[Math.floor(Math.random() * sevenCities.length)];
-            } else {
-                randomLocality = localities[Math.floor(Math.random() * localities.length)];
-            }
-            
-            // Format the date as YYYY-MM-DD
-            const formattedDate = formatDate(date);
-            
-            data.push({
-                date: formattedDate,
-                count: 1,
-                locality: randomLocality
-            });
-        }
-        
-        return data;
-    }
-});
+initMap();
 
-// Function for future backend integration
-function updateCalendarWithRealData(data) {
-    const cal = new CalHeatmap();
-    const currentYear = parseInt(document.getElementById('currentYear').textContent);
-    
-    cal.paint({
-        itemSelector: '#cal-heatmap',
-        date: {
-            start: new Date(currentYear, 0, 1)
-        },
-        data: {
-            source: data,
-            type: 'json',
-            x: 'date',
-            y: 'count'
-        }
-    });
-}cal.paint({
-    itemSelector: '#cal-heatmap',
-    domain: {
-        type: 'month',
-        gutter: 0, // Reduced gutter to make months appear continuous
-        padding: [15, 0, 0, 0]
-    },
-    subDomain: {
-        type: 'day',
-        radius: 2,
-        width: 11, // Slightly smaller width for tighter layout
-        height: 11, // Slightly smaller height for tighter layout
-        gutter: 2 // Small gutter between days
-    },
-    // Rest of your configuration remains the same
-});// Paint the calendar with initial options
-cal.paint({
-    itemSelector: '#cal-heatmap',
-    domain: {
-        type: 'month',
-        gutter: 0, // Reduced gutter to make months appear continuous
-        padding: [15, 0, 0, 0]
-    },
-    subDomain: {
-        type: 'day',
-        radius: 1,
-        width: 10, // Smaller width to match heatmapex.js
-        height: 10, // Smaller height to match heatmapex.js
-        gutter: 2 // Small gutter between days
-    },
-    date: {
-        start: new Date(currentYear, 0, 1),
-        highlight: 'now'
-    },
-    range: 12,
-    scale: {
-        color: {
-            range: ['#161b22', '#0e4429', '#006d32', '#26a641', '#39d353', 
-                   '#4ade80', '#60d394', '#88d498', '#bfd96c', '#ffe26a'], // Vibrant color scheme
-            type: 'threshold',
-            domain: [1, 2, 3, 5, 7, 10, 15, 20, 25] // More gradual color distribution
-        }
-    },
-    // Rest of your configuration remains the same
+// Fetch and display technology areas on the map
+function loadTechnologyAreas() {
+  fetch('/api/technology-data.php')
+    .then(response => response.json())
+    .then(data => {
+      if (data.technology_areas) {
+        data.technology_areas.forEach(area => {
+          // Add a tech area marker to the appropriate city
+          const coordinates = getTechAreaCoordinates(area.name);
+          if (coordinates) {
+            const marker = L.marker(coordinates, {
+              icon: L.divIcon({
+                className: 'tech-area-marker',
+                html: `<div class="marker-content"><i class="fa fa-microchip"></i></div>`,
+                iconSize: [40, 40]
+              })
+            }).addTo(map);
+            
+            marker.on('click', () => {
+              loadTechAreaDetails(area.slug);
+            });
+          }
+        });
+      }
+    })
+    .catch(error => console.error('Error loading technology areas:', error));
+}
+
+// Get the coordinates for where to place tech area markers
+function getTechAreaCoordinates(areaName) {
+  // Map of technology areas to coordinates where the markers should appear
+  const coordinates = {
+    'Quantum Computing in Hampton Roads': [37.0311, -76.3452], // Jefferson Lab in Newport News
+    'Renewable Energy Projects in Virginia Beach': [36.8508, -75.9779],
+    'Cybersecurity Initiatives in Norfolk': [36.8507, -76.2859],
+    'Maritime Technology in Hampton Roads': [36.9312, -76.3295]
+    // Add more technology areas as needed
+  };
+  
+  return coordinates[areaName];
+}
+
+// Load and display detailed information for a tech area
+function loadTechAreaDetails(areaSlug) {
+  fetch(`/api/technology-data.php?area=${areaSlug}`)
+    .then(response => response.json())
+    .then(data => {
+      if (data.error) {
+        console.error(data.error);
+        return;
+      }
+      
+      // Create and show a popup with the technology information
+      const popupContent = `
+        <div class="tech-info-popup">
+          <h3>${data.technology_area_name}</h3>
+          
+          <div class="tech-section">
+            <h4>Key Role Players</h4>
+            <p>${data.key_players}</p>
+          </div>
+          
+          <div class="tech-section">
+            <h4>Technological Development</h4>
+            <p>${data.technological_development}</p>
+          </div>
+          
+          <div class="tech-section">
+            <h4>Project Cost</h4>
+            <p>${data.project_cost}</p>
+          </div>
+          
+          <div class="tech-section">
+            <h4>Latest Update</h4>
+            <p>${data.information_date ? new Date(data.information_date).toLocaleDateString() : 'Not specified'}</p>
+          </div>
+          
+          <div class="tech-section">
+            <h4>Location</h4>
+            <p>${data.event_location}</p>
+          </div>
+          
+          <div class="tech-section">
+            <h4>Contact Information</h4>
+            <p>${data.contact_information}</p>
+          </div>
+          
+          <div class="tech-meta">
+            <p class="small">Based on ${data.number_of_sources} sources • Updated ${new Date(data.consolidation_date).toLocaleDateString()}</p>
+          </div>
+        </div>
+      `;
+      
+      // Show the popup at the appropriate location on the map
+      const coordinates = getTechAreaCoordinates(data.technology_area_name);
+      L.popup()
+        .setLatLng(coordinates)
+        .setContent(popupContent)
+        .openOn(map);
+    })
+    .catch(error => console.error('Error loading technology details:', error));
+}
+
+// Initialize technology data when map loads
+document.addEventListener('DOMContentLoaded', function() {
+  // After your map is initialized
+  loadTechnologyAreas();
 });
