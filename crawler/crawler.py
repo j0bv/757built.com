@@ -81,40 +81,39 @@ class AIEnhancedCrawler:
         return structured_data
 
     def analyze_with_ai(self, text_content, title, technology_area):
-        """Use Phi3 with Ollama to extract structured information"""
+        """Use Phi3 via API to extract structured information"""
         try:
-            # Formulate a prompt for the AI
-            prompt = f"""
-            Utilize the following web content to extract information about {technology_area}:
+            # API endpoint on your web server that connects to Ollama
+            api_url = "https://757built.com/api/ai_analysis"
             
-            Title: {title}
-            
-            Content: {text_content[:4000]}  # Limiting content length for API constraints
-            
-            Extract the following information:
-            1. Key Role Players: Identify individuals, organizations, or companies leading or contributing to the development, research, or project.
-            2. Technological Development: Gather information about specific technological advancements, innovations, or breakthroughs.
-            3. Project Cost: Provide details on funding, project costs, or financial investments.
-            4. Date of Information Release: Include the latest date of project updates, publications, or announcements.
-            5. Event Location: Specify the geographical location where the development or research is taking place.
-            6. Contact Information: Extract publicly accessible contact details for key role players.
-            
-            Format the response as a structured JSON object with these fields.
-            """
-            
-            # Call the AI API
-            response = requests.post(self.ollama_endpoint, json={"prompt": prompt})
-            response.raise_for_status()
-            ai_analysis = response.json()
-            
-            # Add metadata
-            ai_analysis["meta"] = {
-                "source_title": title,
-                "extraction_date": datetime.now().isoformat(),
+            # Prepare data for the request
+            data = {
+                "text": text_content[:3000],  # Limit text length
                 "technology_area": technology_area
             }
             
-            return ai_analysis
+            # Make the request
+            headers = {
+                "Content-Type": "application/json",
+                "Authorization": f"Bearer {os.getenv('AI_API_KEY')}"
+            }
+            
+            response = requests.post(api_url, json=data, headers=headers)
+            response.raise_for_status()
+            
+            # Parse the response
+            result = response.json()
+            
+            if result['status'] == 'success':
+                # Add metadata
+                result['data']["meta"] = {
+                    "source_title": title,
+                    "extraction_date": datetime.now().isoformat(),
+                    "technology_area": technology_area
+                }
+                return result['data']
+            else:
+                raise Exception(f"API error: {result.get('message', 'Unknown error')}")
             
         except Exception as e:
             print(f"Error using AI for analysis: {e}")
