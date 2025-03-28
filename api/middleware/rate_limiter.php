@@ -2,7 +2,14 @@
 // Simple rate limiter based on IP address
 function checkRateLimit() {
     $ip = $_SERVER['REMOTE_ADDR'];
-    $cacheFile = sys_get_temp_dir() . '/api_rate_' . md5($ip);
+    $cacheDir = sys_get_temp_dir() . '/757built_ratelimit';
+    
+    // Create cache directory if it doesn't exist
+    if (!file_exists($cacheDir)) {
+        mkdir($cacheDir, 0755, true);
+    }
+    
+    $cacheFile = $cacheDir . '/' . md5($ip);
     
     // Check if file exists
     if (file_exists($cacheFile)) {
@@ -24,7 +31,7 @@ function checkRateLimit() {
                 header('Retry-After: ' . (3600 - (time() % 3600)));
                 echo json_encode([
                     'status' => 'error',
-                    'message' => 'Rate limit exceeded. Try again in ' . ceil((3600 - (time() % 3600))/60) . ' minutes.'
+                    'message' => 'Rate limit exceeded. Try again later.'
                 ]);
                 exit;
             }
@@ -39,11 +46,21 @@ function checkRateLimit() {
     
     // Save the data
     file_put_contents($cacheFile, json_encode($data));
+
+    $cacheDir = sys_get_temp_dir() . '/757built_ratelimit';
+    
+    // Create cache directory if it doesn't exist
+    if (!file_exists($cacheDir)) {
+        mkdir($cacheDir, 0755, true);
+    }
+    
+    $cacheFile = $cacheDir . '/' . md5($ip);
     
     // Add headers
     header('X-RateLimit-Limit: 100');
     header('X-RateLimit-Remaining: ' . (100 - $data['count']));
     header('X-RateLimit-Reset: ' . (3600 - (time() % 3600)));
+    
 }
 
 // Include this at the top of index.php

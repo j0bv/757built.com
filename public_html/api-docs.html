@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>757Built API - Public Documentation</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
+    <style>
+        pre { background-color: #f5f5f5; padding: 15px; border-radius: 5px; }
+        .endpoint { margin-bottom: 30px; padding: 20px; border: 1px solid #ddd; border-radius: 5px; }
+        .method { padding: 3px 8px; border-radius: 4px; background-color: #61affe; color: white; font-weight: bold; }
+    </style>
+</head>
+<body>
+    <div class="container my-5">
+        <h1>757Built API Documentation</h1>
+        <p class="lead">Access technology development information for the Hampton Roads region.</p>
+        
+        <hr>
+        
+        <h2>Base URL</h2>
+        <pre>https://757built.com/api</pre>
+        
+        <h2>Available Endpoints</h2>
+        
+        <div class="endpoint">
+            <h3><span class="method">GET</span> /technologies</h3>
+            <p>Returns a list of all technology areas in Hampton Roads.</p>
+            
+            <h4>Example Request:</h4>
+            <pre>GET https://757built.com/api/technologies</pre>
+            
+            <h4>Example Response:</h4>
+            <pre>{
+  "status": "success",
+  "count": 3,
+  "data": [
+    {
+      "id": 1,
+      "name": "Quantum Computing in Hampton Roads",
+      "slug": "quantum-computing-in-hampton-roads",
+      "description": "Research and development in quantum computing."
+    },
+    {
+      "id": 2,
+      "name": "Renewable Energy in Virginia Beach",
+      "slug": "renewable-energy-in-virginia-beach",
+      "description": "Clean energy initiatives and research."
+    }
+  ]
+}</pre>
+        </div>
+        
+        <div class="endpoint">
+            <h3><span class="method">GET</span> /technologies/{slug}</h3>
+            <p>Returns detailed information about a specific technology area.</p>
+            
+            <h4>Parameters:</h4>
+            <ul>
+                <li><code>slug</code> - The slug identifier for the technology area</li>
+            </ul>
+            
+            <h4>Example Request:</h4>
+            <pre>GET https://757built.com/api/technologies/quantum-computing-in-hampton-roads</pre>
+            
+            <h4>Example Response:</h4>
+            <pre>{
+  "status": "success",
+  "data": {
+    "id": 1,
+    "technology_area_id": 1,
+    "key_players": "Jefferson Lab, ODU Physics Department",
+    "technological_development": "5-qubit quantum processor development",
+    "project_cost": "$4.3 million (NSF Grant)",
+    "information_date": "2024-03-15",
+    "event_location": "Newport News, VA",
+    "contact_information": "quantum@jlab.org",
+    "number_of_sources": 3,
+    "consolidation_date": "2024-04-20T08:15:30",
+    "technology_area_name": "Quantum Computing in Hampton Roads"
+  }
+}</pre>
+        </div>
+        
+        <!-- Add more endpoint documentation as needed -->
+        
+        <hr>
+        
+        <h2>Rate Limiting</h2>
+        <p>The API is limited to 100 requests per hour per IP address.</p>
+        <p>Rate limit headers are included in all responses:</p>
+        <ul>
+            <li><code>X-RateLimit-Limit</code>: Maximum requests per hour</li>
+            <li><code>X-RateLimit-Remaining</code>: Remaining requests in the current hour</li>
+            <li><code>X-RateLimit-Reset</code>: Seconds until the rate limit resets</li>
+        </ul>
+        
+        <h2>Errors</h2>
+        <p>All errors return a JSON response with a status and message:</p>
+        <pre>{
+  "status": "error",
+  "message": "Error description"
+}</pre>
+        
+        <hr>
+        
+        <p>For questions or support, contact: <a href="mailto:api@757built.com">api@757built.com</a></p>
+    </div>
+</body>
+</html> 

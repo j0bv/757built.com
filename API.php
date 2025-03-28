@@ -2,6 +2,9 @@
 // api/technology-data.php
 
 header('Content-Type: application/json');
+header('Access-Control-Allow-Origin: *'); // Allow cross-origin requests
+header('Access-Control-Allow-Methods: 'GET, OPTIONS');
+header('Access-Control-Allow-Headers: 'Content-Type');
 
 // Database connection
 $db_host = getenv('DB_HOST') ?: 'localhost';
