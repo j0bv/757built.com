@@ -1,0 +1,251 @@
+// orbitdb-setup.js
+const IPFS = require('ipfs');
+const OrbitDB = require('orbit-db');
+
+async function initializeOrbitDB() {
+  // Create IPFS instance
+  const ipfs = await IPFS.create({
+    repo: './ipfs',
+    start: true,
+    EXPERIMENTAL: { pubsub: true }
+  });
+
+  // Create OrbitDB instance
+  const orbitdb = await OrbitDB.createInstance(ipfs);
+  
+  // Create/open databases
+  const developmentDB = await orbitdb.docstore('hampton-roads-development-db', {
+    accessController: {
+      write: ['*'] // Public write access for testing, restrict in production
+    }
+  });
+  
+  const boundariesDB = await orbitdb.keyvalue('hampton-roads-boundaries-db');
+  const communityDB = await orbitdb.feed('hampton-roads-community-db');
+  
+  return { developmentDB, boundariesDB, communityDB, orbitdb, ipfs };
+}
+
+module.exports = { initializeOrbitDB };// adapters/virginia-beach-adapter.js
+const axios = require('axios');
+
+class VirginiaBeachAdapter {
+  constructor(developmentDB) {
+    this.baseUrl = 'https://data.vbgov.com/api/planning/';
+    this.developmentDB = developmentDB;
+  }
+  
+  async fetchBuildingPermits(startDate, endDate) {
+    try {
+      const response = await axios.get(`${this.baseUrl}/permits`, {
+        params: { start_date: startDate, end_date: endDate }
+      });
+      
+      // Transform data to our schema
+      const normalizedData = response.data.map(permit => ({
+        id: `vb-${permit.permit_number}`,
+        type: 'building_permit',
+        jurisdiction: 'Virginia Beach',
+        title: permit.project_name || 'Building Permit',
+        description: permit.description,
+        status: permit.status,
+        value: permit.construction_value,
+        date: permit.issue_date,
+        location: {
+          address: permit.address,
+          coordinates: [permit.longitude, permit.latitude]
+        },
+        source: 'Virginia Beach Open Data',
+        sourceUrl: `https://data.vbgov.com/permits/${permit.permit_number}`
+      }));
+      
+      // Store in OrbitDB
+      for (const item of normalizedData) {
+        await this.developmentDB.put(item);
+      }
+      
+      return normalizedData;
+    } catch (error) {
+      console.error('Error fetching Virginia Beach permit data:', error);
+      return [];
+    }
+  }
+  
+  // Additional methods for zoning changes, development applications, etc.
+}
+
+module.exports = VirginiaBeachAdapter;// data-sync-manager.js
+const VirginiaBeachAdapter = require('./adapters/virginia-beach-adapter');
+const NorfolkAdapter = require('./adapters/norfolk-adapter');
+const ChesapeakeAdapter = require('./adapters/chesapeake-adapter');
+// Import other adapters
+
+class DataSyncManager {
+  constructor(orbitDBInstance) {
+    this.developmentDB = orbitDBInstance.developmentDB;
+    this.boundariesDB = orbitDBInstance.boundariesDB;
+    
+    // Initialize adapters
+    this.adapters = {
+      virginiaBeach: new VirginiaBeachAdapter(this.developmentDB),
+      norfolk: new NorfolkAdapter(this.developmentDB),
+      chesapeake: new ChesapeakeAdapter(this.developmentDB),
+      // Add other adapters
+    };
+    
+    // Track last sync times
+    this.lastSyncTimes = {};
+  }
+  
+  async syncAllData() {
+    const now = new Date();
+    const oneMonthAgo = new Date(now.setMonth(now.getMonth() - 1));
+    
+    // Sync each data source
+    await Promise.all([
+      this.adapters.virginiaBeach.fetchBuildingPermits(oneMonthAgo, new Date()),
+      this.adapters.norfolk.fetchDevelopmentProjects(),
+      this.adapters.chesapeake.fetchZoningChanges(),
+      // Sync other data sources
+    ]);
+    
+    this.lastSyncTimes.all = new Date();
+    console.log('All data sources synced at:', this.lastSyncTimes.all);
+  }
+  
+  // Method to sync a specific jurisdiction
+  async syncJurisdiction(jurisdiction) {
+    if (!this.adapters[jurisdiction]) {
+      throw new Error(`No adapter found for jurisdiction: ${jurisdiction}`);
+    }
+    
+    await this.adapters[jurisdiction].fetchBuildingPermits(
+      new Date(new Date().setMonth(new Date().getMonth() - 1)),
+      new Date()
+    );
+    
+    this.lastSyncTimes[jurisdiction] = new Date();
+    console.log(`${jurisdiction} data synced at:`, this.lastSyncTimes[jurisdiction]);
+  }
+  
+  // Schedule regular syncs
+  startSyncScheduler(intervalMinutes = 60) {
+    this.syncAllData(); // Initial sync
+    
+    // Schedule regular syncs
+    this.syncInterval = setInterval(() => {
+      this.syncAllData();
+    }, intervalMinutes * 60 * 1000);
+  }
+  
+  stopSyncScheduler() {
+    if (this.syncInterval) {
+      clearInterval(this.syncInterval);
+    }
+  }
+}
+
+module.exports = DataSyncManager;// api.js
+const express = require('express');
+const { initializeOrbitDB } = require('./orbitdb-setup');
+const DataSyncManager = require('./data-sync-manager');
+
+const app = express();
+let orbitDBInstance;
+let syncManager;
+
+// Initialize OrbitDB and sync manager
+async function initialize() {
+  orbitDBInstance = await initializeOrbitDB();
+  syncManager = new DataSyncManager(orbitDBInstance);
+  
+  // Start data sync
+  syncManager.startSyncScheduler(30); // Sync every 30 minutes
+}
+
+initialize();
+
+// API endpoints
+app.get('/api/projects', async (req, res) => {
+  try {
+    const { jurisdiction, startDate, endDate, type } = req.query;
+    
+    // Query OrbitDB
+    let query = {};
+    if (jurisdiction) query.jurisdiction = jurisdiction;
+    if (type) query.type = type;
+    
+    const projects = await orbitDBInstance.developmentDB.query(doc => {
+      let matches = true;
+      
+      // Basic filtering
+      if (jurisdiction && doc.jurisdiction !== jurisdiction) matches = false;
+      if (type && doc.type !== type) matches = false;
+      
+      // Date filtering if provided
+      if (startDate && endDate) {
+        const docDate = new Date(doc.date);
+        const start = new Date(startDate);
+        const end = new Date(endDate);
+        if (docDate < start || docDate > end) matches = false;
+      }
+      
+      return matches;
+    });
+    
+    res.json(projects);
+  } catch (error) {
+    console.error('Error fetching projects:', error);
+    res.status(500).json({ error: 'Failed to fetch projects' });
+  }
+});
+
+app.get('/api/boundaries', async (req, res) => {
+  try {
+    const boundaries = await orbitDBInstance.boundariesDB.all;
+    res.json(boundaries);
+  } catch (error) {
+    console.error('Error fetching boundaries:', error);
+    res.status(500).json({ error: 'Failed to fetch boundaries' });
+  }
+});
+
+app.get('/api/heatmap-data', async (req, res) => {
+  try {
+    const { year } = req.query;
+    const selectedYear = year || new Date().getFullYear();
+    
+    // Query OrbitDB for project counts by date
+    const projects = await orbitDBInstance.developmentDB.query(doc => {
+      const docDate = new Date(doc.date);
+      return docDate.getFullYear() === parseInt(selectedYear);
+    });
+    
+    // Format data for heatmap
+    const heatmapData = {};
+    projects.forEach(project => {
+      const dateStr = project.date.split('T')[0];
+      if (!heatmapData[dateStr]) {
+        heatmapData[dateStr] = 0;
+      }
+      heatmapData[dateStr]++;
+    });
+    
+    // Convert to array format
+    const result = Object.entries(heatmapData).map(([date, count]) => ({
+      date,
+      count
+    }));
+    
+    res.json(result);
+  } catch (error) {
+    console.error('Error generating heatmap data:', error);
+    res.status(500).json({ error: 'Failed to generate heatmap data' });
+  }
+});
+
+// Start server
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => {
+  console.log(`API server running on port ${PORT}`);
+});

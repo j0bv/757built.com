@@ -57,17 +57,36 @@
             }
         }
     </script>
+    <style>
+        /* Custom fix for heatmap display */
+        #heatmap-container {
+            min-height: 130px;
+            padding-bottom: 10px;
+            overflow-x: auto;
+            overflow-y: visible;
+            display: flex;
+            align-items: flex-start;
+        }
+        #heatmap-container > div {
+            flex-shrink: 0;
+        }
+    </style>
 </head>
-<body class="font-sans bg-background overflow-hidden h-screen flex flex-col">
-    <!-- Custom Heatmap Header -->
-    <div id="custom-heatmap" class="bg-[#2b3b80] text-white p-4 shadow-md fixed top-0 left-0 right-0 z-10">
+<body class="font-sans bg-background h-screen flex flex-col">
+    <!-- Map container - Takes most height but not all -->
+    <div id="map-wrapper" class="flex-1 relative" style="height: calc(100vh - 240px);">
+        <div id="map" class="absolute inset-0"></div>
+    </div>
+    
+    <!-- Custom Heatmap Footer -->
+    <div id="custom-heatmap" class="bg-[#2b3b80] text-white p-4 shadow-md z-10">
         <div class="container mx-auto">
             <div class="flex justify-between items-center mb-3">
                 <h1 class="text-xl font-semibold">Hampton Roads Development Activity</h1>
             </div>
             <div class="p-4 bg-opacity-10 bg-white rounded">
                 <h2 class="text-xl font-semibold mb-4">Contribution Activity</h2>
-                <div id="heatmap-container" class="flex gap-1 overflow-x-auto pb-2">
+                <div id="heatmap-container" class="flex gap-1 pb-2 w-full overflow-x-auto">
                     <!-- Generated heatmap will be inserted here -->
                 </div>
                 <div class="flex items-center gap-2 mt-4 text-sm text-white">
@@ -84,9 +103,6 @@
             </div>
         </div>
     </div>
-    
-    <!-- Map container - Takes remaining height with header offset -->
-    <div id="map" class="flex-1 mt-[190px]"></div>
     
     <!-- Leaflet JS -->
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" 
@@ -144,6 +160,7 @@
                 weeks.forEach((week, weekIndex) => {
                     const weekEl = document.createElement('div');
                     weekEl.className = 'flex flex-col gap-1';
+                    weekEl.style.flexShrink = '0';
                     
                     week.forEach((day, dayIndex) => {
                         const dayEl = document.createElement('div');
@@ -164,6 +181,13 @@
             
             // Initialize heatmap
             createHeatmap();
+            
+            // Make sure Leaflet map is properly sized
+            setTimeout(() => {
+                if (window.map) {
+                    window.map.invalidateSize();
+                }
+            }, 100);
         });
     </script>
     

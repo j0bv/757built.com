@@ -1,0 +1,693 @@
+const playwright = require('playwright');
+const axios = require('axios');
+const cheerio = require('cheerio');
+
+/**
+ * DataSourcer - A class focusing on AI search logic and collecting data 
+ * from various internet sources for the Hampton Roads map project.
+ * Specializes in primary source documents only.
+ */
+class DataSourcer {
+  constructor(options = {}) {
+    this.aiProvider = options.aiProvider || 'ollama'; // 'ollama' or 'openai'
+    this.ollamaEndpoint = options.ollamaEndpoint || 'http://localhost:11434/api/generate';
+    this.ollamaModel = options.ollamaModel || 'llama3';
+    this.openaiApiKey = options.openaiApiKey || process.env.OPENAI_API_KEY;
+    this.openaiModel = options.openaiModel || 'gpt-4';
+  }
+
+  /**
+   * Web scrape data using Playwright browser automation
+   * @param {string} url - URL to scrape
+   * @param {Function} extractorFn - Function to extract data from the page
+   * @returns {Array|Object} - Extracted and formatted data
+   */
+  async scrapeWebPage(url, extractorFn) {
+    const browser = await playwright.chromium.launch();
+    const context = await browser.newContext();
+    const page = await context.newPage();
+    
+    try {
+      console.log(`Scraping ${url}...`);
+      await page.goto(url, { waitUntil: 'domcontentloaded' });
+      
+      // Execute the extractor function which should return data in the correct format
+      const data = await extractorFn(page);
+      
+      console.log(`Successfully scraped data from ${url}`);
+      return data;
+    } catch (error) {
+      console.error(`Error scraping ${url}:`, error);
+      return null;
+    } finally {
+      await browser.close();
+    }
+  }
+
+  /**
+   * Extract data from a website using Cheerio (for simpler pages)
+   * @param {string} url - URL to scrape
+   * @param {Function} extractorFn - Function that takes a Cheerio instance and returns extracted data
+   * @returns {Array|Object} - Extracted and formatted data
+   */
+  async scrapeWithCheerio(url, extractorFn) {
+    try {
+      console.log(`Scraping ${url} with Cheerio...`);
+      const response = await axios.get(url);
+      const $ = cheerio.load(response.data);
+      
+      // Execute extractor function with Cheerio instance
+      const data = extractorFn($);
+      
+      console.log(`Successfully scraped data from ${url} using Cheerio`);
+      return data;
+    } catch (error) {
+      console.error(`Error scraping ${url} with Cheerio:`, error);
+      return null;
+    }
+  }
+
+  /**
+   * Fetch data from a public API
+   * @param {string} url - API endpoint URL
+   * @param {Object} params - Query parameters
+   * @param {Function} transformFn - Function to transform API response to our schema
+   * @returns {Array|Object} - Transformed data
+   */
+  async fetchFromAPI(url, params = {}, transformFn) {
+    try {
+      console.log(`Fetching from API: ${url}`);
+      const response = await axios.get(url, { params });
+      
+      // Transform API data to our schema
+      const data = transformFn(response.data);
+      
+      console.log(`Successfully fetched data from API: ${url}`);
+      return data;
+    } catch (error) {
+      console.error(`Error fetching from API ${url}:`, error);
+      return null;
+    }
+  }
+
+  /**
+   * Fetch PDF documents or government records
+   * @param {string} url - URL to the document
+   * @param {Object} metadata - Additional metadata about the document
+   * @returns {Object} - Document metadata and download URL
+   */
+  async fetchDocument(url, metadata = {}) {
+    try {
+      console.log(`Fetching document from: ${url}`);
+      
+      // For PDFs and other documents, we just verify they exist and gather metadata
+      const response = await axios.head(url);
+      
+      if (response.status === 200) {
+        const documentData = {
+          id: `doc-${Date.now()}-${Math.random().toString(36).substring(2, 10)}`,
+          type: 'primary_document',
+          url: url,
+          contentType: response.headers['content-type'],
+          size: response.headers['content-length'] || 'unknown',
+          lastModified: response.headers['last-modified'] || new Date().toISOString(),
+          ...metadata
+        };
+        
+        console.log(`Successfully verified document at ${url}`);
+        return documentData;
+      } else {
+        throw new Error(`Document at ${url} returned status code ${response.status}`);
+      }
+    } catch (error) {
+      console.error(`Error fetching document from ${url}:`, error);
+      return null;
+    }
+  }
+
+  /**
+   * Search for government documents and primary sources
+   * @param {string} query - Search query
+   * @param {number} maxResults - Maximum number of results to return
+   * @returns {Array} - Array of search result objects
+   */
+  async searchPrimaryDocuments(query, maxResults = 10) {
+    const browser = await playwright.chromium.launch();
+    const context = await browser.newContext();
+    const page = await context.newPage();
+    
+    try {
+      // Use a more targeted search for government documents
+      console.log(`Searching for primary documents: ${query}`);
+      await page.goto('https://www.google.com/search?q=' + encodeURIComponent(`${query} filetype:pdf site:.gov`));
+
+      // Wait for search results to load
+      await page.waitForSelector('div.g');
+      
+      // Extract information from search results
+      const results = await page.$$('div.g');
+      const documents = [];
+
+      for (let i = 0; i < Math.min(results.length, maxResults); i++) {
+        const result = results[i];
+        try {
+          const titleEl = await result.$('h3');
+          const linkEl = await result.$('a');
+          const snippetEl = await result.$('div.VwiC3b');
+          
+          if (!titleEl || !linkEl || !snippetEl) continue;
+          
+          const title = await titleEl.innerText();
+          const link = await linkEl.getAttribute('href');
+          const snippet = await snippetEl.innerText();
+          
+          documents.push({
+            id: `govdoc-${Date.now()}-${i}`,
+            type: 'government_document',
+            title,
+            url: link,
+            description: snippet,
+            query,
+            source: 'Government Document Search',
+            fileType: link.endsWith('.pdf') ? 'PDF' : 
+                     link.endsWith('.doc') ? 'DOC' : 
+                     link.endsWith('.docx') ? 'DOCX' : 'Unknown',
+            date: new Date().toISOString()
+          });
+        } catch (err) {
+          console.error('Error extracting document search result:', err);
+        }
+      }
+      
+      console.log(`Successfully found ${documents.length} government documents`);
+      return documents;
+    } catch (error) {
+      console.error(`Error searching for documents with query ${query}:`, error);
+      return [];
+    } finally {
+      await browser.close();
+    }
+  }
+
+  /**
+   * Uses AI to analyze and extract structured data from government documents
+   * @param {string} content - The document content to analyze
+   * @param {string} prompt - The prompt to guide the AI analysis
+   * @param {Object} options - Additional options for AI processing
+   * @returns {Object} - AI generated structured data
+   */
+  async analyzeDocumentWithAI(content, prompt, options = {}) {
+    try {
+      console.log(`Analyzing document with AI using ${this.aiProvider}`);
+      
+      if (this.aiProvider === 'ollama') {
+        return await this.analyzeWithOllama(content, prompt, options);
+      } else if (this.aiProvider === 'openai') {
+        return await this.analyzeWithOpenAI(content, prompt, options);
+      } else {
+        throw new Error(`Unknown AI provider: ${this.aiProvider}`);
+      }
+    } catch (error) {
+      console.error('Error analyzing document with AI:', error);
+      return {
+        error: error.message,
+        timestamp: new Date().toISOString()
+      };
+    }
+  }
+
+  /**
+   * Analyze document content using Ollama
+   * @param {string} content - Document content
+   * @param {string} prompt - Prompt for analysis
+   * @param {Object} options - Additional options
+   * @returns {Object} - Analysis result
+   */
+  async analyzeWithOllama(content, prompt, options = {}) {
+    try {
+      const model = options.model || this.ollamaModel;
+      const endpoint = options.endpoint || this.ollamaEndpoint;
+      
+      console.log(`Using Ollama model: ${model}`);
+      
+      // Format the prompt to extract structured information
+      const formattedPrompt = `
+        ${prompt}
+        
+        DOCUMENT CONTENT:
+        ${content.substring(0, 8000)} ${content.length > 8000 ? '... [TRUNCATED]' : ''}
+        
+        Please provide your analysis as a structured JSON with these fields:
+        - extractedData: entities, dates, amounts, locations, etc.
+        - relationships: connections between entities
+        - keyInsights: important information extracted
+        - confidence: from 0 to 1, indicating confidence in analysis
+        
+        RETURN ONLY VALID JSON.
+      `;
+      
+      const response = await axios.post(endpoint, {
+        model: model,
+        prompt: formattedPrompt,
+        stream: false,
+        options: {
+          temperature: 0.1
+        }
+      });
+      
+      // Extract the JSON response
+      let jsonStr = '';
+      
+      if (response.data && response.data.response) {
+        jsonStr = response.data.response;
+      } else {
+        throw new Error('Invalid response format from Ollama');
+      }
+      
+      // Clean up JSON before parsing
+      jsonStr = jsonStr.replace(/```json/g, '').replace(/```/g, '').trim();
+      
+      try {
+        const parsedResult = JSON.parse(jsonStr);
+        console.log('Successfully analyzed document with Ollama');
+        return {
+          ...parsedResult,
+          provider: 'ollama',
+          model: model,
+          timestamp: new Date().toISOString()
+        };
+      } catch (e) {
+        console.error('Failed to parse Ollama JSON response:', e);
+        return {
+          rawResponse: jsonStr,
+          error: 'Failed to parse JSON from Ollama',
+          provider: 'ollama',
+          model: model,
+          timestamp: new Date().toISOString()
+        };
+      }
+    } catch (error) {
+      console.error('Error using Ollama for analysis:', error);
+      return {
+        error: error.message,
+        provider: 'ollama',
+        timestamp: new Date().toISOString()
+      };
+    }
+  }
+
+  /**
+   * Analyze document content using OpenAI
+   * @param {string} content - Document content
+   * @param {string} prompt - Prompt for analysis
+   * @param {Object} options - Additional options
+   * @returns {Object} - Analysis result
+   */
+  async analyzeWithOpenAI(content, prompt, options = {}) {
+    try {
+      const apiKey = options.apiKey || this.openaiApiKey;
+      const model = options.model || this.openaiModel;
+      
+      if (!apiKey) {
+        throw new Error('OpenAI API key is required. Provide it in constructor or options.');
+      }
+      
+      console.log(`Using OpenAI model: ${model}`);
+      
+      const response = await axios.post('https://api.openai.com/v1/chat/completions', {
+        model: model,
+        messages: [
+          {
+            role: "system",
+            content: "You are a document analysis specialist. Extract structured information from government and technical documents. Respond with well-formatted JSON only."
+          },
+          {
+            role: "user",
+            content: `${prompt}\n\nDOCUMENT CONTENT:\n${content.substring(0, 8000)} ${content.length > 8000 ? '... [TRUNCATED]' : ''}\n\nExtract structured data in valid JSON format with these fields: extractedData (entities, dates, amounts, locations, etc.), relationships, keyInsights, and confidence (0-1).`
+          }
+        ],
+        temperature: 0.1,
+        response_format: { type: "json_object" }
+      }, {
+        headers: {
+          'Authorization': `Bearer ${apiKey}`,
+          'Content-Type': 'application/json'
+        }
+      });
+      
+      if (response.data && response.data.choices && response.data.choices[0] && response.data.choices[0].message) {
+        const content = response.data.choices[0].message.content;
+        try {
+          const parsedResult = JSON.parse(content);
+          console.log('Successfully analyzed document with OpenAI');
+          return {
+            ...parsedResult,
+            provider: 'openai',
+            model: model,
+            timestamp: new Date().toISOString()
+          };
+        } catch (e) {
+          return {
+            rawResponse: content,
+            error: 'Failed to parse JSON from OpenAI',
+            provider: 'openai',
+            model: model,
+            timestamp: new Date().toISOString()
+          };
+        }
+      } else {
+        throw new Error('Invalid response format from OpenAI');
+      }
+    } catch (error) {
+      console.error('Error using OpenAI for analysis:', error);
+      return {
+        error: error.message,
+        provider: 'openai',
+        timestamp: new Date().toISOString()
+      };
+    }
+  }
+}
+
+// Hampton Roads primary document sources
+const HamptonRoadsPrimarySources = {
+  // Government data portals and APIs
+  governmentApis: [
+    {
+      name: 'Virginia Beach Open Data - Building Permits',
+      url: 'https://data.vbgov.com/resource/vbgr.json',
+      params: {
+        $limit: 100,
+        $where: "issue_date > '2023-01-01'"
+      },
+      transform: (data) => {
+        return data.map(item => ({
+          id: `vb-permit-${item.permit_number}`,
+          type: 'building_permit',
+          title: item.project_name || 'Building Permit',
+          description: item.description || 'No description available',
+          status: item.status,
+          value: item.construction_value,
+          jurisdiction: 'Virginia Beach',
+          location: {
+            address: item.address,
+            coordinates: [item.longitude, item.latitude]
+          },
+          date: item.issue_date,
+          source: 'Virginia Beach Open Data',
+          sourceUrl: `https://data.vbgov.com/permits/${item.permit_number}`,
+          documentType: 'primary_source'
+        }));
+      }
+    },
+    {
+      name: 'Norfolk Open Data - Development Projects',
+      url: 'https://data.norfolk.gov/resource/6wwz-w93f.json',
+      params: {
+        $limit: 100
+      },
+      transform: (data) => {
+        return data.map(item => ({
+          id: `norfolk-dev-${item.project_id || Date.now()}`,
+          type: 'development_project',
+          title: item.project_name || 'Development Project',
+          description: item.description || 'No description available',
+          status: item.status,
+          jurisdiction: 'Norfolk',
+          location: {
+            address: item.address,
+            coordinates: [item.longitude, item.latitude]
+          },
+          date: item.update_date || new Date().toISOString(),
+          source: 'Norfolk Open Data',
+          sourceUrl: `https://data.norfolk.gov/projects/${item.project_id}`,
+          documentType: 'primary_source'
+        }));
+      }
+    },
+    {
+      name: 'Hampton Roads Planning District Commission - GIS Data',
+      url: 'https://www.hrpdcva.gov/api/gis/datasets',
+      params: {
+        format: 'json',
+        category: 'development'
+      },
+      transform: (data) => {
+        // Handle specific HRPDC data format
+        return data.map(item => ({
+          id: `hrpdc-gis-${item.id || Date.now()}`,
+          type: 'planning_data',
+          title: item.name || 'HRPDC Planning Dataset',
+          description: item.description || 'No description available',
+          jurisdiction: 'Hampton Roads',
+          category: item.category,
+          format: item.format,
+          date: item.lastUpdated || new Date().toISOString(),
+          source: 'HRPDC GIS Database',
+          downloadUrl: item.downloadUrl,
+          documentType: 'primary_source'
+        }));
+      }
+    }
+  ],
+  
+  // City planning documents and zoning records
+  planningDocuments: [
+    {
+      name: 'Virginia Beach Planning Commission Records',
+      url: 'https://www.virginiabeach.gov/government/departments/planning/commission-records',
+      extractor: async (page) => {
+        const documents = await page.$$eval('.document-item', (items) => {
+          return items.map(item => {
+            const titleEl = item.querySelector('.doc-title');
+            const linkEl = item.querySelector('a');
+            const dateEl = item.querySelector('.doc-date');
+            
+            return {
+              title: titleEl ? titleEl.innerText : 'Untitled Document',
+              link: linkEl ? linkEl.href : '',
+              date: dateEl ? dateEl.innerText : 'No date',
+              format: linkEl && linkEl.href.includes('.pdf') ? 'PDF' : 
+                     linkEl && linkEl.href.includes('.doc') ? 'DOC' : 'Unknown'
+            };
+          });
+        });
+        
+        return documents.map(doc => ({
+          id: `vb-planning-${Date.now()}-${Math.random().toString(36).substring(2, 10)}`,
+          type: 'planning_document',
+          title: doc.title,
+          url: doc.link,
+          jurisdiction: 'Virginia Beach',
+          date: doc.date,
+          format: doc.format,
+          source: 'Virginia Beach Planning Commission',
+          documentType: 'primary_source'
+        }));
+      }
+    },
+    {
+      name: 'Norfolk Development Services Center',
+      url: 'https://www.norfolk.gov/2012/Development-Services-Center',
+      extractor: async (page) => {
+        const documents = await page.$$eval('.document-listing a', (links) => {
+          return links.map(link => {
+            return {
+              title: link.innerText,
+              link: link.href,
+              format: link.href.includes('.pdf') ? 'PDF' : 
+                     link.href.includes('.doc') ? 'DOC' : 'Unknown'
+            };
+          });
+        });
+        
+        return documents.map(doc => ({
+          id: `norfolk-dev-doc-${Date.now()}-${Math.random().toString(36).substring(2, 10)}`,
+          type: 'development_document',
+          title: doc.title,
+          url: doc.link,
+          jurisdiction: 'Norfolk',
+          format: doc.format,
+          source: 'Norfolk Development Services Center',
+          documentType: 'primary_source'
+        }));
+      }
+    }
+  ],
+  
+  // Economic development reports and tech initiatives
+  economicDevelopment: [
+    {
+      name: 'Hampton Roads Economic Development Alliance Reports',
+      url: 'https://www.hreda.com/research-data',
+      extractor: async (page) => {
+        const reports = await page.$$eval('.report-item', (items) => {
+          return items.map(item => {
+            const titleEl = item.querySelector('h3, h4');
+            const linkEl = item.querySelector('a[href*=".pdf"]');
+            const descEl = item.querySelector('.description');
+            const dateEl = item.querySelector('.date');
+            
+            return {
+              title: titleEl ? titleEl.innerText : 'Untitled Report',
+              link: linkEl ? linkEl.href : '',
+              description: descEl ? descEl.innerText : '',
+              date: dateEl ? dateEl.innerText : '',
+              format: 'PDF'
+            };
+          });
+        });
+        
+        return reports.map(report => ({
+          id: `hreda-report-${Date.now()}-${Math.random().toString(36).substring(2, 10)}`,
+          type: 'economic_report',
+          title: report.title,
+          url: report.link,
+          description: report.description,
+          jurisdiction: 'Hampton Roads',
+          date: report.date,
+          format: report.format,
+          source: 'Hampton Roads Economic Development Alliance',
+          documentType: 'primary_source'
+        }));
+      }
+    },
+    {
+      name: 'Virginia Innovation Partnership Corporation',
+      url: 'https://www.virginiaipc.org/reports-and-publications',
+      extractor: async (page) => {
+        const publications = await page.$$eval('.publication-item', (items) => {
+          return items.map(item => {
+            const titleEl = item.querySelector('.pub-title');
+            const linkEl = item.querySelector('a');
+            const dateEl = item.querySelector('.pub-date');
+            
+            return {
+              title: titleEl ? titleEl.innerText : 'Untitled Publication',
+              link: linkEl ? linkEl.href : '',
+              date: dateEl ? dateEl.innerText : '',
+              format: linkEl && linkEl.href.includes('.pdf') ? 'PDF' : 'Unknown'
+            };
+          });
+        });
+        
+        return publications.map(pub => ({
+          id: `vipc-pub-${Date.now()}-${Math.random().toString(36).substring(2, 10)}`,
+          type: 'tech_innovation_report',
+          title: pub.title,
+          url: pub.link,
+          jurisdiction: 'Virginia',
+          date: pub.date,
+          format: pub.format,
+          source: 'Virginia Innovation Partnership Corporation',
+          documentType: 'primary_source'
+        }));
+      }
+    }
+  ],
+  
+  // Document search configurations for AI processing
+  documentAiAnalysis: [
+    {
+      name: 'Tech Development Extraction',
+      prompt: 'Extract all information related to technology development, companies, funding, and project timelines from this government document:',
+      contentType: 'economic_report'
+    },
+    {
+      name: 'Permit Data Structuring',
+      prompt: 'Extract and structure all technical details, addresses, project scope, and timeline information from this building permit:',
+      contentType: 'building_permit'
+    }
+  ]
+};
+
+/**
+ * Collects primary source documents and data from Hampton Roads sources
+ * This function only handles data collection, not storage
+ * @param {Object} options - Configuration options including AI provider settings
+ */
+async function collectHamptonRoadsPrimaryDocuments(options = {}) {
+  const sourcer = new DataSourcer(options);
+  const collectedData = {
+    permits: [],
+    planningDocuments: [],
+    economicReports: [],
+    governmentDocuments: []
+  };
+  
+  // Process government APIs
+  for (const api of HamptonRoadsPrimarySources.governmentApis) {
+    const data = await sourcer.fetchFromAPI(api.url, api.params, api.transform);
+    if (data && data.length > 0) {
+      if (api.name.includes('Permit')) {
+        collectedData.permits = collectedData.permits.concat(data);
+      } else {
+        collectedData.planningDocuments = collectedData.planningDocuments.concat(data);
+      }
+    }
+  }
+  
+  // Process planning documents
+  for (const docSource of HamptonRoadsPrimarySources.planningDocuments) {
+    const data = await sourcer.scrapeWebPage(docSource.url, docSource.extractor);
+    if (data && data.length > 0) {
+      collectedData.planningDocuments = collectedData.planningDocuments.concat(data);
+    }
+  }
+  
+  // Process economic development reports
+  for (const reportSource of HamptonRoadsPrimarySources.economicDevelopment) {
+    const data = await sourcer.scrapeWebPage(reportSource.url, reportSource.extractor);
+    if (data && data.length > 0) {
+      collectedData.economicReports = collectedData.economicReports.concat(data);
+    }
+  }
+  
+  // Search for government documents related to tech development in Hampton Roads
+  const documentSearchQueries = [
+    'Hampton Roads technology development plan',
+    'Norfolk innovation district official',
+    'Virginia Beach technology corridor zoning',
+    'Suffolk technology park development',
+    'Hampton Roads naval technology'
+  ];
+  
+  for (const query of documentSearchQueries) {
+    const results = await sourcer.searchPrimaryDocuments(query, 3);
+    if (results && results.length > 0) {
+      collectedData.governmentDocuments = collectedData.governmentDocuments.concat(results);
+    }
+  }
+  
+  // Process a sample document with AI analysis if available
+  if (collectedData.economicReports.length > 0) {
+    const report = collectedData.economicReports[0];
+    const techAnalysisConfig = HamptonRoadsPrimarySources.documentAiAnalysis.find(config => 
+      config.contentType === 'economic_report'
+    );
+    
+    if (techAnalysisConfig && report.description) {
+      const analysis = await sourcer.analyzeDocumentWithAI(
+        report.description,
+        techAnalysisConfig.prompt
+      );
+      
+      // Attach analysis to the report
+      report.aiAnalysis = analysis;
+    }
+  }
+  
+  console.log('Hampton Roads primary document collection complete!');
+  console.log(`Collected ${collectedData.permits.length} permits`);
+  console.log(`Collected ${collectedData.planningDocuments.length} planning documents`);
+  console.log(`Collected ${collectedData.economicReports.length} economic reports`);
+  console.log(`Collected ${collectedData.governmentDocuments.length} government documents`);
+  
+  return collectedData;
+}
+
+module.exports = {
+  DataSourcer,
+  HamptonRoadsPrimarySources,
+  collectHamptonRoadsPrimaryDocuments
+};
