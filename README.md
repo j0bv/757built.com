@@ -23,7 +23,7 @@ An interactive map visualization of technology and development initiatives in th
 ### Collection Layer
 - **Sourcing Module**: Comprehensive data collection system with web scraping and API integration
 - **AI Analysis**: Document analysis using both Ollama (local) and OpenAI for extracting structured data
-- **Primary Documents**: Focus on official government records, permits, planning documents, and economic reports
+- **Primary SourceDocuments**: Focus on official government records, permits, planning documents, and economic reports
 
 ### Presentation Layer
 - **Leaflet.js Map**: Interactive visualization of Hampton Roads region
