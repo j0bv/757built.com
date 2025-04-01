@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>757Built API Documentation</title>
+    <link rel="stylesheet" href="css/styles.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.7.0/styles/atom-one-dark.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.7.0/highlight.min.js"></script>
+    <script>hljs.highlightAll();</script>
+    <style>
+        .endpoint {
+            margin-bottom: 2rem;
+            padding: 1rem;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+        .endpoint h3 {
+            margin-top: 0;
+        }
+        .method {
+            display: inline-block;
+            padding: 0.25rem 0.5rem;
+            border-radius: 3px;
+            background-color: #61affe;
+            color: white;
+            font-weight: bold;
+        }
+        pre {
+            background-color: #272822;
+            padding: 1rem;
+            border-radius: 5px;
+            overflow-x: auto;
+        }
+        .response-example {
+            margin-top: 1rem;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>757Built API Documentation</h1>
+    </header>
+    
+    <main class="container">
+        <section>
+            <h2>Introduction</h2>
+            <p>The 757Built API provides access to technological development information across the Hampton Roads region. This API allows developers to access data about research projects, technological advancements, and innovation across the region.</p>
+            
+            <h2>Base URL</h2>
+            <pre><code>https://757built.com/api</code></pre>
+            
+            <h2>Authentication</h2>
+            <p>The API is currently publicly accessible without authentication.</p>
+            
+            <h2>Rate Limiting</h2>
+            <p>API requests are limited to 100 requests per hour per IP address.</p>
+            
+            <h2>Endpoints</h2>
+            
+            <div class="endpoint">
+                <h3><span class="method">GET</span> /technologies</h3>
+                <p>Returns a list of all technology areas in the Hampton Roads region.</p>
+                
+                <h4>Example Request</h4>
+                <pre><code>GET https://757built.com/api/technologies</code></pre>
+                
+                <div class="response-example">
+                    <h4>Example Response</h4>
+                    <pre><code class="language-json">{
+  "status": "success",
+  "count": 2,
+  "data": [
+    {
+      "id": 1,
+      "name": "Quantum Computing in Hampton Roads",
+      "slug": "quantum-computing-in-hampton-roads",
+      "description": "Research and development in quantum computing technologies."
+    },
+    {
+      "id": 2,
+      "name": "Renewable Energy Projects in Virginia Beach",
+      "slug": "renewable-energy-projects-in-virginia-beach",
+      "description": "Sustainable energy initiatives in Virginia Beach area."
+    }
+  ]
+}</code></pre>
+                </div>
+            </div>
+            
+            <div class="endpoint">
+                <h3><span class="method">GET</span> /technologies/{slug}</h3>
+                <p>Returns detailed information about a specific technology area.</p>
+                
+                <h4>Parameters</h4>
+                <ul>
+                    <li><code>slug</code> - The slug identifier for the technology area</li>
+                </ul>
+                
+                <h4>Example Request</h4>
+                <pre><code>GET https://757built.com/api/technologies/quantum-computing-in-hampton-roads</code></pre>
+                
+                <div class="response-example">
+                    <h4>Example Response</h4>
+                    <pre><code class="language-json">{
+  "status": "success",
+  "data": {
+    "id": 1,
+    "technology_area_id": 1,
+    "key_players": "Jefferson Lab Quantum Computing Group, Old Dominion University Physics Department (Dr. Alex Johnson), NASA Langley Research Center Quantum Team",
+    "technological_development": "Development of a 5-qubit quantum processor using superconducting circuits, with applications in material science simulation.",
+    "project_cost": "$4.3 million (NSF Grant, 2023)",
+    "information_date": "2024-03-15",
+    "event_location": "Jefferson Lab, Newport News, VA",
+    "contact_information": "quantum@jlab.org | (757) 555-1234",
+    "number_of_sources": 3,
+    "consolidation_date": "2024-04-20T08:15:30",
+    "technology_area_name": "Quantum Computing in Hampton Roads",
+    "description": "Research and development in quantum computing technologies."
+  }
+}</code></pre>
+                </div>
+            </div>
+            
+            <!-- Additional endpoints documentation -->
+        </section>
+    </main>
+    
+    <footer>
+        <p>&copy; 2024 757Built. All rights reserved.</p>
+    </footer>
+</body>
+</html> 

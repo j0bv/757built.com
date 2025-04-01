@@ -1,0 +1,26 @@
+# Enable the rewrite engine
+RewriteEngine On
+
+# If the requested file or directory doesn't exist
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+
+# Rewrite all requests to index.php
+RewriteRule ^(.*)$ index.php [QSA,L]
+
+# Set CORS headers as a fallback
+<IfModule mod_headers.c>
+    Header set Access-Control-Allow-Origin "*"
+    Header set Access-Control-Allow-Methods "GET, OPTIONS"
+    Header set Access-Control-Allow-Headers "Content-Type"
+</IfModule>
+
+# Force HTTPS
+#RewriteCond %{HTTPS} off
+#RewriteRule ^(.*)$ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
+
+# Disable directory listing
+Options -Indexes
+
+# Disable server signature
+ServerSignature Off 

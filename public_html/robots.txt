@@ -1,0 +1,3 @@
+User-agent: *
+Allow: /api-docs.html
+Disallow: /api/ 

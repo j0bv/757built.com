@@ -1,9 +1,66 @@
+<<<<<<< HEAD
 Hello, this is my capstone project for Broadcast Journalism. 
 
 Updates on 757built.com
 # Hampton Roads Technology Development Map
 
 An interactive map visualization of technology and development initiatives in the Hampton Roads region of Virginia, using Leaflet.js with government data collection and AI-powered analysis.
+=======
+# Hampton Roads Map
+
+An interactive map of the Hampton Roads region in Virginia using Leaflet.js.                        
+
+## Official Government Links
+- **Virginia Beach**  
+  • Official site: [https://virginiabeach.gov](https://virginiabeach.gov)  
+  • Public Works: [pw.virginiabeach.gov](https://pw.virginiabeach.gov)
+
+- **Chesapeake**  
+  • Official site: [cityofchesapeake.net](https://www.cityofchesapeake.net)  
+
+- **Portsmouth**  
+  • Official site: [portsmouthva.gov](https://www.portsmouthva.gov)  
+
+- **Suffolk**  
+  • Official site: [suffolkva.us](https://www.suffolkva.us)  
+
+- **Hampton**  
+  • Official site: [hampton.gov](https://hampton.gov)  
+  • Public Works: [hampton.gov/4077/Public-Works](https://hampton.gov/4077/Public-Works)
+
+- **Newport News**  
+  • Official site: [newportnewsva.gov](https://www.newportnewsva.gov)  
+
+- **Williamsburg**  
+  • Official site: [williamsburgva.gov](https://www.williamsburgva.gov)  
+  
+- **James City County**  
+  • Official site: [jamescitycountyva.gov](https://www.jamescitycountyva.gov)  
+  
+- **Gloucester County**  
+  • Official site: [gloucesterva.gov](https://www.gloucesterva.gov)  
+
+- **York County**  
+  • Official site: [yorkcountyva.gov](https://www.yorkcountyva.gov)  
+
+- **Poquoson**  
+  • Official site: [poquosonva.gov](https://www.poquosonva.gov)  
+
+- **Smithfield**  
+  • Official site: [smithfield-va.gov](https://www.smithfield-va.gov)  
+
+- **Isle of Wight County**  
+  • Official site: [isleofwightcounty.com](https://www.isleofwightcounty.com)  
+
+- **Surry County**  
+  • Official site: [surrycountyva.gov](https://www.surrycountyva.gov)  
+
+- **Southampton County**  
+  • Official site (if available): [southamptoncountyva.gov](https://www.southamptoncountyva.gov)  
+
+- **Franklin**  
+  • Official site: [franklinva.gov](https://www.franklinva.gov)
+>>>>>>> 8792717c4262dbb0630c4d21ec277a6179d05738
 
 ## Features
 - Interactive map displaying all major cities and localities in the Hampton Roads region
@@ -44,6 +101,7 @@ An interactive map visualization of technology and development initiatives in th
   - OrbitDB (decentralized database)
   - IPFS (InterPlanetary File System)
 
+<<<<<<< HEAD
 ## Data Sources
 - Virginia Beach Open Data Portal
 - Norfolk Development Services
@@ -90,3 +148,18 @@ const primaryDocs = await collectHamptonRoadsPrimaryDocuments({
 
 ## License
 [MIT License](LICENSE)
+=======
+
+## Setup
+1. Clone this repository
+2. Open index.html in your browser
+
+## Features
+GeoJSON boundary data for more accurate city borders
+
+## Future Improvements
+- Add information popups with tech development news and key role players
+- Add search functionality
+- Video interviews with key role players
+- Add audio and video to the map
+>>>>>>> 8792717c4262dbb0630c4d21ec277a6179d05738
