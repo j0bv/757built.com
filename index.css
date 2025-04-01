@@ -1,8 +1,12 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;    
+
 /* Dark theme for calendar with GitHub-style background */
 #cal-heatmap {
     height: 130px;
     overflow: hidden;
-    background-color: #0d1117;
+    background-color: #a4bfe7;
     border-radius: 6px;
     padding: 8px;
     color: #c9d1d9;
@@ -689,3 +693,5 @@ header {
     box-shadow: 0 0 15px rgba(43, 59, 128, 0.4);
     border: 1px solid rgba(255, 255, 255, 0.2);
 }
+
+
