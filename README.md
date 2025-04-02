@@ -130,7 +130,14 @@ The platform enhances storytelling through:
 ## Methodology
 
 ### OSINT Data Collection Framework
-The platform implements a comprehensive OSINT methodology that automates the collection and analysis of publicly available information, significantly reducing the time traditionally spent on manual research and interviews.
+The platform implements a comprehensive OSINT methodology that automates the collection and analysis of publicly available information, significantly reducing the time traditionally spent on manual research and interviews. For detailed information about OSINT applications in journalism, including best practices, ethical considerations, and real-world examples, please refer to the comprehensive OSINT Report (OSINTREPORT.txt) included with this project.
+
+The OSINT Report covers:
+- Advanced OSINT techniques for investigative journalism
+- Ethical guidelines for automated data collection
+- Case studies of successful OSINT-based stories
+- Best practices for source verification
+- Legal considerations in automated data gathering
 
 #### Automated Document Collection
 ```python
@@ -288,12 +295,12 @@ L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
 const boundaries = L.geoJSON(hamptonRoadsBoundaries, {
     style: function(feature) {
         // Color scheme options:
-        // - Default: #766 (neutral gray) - Professional, good contrast
+        // - Default: #4A5568 (neutral gray) - Professional, good contrast
         // - Highlight: #2c5282 (navy blue) - Emphasizes active regions
         // - Muted: #a0aec0 (light gray) - Subtle boundaries
         // - Accent: #2f855a (forest green) - Environmental focus
         return {
-            color: '#666',  // Neutral gray for professional presentation
+            color: '#4A5568',  // Neutral gray for professional presentation
             weight: 2,      // Boundary line thickness
             fillOpacity: 0.1, // Subtle fill for better visibility
             dashArray: '3',  // Optional: dashed lines for secondary boundaries
@@ -339,8 +346,6 @@ function createPopup(feature) {
 - **Administrative Boundaries**: Implements ArcGIS services for accurate jurisdictional mapping
 - **Interactive Elements**: Features hover effects, popups, and data visualization components
 
-![Interactive Map Interface](docs/images/map-interface.png)
-*Figure 3: Screenshot of the interactive map interface showing development projects*
 
 ### Technical Implementation
 The platform utilizes the following technologies:
@@ -377,8 +382,6 @@ The platform successfully implements:
 - Search functionality
 - Multimedia integration capabilities
 
-![Development Analysis Dashboard](docs/images/analysis-dashboard.png)
-*Figure 4: Development analysis dashboard showing key metrics and trends*
 
 ## Implementation Guide
 
