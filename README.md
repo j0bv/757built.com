@@ -1,30 +1,239 @@
 # Hampton Roads Technology Development Map: An Interactive Visualization Platform for Regional Development Analysis
 
+![Hampton Roads Region Overview](docs/images/region-overview.png)
+*Figure 1: Overview of the Hampton Roads region with major jurisdictions highlighted*
+
 ## Abstract
-This project presents an interactive mapping platform that visualizes technology and development initiatives across the Hampton Roads region of Virginia. The platform integrates government data collection, AI-powered analysis, and interactive mapping to provide comprehensive insights into regional development patterns. By combining decentralized data storage, machine learning analysis, and user-friendly visualization tools, this system offers a novel approach to understanding and tracking technological development in the Hampton Roads metropolitan area.
+This project presents an interactive mapping platform that empowers journalists and researchers to uncover and visualize technology and development initiatives across the Hampton Roads region of Virginia. By leveraging open-source intelligence (OSINT) techniques, the platform aggregates and analyzes publicly available data from government sources, planning documents, and economic reports. Through AI-powered analysis and interactive mapping, journalists can identify development patterns, track economic trends, and discover potential story angles. The system combines decentralized data storage, machine learning analysis, and user-friendly visualization tools to transform raw public data into actionable insights for investigative reporting and academic research.
 
 ## Introduction
-The Hampton Roads region, encompassing 16 major cities and counties in southeastern Virginia, represents a significant hub for technological innovation and economic development. This project addresses the need for a centralized, interactive platform that can effectively visualize and analyze development initiatives across the region. The platform serves as both a research tool and a public resource, facilitating data-driven decision-making and public engagement with regional development.
+The Hampton Roads region, encompassing 16 major cities and counties in southeastern Virginia, represents a significant hub for technological innovation and economic development. This project addresses the critical need for journalists and researchers to efficiently gather, analyze, and visualize development data from multiple public sources. By implementing advanced OSINT methodologies, the platform enables users to:
+
+- **Data Collection & Verification**: Automatically aggregate and cross-reference information from government portals, planning documents, and public records
+- **Pattern Recognition**: Identify development trends and correlations across jurisdictions using AI-powered analysis
+- **Source Documentation**: Maintain verifiable links to primary source documents for fact-checking and citations
+- **Interactive Investigation**: Explore development patterns through an intuitive mapping interface
+- **Real-time Updates**: Track changes in development initiatives and economic indicators
+
+The platform serves as both an investigative tool for journalists and a research resource for academics, facilitating data-driven storytelling and evidence-based analysis of regional development. By centralizing and analyzing publicly available information, it helps users discover compelling narratives and validate research findings through multiple data points.
+
+![System Architecture Diagram](docs/images/architecture.png)
+*Figure 2: Three-layer system architecture diagram*
 
 ## Methodology
+
+### OSINT Data Collection Framework
+The platform implements a comprehensive OSINT methodology that automates the collection and analysis of publicly available information, significantly reducing the time traditionally spent on manual research and interviews.
+
+#### Automated Document Collection
+```python
+# OSINT Collection Pipeline
+class OSINTCollector:
+    def __init__(self):
+        self.sources = {
+            'government_portals': [
+                'virginiabeach.gov/planning',
+                'norfolk.gov/development',
+                # Additional government portals
+            ],
+            'planning_documents': [
+                'comprehensive_plans',
+                'zoning_ordinances',
+                'development_permits'
+            ],
+            'economic_reports': [
+                'quarterly_reports',
+                'annual_budgets',
+                'development_metrics'
+            ]
+        }
+    
+    async def collect_documents(self):
+        """Automates collection of documents that would traditionally require FOIA requests or manual searches"""
+        for source_type, urls in self.sources.items():
+            for url in urls:
+                # Simulates human-like browsing to avoid detection
+                await self.simulate_human_browsing(url)
+                # Extracts structured data from PDFs and web pages
+                documents = await self.extract_documents(url)
+                # Cross-references with other sources for verification
+                await self.verify_documents(documents)
+```
+
+#### Data Verification and Cross-Referencing
+```python
+async def verify_documents(documents):
+    """Cross-references documents across multiple sources to ensure accuracy"""
+    verification_results = {
+        'primary_sources': [],
+        'corroborating_sources': [],
+        'discrepancies': []
+    }
+    
+    for doc in documents:
+        # Checks multiple government databases
+        matches = await check_government_databases(doc)
+        # Verifies against public records
+        records = await check_public_records(doc)
+        # Cross-references with economic reports
+        economic_data = await check_economic_reports(doc)
+        
+        verification_results['primary_sources'].extend(matches)
+        verification_results['corroborating_sources'].extend(records)
+        verification_results['discrepancies'].extend(
+            find_discrepancies(matches, records, economic_data)
+        )
+```
 
 ### System Architecture
 The platform is built on a three-layer architecture:
 
 #### 1. Data Layer
+```javascript
+// OrbitDB Configuration
+const orbitdb = await OrbitDB.createInstance(ipfs);
+const db = await orbitdb.open('hampton-roads-development', {
+  type: 'docstore',
+  indexBy: 'id'
+});
+
+// Data Collection Schema
+const developmentSchema = {
+  id: String,
+  title: String,
+  location: {
+    coordinates: [Number],
+    jurisdiction: String
+  },
+  type: String,
+  status: String,
+  documents: [String],
+  analysis: Object,
+  verification: {
+    sources: [String],
+    lastVerified: Date,
+    confidence: Number
+  }
+};
+```
+
 - **OrbitDB**: Implements a decentralized, peer-to-peer database built on IPFS
 - **Data Sources**: Integrates multiple government APIs and public records
 - **Document Storage**: Maintains structured primary source documentation
 
 #### 2. Collection Layer
-- **Sourcing Module**: Implements comprehensive data collection through web scraping and API integration
-- **AI Analysis**: Utilizes both local (Ollama) and cloud-based (OpenAI) models for document analysis
-- **Primary Source Documents**: Focuses on official government records and economic reports
+```python
+# AI Analysis Pipeline
+def analyze_document(document):
+    """Analyzes documents using both local and cloud AI models"""
+    # Local AI Processing
+    local_analysis = ollama.analyze(document, model="llama2")
+    
+    # Cloud AI Processing (optional)
+    cloud_analysis = openai.analyze(document)
+    
+    # Combine Results
+    return merge_analyses(local_analysis, cloud_analysis)
+
+# Document Collection
+async def collect_government_docs():
+    """Automates collection of government documents that would traditionally require manual research"""
+    jurisdictions = get_hampton_roads_jurisdictions()
+    for jurisdiction in jurisdictions:
+        # Collects documents that would otherwise require FOIA requests
+        docs = await scrape_jurisdiction_docs(jurisdiction)
+        # Processes documents using AI to extract structured data
+        processed_docs = await process_documents(docs)
+        # Verifies data against multiple sources
+        verified_docs = await verify_documents(processed_docs)
+        # Stores verified data with source links
+        await store_documents(verified_docs)
+```
+
+### Traditional vs. Automated Research Methods
+The platform automates several research processes that would traditionally require significant manual effort:
+
+1. **Document Collection**
+   - Traditional: Manual FOIA requests, physical document review
+   - Automated: Systematic web scraping of government portals, automated PDF parsing
+
+2. **Data Verification**
+   - Traditional: Manual cross-referencing, phone calls to government offices
+   - Automated: AI-powered document analysis, automated source verification
+
+3. **Pattern Recognition**
+   - Traditional: Manual review of documents, spreadsheet analysis
+   - Automated: Machine learning analysis of development patterns, trend identification
+
+4. **Source Documentation**
+   - Traditional: Manual citation tracking, physical document filing
+   - Automated: Digital source linking, version control, automated citation generation
 
 #### 3. Presentation Layer
+```javascript
+// Map Initialization
+const map = L.map('map').setView([36.8529, -75.9780], 10);
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '© OpenStreetMap contributors'
+}).addTo(map);
+
+// GeoJSON Layer
+const boundaries = L.geoJSON(hamptonRoadsBoundaries, {
+    style: function(feature) {
+        // Color scheme options:
+        // - Default: #766 (neutral gray) - Professional, good contrast
+        // - Highlight: #2c5282 (navy blue) - Emphasizes active regions
+        // - Muted: #a0aec0 (light gray) - Subtle boundaries
+        // - Accent: #2f855a (forest green) - Environmental focus
+        return {
+            color: '#666',  // Neutral gray for professional presentation
+            weight: 2,      // Boundary line thickness
+            fillOpacity: 0.1, // Subtle fill for better visibility
+            dashArray: '3',  // Optional: dashed lines for secondary boundaries
+            className: 'jurisdiction-boundary' // For CSS customization
+        };
+    },
+    // Add hover effects
+    onEachFeature: function(feature, layer) {
+        layer.on({
+            mouseover: function(e) {
+                const layer = e.target;
+                layer.setStyle({
+                    fillOpacity: 0.3,
+                    weight: 3
+                });
+            },
+            mouseout: function(e) {
+                const layer = e.target;
+                layer.setStyle({
+                    fillOpacity: 0.1,
+                    weight: 2
+                });
+            }
+        });
+    }
+}).addTo(map);
+
+// Interactive Elements
+function createPopup(feature) {
+    return L.popup({
+        maxWidth: 300
+    }).setContent(`
+        <h3>${feature.properties.name}</h3>
+        <div class="development-stats">
+            <p>Active Projects: ${feature.properties.activeProjects}</p>
+            <p>Technology Focus: ${feature.properties.techFocus}</p>
+        </div>
+    `);
+}
+```
+
 - **Leaflet.js Map**: Provides interactive regional visualization
 - **Administrative Boundaries**: Implements ArcGIS services for accurate jurisdictional mapping
 - **Interactive Elements**: Features hover effects, popups, and data visualization components
+
+![Interactive Map Interface](docs/images/map-interface.png)
+*Figure 3: Screenshot of the interactive map interface showing development projects*
 
 ### Technical Implementation
 The platform utilizes the following technologies:
@@ -60,6 +269,9 @@ The platform successfully implements:
 - Information popups with development news
 - Search functionality
 - Multimedia integration capabilities
+
+![Development Analysis Dashboard](docs/images/analysis-dashboard.png)
+*Figure 4: Development analysis dashboard showing key metrics and trends*
 
 ## Implementation Guide
 
