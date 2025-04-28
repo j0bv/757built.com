@@ -10,10 +10,13 @@ from datetime import datetime
 from dotenv import load_dotenv
 import hashlib
 import ipfshttpclient
+import networkx as nx
 
 # Import our custom modules
 from phi3_wrapper import Phi3Processor
 from job_queue import dequeue_document
+from extraction.locality_detector import add_locality_relations_to_graph
+from graph_db.schema import NodeType, EdgeType, EDGE_TIMESTAMP
 
 # Set up logging
 logging.basicConfig(
@@ -536,84 +539,155 @@ def sync_with_web_server(ipfs_hash, document_path, analysis=None):
         logger.error(f"Error syncing with web server: {e}")
         return False
 
-def process_document(document_path, phi3_processor):
-    """Process a single document with Phi-3 analysis and IPFS hashing"""
-    try:
-        logger.info(f"Processing document: {document_path}")
-        
-        # Check if document exists
-        if not os.path.exists(document_path):
-            logger.error(f"Document not found: {document_path}")
-            return False
-        
-        # Extract text content from document first
-        text_content = extract_text_from_document(document_path)
-        if not text_content:
-            logger.warning(f"Could not extract text from {document_path}")
-            # Still proceed with hashing even if text extraction fails
-        
-        # Compute content hash for deduplication
-        content_hash = compute_content_hash(text_content)
-        
-        if is_content_hash_processed(content_hash):
-            logger.info(f"Document already processed (content hash match). Skipping.")
-            return True
-        
-        # Process with Phi-3 if text was extracted
-        analysis = None
-        if text_content:
-            # Create a temporary file with the text content
-            text_file_path = os.path.join(
-                ANALYSIS_DIR, 
-                f"{os.path.splitext(os.path.basename(document_path))[0]}_text.txt"
-            )
-            os.makedirs(ANALYSIS_DIR, exist_ok=True)
-            
-            with open(text_file_path, 'w', encoding='utf-8') as f:
-                f.write(text_content)
-            
-            # Analyze with Phi-3
-            logger.info(f"Analyzing document with Phi-3: {document_path}")
-            analysis = phi3_processor.process_document(text_file_path)
-            
-            # Save analysis to file
-            analysis_file_path = os.path.join(
-                ANALYSIS_DIR, 
-                f"{os.path.splitext(os.path.basename(document_path))[0]}_analysis.json"
-            )
-            with open(analysis_file_path, 'w') as f:
-                json.dump(analysis, f, indent=2)
-                
-            logger.info(f"Saved analysis to {analysis_file_path}")
-        
-        # After successful analysis, hash the original document with IPFS
-        ipfs_hash = hash_document(document_path)
-        if not ipfs_hash:
-            logger.error(f"Failed to hash document after analysis: {document_path}")
-            return False
-        
-        # Update hash database with analysis
-        updated_db = update_hash_database(document_path, ipfs_hash, analysis, content_hash)
-        if not updated_db:
-            logger.warning(f"Failed to update hash database for {document_path}")
-        
-        # Update graph database with analysis
-        if analysis:
-            updated_graph = update_graph_database(analysis)
-            if not updated_graph:
-                logger.warning(f"Failed to update graph database for {document_path}")
-        
-        # Sync with web server
-        synced = sync_with_web_server(ipfs_hash, document_path, analysis)
-        if not synced:
-            logger.warning(f"Failed to sync {document_path} with web server")
-        
-        logger.info(f"Successfully processed document: {document_path}")
-        return True
+def add_document_to_graph(doc_path, extracted_data, G=None):
+    """Add document and its metadata to the graph."""
+    if G is None:
+        G = nx.DiGraph() if not os.path.exists(GRAPH_DATA_PATH) else load_graph()
     
+    # Generate document ID
+    doc_id = f"doc_{hashlib.md5(os.path.basename(doc_path).encode()).hexdigest()[:8]}"
+    
+    # Add document to IPFS and get CID
+    cid = None
+    try:
+        from ipfs_storage.ipfs_client import add_or_reuse
+        cid = add_or_reuse(doc_path)
+        print(f"Added document to IPFS with CID: {cid}")
     except Exception as e:
-        logger.error(f"Error processing document {document_path}: {e}")
-        return False
+        print(f"Warning: Could not add document to IPFS: {e}")
+    
+    # Current timestamp
+    now_iso = datetime.now().isoformat()
+    
+    # Add document node with CID
+    G.add_node(
+        doc_id,
+        label=os.path.basename(doc_path),
+        type=NodeType.DOCUMENT.value,
+        path=doc_path,
+        cid=cid,  # Store the IPFS CID in the node
+        date=now_iso
+    )
+    
+    # Extract text content for locality detection
+    text_content = extracted_data.get('text_content', '') or extract_text_from_document(doc_path)
+    
+    # Detect localities and add relations to graph
+    locality_ids = add_locality_relations_to_graph(G, doc_id, text_content)
+    
+    # If localities were found, add them as attributes to the document node
+    if locality_ids:
+        # Get locality names
+        locality_names = [G.nodes[loc_id].get('name', '') for loc_id in locality_ids]
+        G.nodes[doc_id]['localities'] = locality_names
+        
+        # For the primary locality (highest confidence), set as main locality
+        if locality_ids:
+            # Find edge with highest confidence
+            best_edge = None
+            best_confidence = -1
+            for loc_id in locality_ids:
+                edge_data = G.get_edge_data(doc_id, loc_id)
+                if edge_data and edge_data.get('confidence', 0) > best_confidence:
+                    best_confidence = edge_data.get('confidence', 0)
+                    best_edge = (doc_id, loc_id, edge_data)
+            
+            if best_edge:
+                # Set primary locality
+                loc_id = best_edge[1]
+                G.nodes[doc_id]['primary_locality'] = G.nodes[loc_id].get('name', '')
+                
+                # Copy coordinates for map display
+                if 'coordinates' in G.nodes[loc_id]:
+                    G.nodes[doc_id]['coordinates'] = G.nodes[loc_id]['coordinates']
+    
+    # If document has a project, add project node and link to localities
+    if 'project' in extracted_data and extracted_data['project'].get('title'):
+        project_data = extracted_data['project']
+        project_id = f"project_{hashlib.md5(project_data['title'].encode()).hexdigest()[:8]}"
+        
+        # Add project node
+        G.add_node(
+            project_id,
+            label=project_data['title'],
+            type=NodeType.PROJECT.value,
+            title=project_data['title'],
+            summary=project_data.get('summary', ''),
+            start_date=project_data.get('start_date', ''),
+            end_date=project_data.get('end_date', ''),
+            cid=cid  # Use the same CID as the document
+        )
+        
+        # Link document to project
+        G.add_edge(
+            doc_id,
+            project_id,
+            type="contains_document",
+            timestamp=now_iso
+        )
+        
+        # Link project to localities
+        for loc_id in locality_ids:
+            G.add_edge(
+                project_id,
+                loc_id,
+                type=EdgeType.LOCATED_IN.value,
+                timestamp=now_iso,
+                source_document=doc_id
+            )
+            
+            # For map visualization, copy coordinates to project
+            if 'coordinates' in G.nodes[loc_id] and 'coordinates' not in G.nodes[project_id]:
+                G.nodes[project_id]['coordinates'] = G.nodes[loc_id]['coordinates']
+                G.nodes[project_id]['primary_locality'] = G.nodes[loc_id].get('name', '')
+    
+    return G
+
+def store_metadata_in_ipfs(metadata, metadata_type="document"):
+    """Store metadata in IPFS and return the CID."""
+    try:
+        import tempfile
+        import json
+        from ipfs_storage.ipfs_client import add_or_reuse
+        
+        # Create a temporary file to store the JSON
+        with tempfile.NamedTemporaryFile(suffix='.json', mode='w', delete=False) as temp:
+            json.dump(metadata, temp, indent=2)
+            temp_path = temp.name
+        
+        # Add to IPFS and get CID
+        cid = add_or_reuse(temp_path)
+        
+        # Clean up
+        os.unlink(temp_path)
+        
+        return cid
+    except Exception as e:
+        print(f"Warning: Could not store metadata in IPFS: {e}")
+        return None
+        
+def process_document(document_path, phi3_processor):
+    """Main function to process a document and update the graph."""
+    # Extract text from document
+    document_text = extract_text_from_document(document_path)
+    
+    # Process text with Phi-3
+    processed_data = process_text(document_text)
+    
+    # Store metadata in IPFS and get CID
+    metadata_cid = store_metadata_in_ipfs(processed_data)
+    
+    # Update processed data with CID
+    if metadata_cid:
+        processed_data['metadata_cid'] = metadata_cid
+    
+    # Add to graph
+    G = add_document_to_graph(document_path, processed_data)
+    
+    # Save graph
+    save_graph(G)
+    
+    return processed_data
 
 def monitor_data_directory(phi3_processor):
     """Monitor the data directory for new documents"""

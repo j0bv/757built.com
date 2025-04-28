@@ -1,0 +1,16 @@
+[Unit]
+Description=757Built Document Processor Worker
+After=network.target redis.service
+Wants=redis.service
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/root/757built.com/Agent
+ExecStart=/root/757built.com/Agent/venv/bin/python enhanced_document_processor.py --model-path /models/phi3.gguf --queue
+Restart=always
+RestartSec=10
+Environment=PYTHONUNBUFFERED=1
+
+[Install]
+WantedBy=multi-user.target 

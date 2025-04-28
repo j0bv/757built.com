@@ -1,0 +1,16 @@
+[Unit]
+Description=757Built API Server
+After=network.target redis.service
+Wants=redis.service
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/root/757built.com/api
+ExecStart=/root/757built.com/Agent/venv/bin/gunicorn -b 0.0.0.0:5000 api_server:app
+Restart=always
+RestartSec=10
+Environment=PYTHONUNBUFFERED=1
+
+[Install]
+WantedBy=multi-user.target 

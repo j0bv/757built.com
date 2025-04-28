@@ -3,6 +3,7 @@ from flask_cors import CORS
 import json
 import os
 import ipfshttpclient
+from graph_db.schema import NodeType, EdgeType
 
 app = Flask(__name__)
 CORS(app)
@@ -10,6 +11,20 @@ CORS(app)
 GRAPH_DATA_PATH = 'data/graph_data.json'
 IPFS_GATEWAY = os.getenv('IPFS_GATEWAY', 'http://localhost:8080')
 IPNS_KEY = os.getenv('GRAPH_IPNS_KEY', 'self')
+
+# Import our Git visualization blueprint
+from endpoints.git_visualization import git_viz_bp
+
+# Register blueprints
+app.register_blueprint(git_viz_bp, url_prefix='/api')
+
+# Set simple caching headers (5 minutes) for GET requests
+@app.after_request
+def add_cache_headers(response):
+    if request.method == 'GET':
+        response.cache_control.max_age = 300
+        response.cache_control.public = True
+    return response
 
 # Helper functions
 def load_graph_data():
@@ -193,6 +208,106 @@ def get_ipfs_content(hash):
             return content
     except:
         abort(404, description="IPFS content not found")
+
+@app.route('/api/localities', methods=['GET'])
+def list_localities():
+    """Get all localities in the knowledge graph."""
+    graph_data = load_graph_data()
+    localities = []
+    
+    for node in graph_data.get('nodes', []):
+        if node.get('type') == NodeType.LOCALITY.value:
+            localities.append({
+                'id': node.get('id'),
+                'name': node.get('name', ''),
+                'label': node.get('label', ''),
+                'coordinates': node.get('coordinates', []),
+                'is_seven_cities': node.get('is_seven_cities', False),
+                'geojson_cid': node.get('geojson_cid', '')
+            })
+    
+    return jsonify(localities)
+
+@app.route('/api/projects/by-locality/<locality_name>', methods=['GET'])
+def projects_by_locality(locality_name):
+    """Get projects located in a specific locality."""
+    locality_name = locality_name.upper()  # Normalize to uppercase
+    graph_data = load_graph_data()
+    
+    # Find the locality node
+    locality_id = None
+    for node in graph_data.get('nodes', []):
+        if (node.get('type') == NodeType.LOCALITY.value and 
+            node.get('name', '').upper() == locality_name):
+            locality_id = node.get('id')
+            break
+    
+    if not locality_id:
+        abort(404, description=f"Locality '{locality_name}' not found")
+    
+    # Find all edges from projects to this locality
+    project_edges = []
+    for edge in graph_data.get('edges', []):
+        if (edge.get('target') == locality_id and 
+            edge.get('type') == EdgeType.LOCATED_IN.value):
+            source_id = edge.get('source')
+            source_node = get_node_by_id(graph_data, source_id)
+            if source_node and source_node.get('type') == NodeType.PROJECT.value:
+                project_edges.append({
+                    'project': source_node,
+                    'relation': edge
+                })
+    
+    # Extract just the project nodes
+    projects = [item['project'] for item in project_edges]
+    
+    return jsonify(projects)
+
+@app.route('/api/graph/map-data', methods=['GET'])
+def get_map_data():
+    """Get data formatted for map visualization."""
+    graph_data = load_graph_data()
+    
+    # Collect nodes with coordinates for map display
+    map_nodes = []
+    for node in graph_data.get('nodes', []):
+        if 'coordinates' in node:
+            # Only include nodes with coordinates
+            map_nodes.append({
+                'id': node.get('id'),
+                'type': node.get('type'),
+                'label': node.get('label', ''),
+                'coordinates': node.get('coordinates'),
+                'locality': node.get('primary_locality', ''),
+                'is_seven_cities': node.get('primary_locality', '') in SEVEN_CITIES
+            })
+    
+    # Get all localities
+    localities = []
+    for node in graph_data.get('nodes', []):
+        if node.get('type') == NodeType.LOCALITY.value:
+            localities.append({
+                'id': node.get('id'),
+                'name': node.get('name', ''),
+                'coordinates': node.get('coordinates', []),
+                'is_seven_cities': node.get('is_seven_cities', False)
+            })
+    
+    # Count projects per locality
+    projects_by_locality = {}
+    for node in graph_data.get('nodes', []):
+        if node.get('type') == NodeType.PROJECT.value:
+            locality = node.get('primary_locality', '')
+            if locality:
+                if locality not in projects_by_locality:
+                    projects_by_locality[locality] = 0
+                projects_by_locality[locality] += 1
+    
+    return jsonify({
+        'map_nodes': map_nodes,
+        'localities': localities,
+        'projects_by_locality': projects_by_locality
+    })
 
 if __name__ == '__main__':
     app.run(debug=True, host='0.0.0.0', port=5000)

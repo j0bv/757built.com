@@ -1,0 +1,414 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Project Lineage - Git Graph Visualization</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.2.3/css/bootstrap.min.css">
+    <style>
+        body {
+            padding: 20px;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+        }
+        #gitgraph-container {
+            margin-top: 20px;
+            overflow-x: auto;
+        }
+        .branch-selector {
+            margin-bottom: 20px;
+        }
+        .commit-details {
+            margin-top: 20px;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            background-color: #f8f9fa;
+        }
+        .commit-row:hover {
+            background-color: #f1f1f1;
+            cursor: pointer;
+        }
+        .git-table {
+            font-size: 14px;
+        }
+        .commit-cid {
+            font-family: monospace;
+            font-size: 12px;
+            color: #6c757d;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Project Lineage - Git Graph Visualization</h1>
+        
+        <div class="row">
+            <div class="col-md-3">
+                <div class="form-group">
+                    <label for="project-select">Select Project:</label>
+                    <select class="form-control" id="project-select">
+                        <option value="">Loading projects...</option>
+                    </select>
+                </div>
+            </div>
+            <div class="col-md-9">
+                <div class="branch-selector">
+                    <label>Branches:</label>
+                    <div class="form-check form-check-inline">
+                        <input class="form-check-input" type="checkbox" id="show-all" checked>
+                        <label class="form-check-label" for="show-all">Show All</label>
+                    </div>
+                    <div class="form-check form-check-inline">
+                        <input class="form-check-input" type="checkbox" id="show-research" checked>
+                        <label class="form-check-label" for="show-research">Research</label>
+                    </div>
+                    <div class="form-check form-check-inline">
+                        <input class="form-check-input" type="checkbox" id="show-patents" checked>
+                        <label class="form-check-label" for="show-patents">Patents</label>
+                    </div>
+                    <div class="form-check form-check-inline">
+                        <input class="form-check-input" type="checkbox" id="show-projects" checked>
+                        <label class="form-check-label" for="show-projects">Projects</label>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="row">
+            <div class="col-md-12">
+                <div id="gitgraph-container"></div>
+            </div>
+        </div>
+
+        <div class="row mt-4">
+            <div class="col-md-12">
+                <h3>Commits</h3>
+                <div class="table-responsive">
+                    <table class="table table-striped git-table">
+                        <thead>
+                            <tr>
+                                <th>Type</th>
+                                <th>Description</th>
+                                <th>Date</th>
+                                <th>Author</th>
+                                <th>IPFS CID</th>
+                            </tr>
+                        </thead>
+                        <tbody id="commits-table-body">
+                            <tr>
+                                <td colspan="5">Select a project to view commits</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Include GitGraph.js -->
+    <script src="https://cdn.jsdelivr.net/npm/@gitgraph/js"></script>
+    <script>
+        // Function to load projects
+        async function loadProjects() {
+            try {
+                const response = await fetch('/api/projects');
+                const projects = await response.json();
+                
+                const select = document.getElementById('project-select');
+                select.innerHTML = '';
+                
+                if (projects.length === 0) {
+                    const option = document.createElement('option');
+                    option.text = 'No projects available';
+                    option.disabled = true;
+                    select.add(option);
+                } else {
+                    const defaultOption = document.createElement('option');
+                    defaultOption.text = 'Select a project';
+                    defaultOption.value = '';
+                    select.add(defaultOption);
+                    
+                    projects.forEach(project => {
+                        const option = document.createElement('option');
+                        option.text = project.title || `Project ${project.id}`;
+                        option.value = project.id;
+                        select.add(option);
+                    });
+                }
+            } catch (error) {
+                console.error('Error loading projects:', error);
+                const select = document.getElementById('project-select');
+                select.innerHTML = '<option value="">Error loading projects</option>';
+            }
+        }
+
+        // Function to load and render Git visualization for a project
+        async function loadGitVisualization(projectId) {
+            try {
+                const response = await fetch(`/api/projects/${projectId}/git-history`);
+                if (!response.ok) {
+                    throw new Error(`HTTP error ${response.status}`);
+                }
+                const data = await response.json();
+                renderGitGraph(data);
+                renderCommitsTable(data.commits);
+            } catch (error) {
+                console.error('Error loading Git visualization:', error);
+                document.getElementById('gitgraph-container').innerHTML = 
+                    `<div class="alert alert-danger">Error loading Git visualization: ${error.message}</div>`;
+                document.getElementById('commits-table-body').innerHTML = 
+                    `<tr><td colspan="5">Error loading commits</td></tr>`;
+            }
+        }
+
+        // Render Git graph visualization
+        function renderGitGraph(data) {
+            // Clear previous graph
+            document.getElementById('gitgraph-container').innerHTML = '';
+            
+            // Create GitGraph
+            const graphContainer = document.getElementById('gitgraph-container');
+            const gitgraph = GitgraphJS.createGitgraph(graphContainer, {
+                template: {
+                    colors: ['#9c27b0', '#3f51b5', '#4caf50', '#ff9800', '#e91e63']
+                }
+            });
+            
+            // Create branches
+            const branches = {};
+            
+            // Map node types to colors
+            const typeColors = {
+                'research_paper': '#3f51b5',  // blue
+                'patent': '#4caf50',          // green
+                'project': '#e91e63'          // pink
+            };
+            
+            // Create research branches first (they start the graph)
+            data.branches.research.forEach(branchName => {
+                branches[branchName] = gitgraph.branch(branchName);
+                
+                // Add the initial commit
+                const commitId = data.branches.branch_commits[branchName][0];
+                const commit = data.commits.find(c => c.id === commitId);
+                if (commit) {
+                    branches[branchName].commit({
+                        subject: commit.message,
+                        author: commit.author || "Unknown",
+                        hash: commit.id,
+                        style: { 
+                            dot: { color: typeColors[commit.type] || '#6c757d' },
+                            message: { displayHash: true }
+                        }
+                    });
+                }
+            });
+            
+            // Add patent branches (merges from research)
+            data.branches.patent.forEach(branchName => {
+                const commitId = data.branches.branch_commits[branchName][0];
+                const commit = data.commits.find(c => c.id === commitId);
+                if (!commit) return;
+                
+                // Determine parent branches to merge from
+                const parentBranches = commit.parents.map(parentId => {
+                    // Find which branch contains this parent
+                    for (const [branch, commits] of Object.entries(data.branches.branch_commits)) {
+                        if (commits.includes(parentId)) {
+                            return branches[branch];
+                        }
+                    }
+                    return null;
+                }).filter(Boolean);
+                
+                if (parentBranches.length === 0) return;
+                
+                // Create the patent branch
+                branches[branchName] = parentBranches[0].branch({
+                    name: branchName,
+                    style: {
+                        color: typeColors['patent']
+                    }
+                });
+                
+                // Merge from other parents if needed
+                if (parentBranches.length > 1) {
+                    for (let i = 1; i < parentBranches.length; i++) {
+                        branches[branchName].merge({
+                            branch: parentBranches[i],
+                            subject: `Merge from ${parentBranches[i].name}`
+                        });
+                    }
+                }
+                
+                // Add the patent commit
+                branches[branchName].commit({
+                    subject: commit.message,
+                    author: commit.author || "Patent Author",
+                    hash: commit.id,
+                    style: { 
+                        dot: { color: typeColors[commit.type] || '#6c757d' },
+                        message: { displayHash: true }
+                    }
+                });
+            });
+            
+            // Finally add project implementation (master branch)
+            data.branches.project.forEach(branchName => {
+                const commitId = data.branches.branch_commits[branchName][0];
+                const commit = data.commits.find(c => c.id === commitId);
+                if (!commit) return;
+                
+                // Find parent branches
+                const parentBranches = commit.parents.map(parentId => {
+                    for (const [branch, commits] of Object.entries(data.branches.branch_commits)) {
+                        if (commits.includes(parentId)) {
+                            return branches[branch];
+                        }
+                    }
+                    return null;
+                }).filter(Boolean);
+                
+                if (parentBranches.length === 0) {
+                    // Create a standalone master branch if no parents
+                    const masterBranch = gitgraph.branch({
+                        name: "master",
+                        style: {
+                            color: typeColors['project']
+                        }
+                    });
+                    
+                    masterBranch.commit({
+                        subject: commit.message,
+                        author: commit.author || "Project Developer",
+                        hash: commit.id,
+                        style: { 
+                            dot: { color: typeColors[commit.type] || '#6c757d' },
+                            message: { displayHash: true }
+                        }
+                    });
+                } else {
+                    // Create master branch from first parent
+                    const masterBranch = parentBranches[0].branch({
+                        name: "master",
+                        style: {
+                            color: typeColors['project']
+                        }
+                    });
+                    
+                    // Merge other parent branches
+                    if (parentBranches.length > 1) {
+                        for (let i = 1; i < parentBranches.length; i++) {
+                            masterBranch.merge({
+                                branch: parentBranches[i],
+                                subject: `Integrate ${parentBranches[i].name}`
+                            });
+                        }
+                    }
+                    
+                    // Final project commit
+                    masterBranch.commit({
+                        subject: commit.message,
+                        author: commit.author || "Project Developer",
+                        hash: commit.id,
+                        style: { 
+                            dot: { color: typeColors[commit.type] || '#6c757d' },
+                            message: { displayHash: true }
+                        }
+                    });
+                }
+            });
+        }
+
+        // Render commits table
+        function renderCommitsTable(commits) {
+            const tableBody = document.getElementById('commits-table-body');
+            tableBody.innerHTML = '';
+            
+            if (!commits || commits.length === 0) {
+                tableBody.innerHTML = '<tr><td colspan="5">No commits available</td></tr>';
+                return;
+            }
+            
+            // Sort commits by timestamp
+            const sortedCommits = [...commits].sort((a, b) => {
+                return new Date(b.timestamp) - new Date(a.timestamp);
+            });
+            
+            sortedCommits.forEach(commit => {
+                const row = document.createElement('tr');
+                row.className = 'commit-row';
+                row.dataset.commitId = commit.id;
+                
+                // Format the date
+                const date = new Date(commit.timestamp);
+                const formattedDate = date.toLocaleString();
+                
+                // Create type cell with appropriate badge
+                const typeCell = document.createElement('td');
+                const badge = document.createElement('span');
+                badge.className = 'badge';
+                
+                switch(commit.type) {
+                    case 'research_paper':
+                        badge.className += ' bg-primary';
+                        badge.textContent = 'Research';
+                        break;
+                    case 'patent':
+                        badge.className += ' bg-success';
+                        badge.textContent = 'Patent';
+                        break;
+                    case 'project':
+                        badge.className += ' bg-danger';
+                        badge.textContent = 'Project';
+                        break;
+                    default:
+                        badge.className += ' bg-secondary';
+                        badge.textContent = commit.type || 'Unknown';
+                }
+                
+                typeCell.appendChild(badge);
+                row.appendChild(typeCell);
+                
+                // Add other cells
+                row.innerHTML += `
+                    <td>${commit.message || 'No description'}</td>
+                    <td>${formattedDate}</td>
+                    <td>${commit.author || 'Unknown'}</td>
+                    <td class="commit-cid">${commit.cid || 'No CID'}</td>
+                `;
+                
+                tableBody.appendChild(row);
+            });
+            
+            // Add click handler to show commit details
+            tableBody.querySelectorAll('.commit-row').forEach(row => {
+                row.addEventListener('click', () => {
+                    const commitId = row.dataset.commitId;
+                    const commit = commits.find(c => c.id === commitId);
+                    if (commit && commit.cid) {
+                        window.open(`/ipfs/${commit.cid}`, '_blank');
+                    }
+                });
+            });
+        }
+
+        // Event listener for project selection
+        document.getElementById('project-select').addEventListener('change', function() {
+            const projectId = this.value;
+            if (projectId) {
+                loadGitVisualization(projectId);
+            } else {
+                document.getElementById('gitgraph-container').innerHTML = '';
+                document.getElementById('commits-table-body').innerHTML = 
+                    '<tr><td colspan="5">Select a project to view commits</td></tr>';
+            }
+        });
+
+        // Load projects when page loads
+        document.addEventListener('DOMContentLoaded', function() {
+            loadProjects();
+        });
+    </script>
+</body>
+</html> 
