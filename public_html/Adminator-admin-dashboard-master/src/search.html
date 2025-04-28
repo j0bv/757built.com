@@ -1,0 +1,98 @@
+<!-- In your main HTML file -->
+<script src="https://unpkg.com/ipfs-core/dist/index.min.js"></script>
+<script>
+let ipfsNode;
+window.addEventListener('DOMContentLoaded', async () => {
+  ipfsNode = await window.IpfsCore.create();
+});
+
+async function fetchDoc(cid) {
+  const decoder = new TextDecoder();
+  let data = '';
+  for await (const chunk of ipfsNode.cat(cid)) {
+    data += decoder.decode(chunk, { stream: true });
+  }
+  // Use `data` as your document content
+}
+</script>// Instead of fetch(`/api/ipfs/${cid}`)
+let content = await fetchDoc(cid);
+// Render PDF or show metadata...<!-- search.html -->
+<div class="container-fluid">
+    <div class="row">
+      <div class="col-md-12">
+        <div class="card">
+          <div class="card-header">
+            <h4 class="card-title">Search Results</h4>
+          </div>
+          <div class="card-body">
+            <div class="input-group mb-3">
+              <input type="text" id="search-input" class="form-control" placeholder="Search for projects, documents, entities...">
+              <div class="input-group-append">
+                <button id="search-button" class="btn btn-primary" type="button">Search</button>
+              </div>
+            </div>
+            
+            <div id="search-results">
+              <!-- Results will be displayed here -->
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  
+  <script>
+  // Perform search and display results
+  async function performSearch() {
+    const query = document.getElementById('search-input').value.trim();
+    if (!query) return;
+    
+    try {
+      const response = await fetch(`/api/search?q=${encodeURIComponent(query)}`);
+      const results = await response.json();
+      
+      const resultsContainer = document.getElementById('search-results');
+      resultsContainer.innerHTML = '';
+      
+      if (results.length === 0) {
+        resultsContainer.innerHTML = '<p>No results found for your search.</p>';
+        return;
+      }
+      
+      // Group results by type
+      const groupedResults = {};
+      results.forEach(result => {
+        const type = result.type || 'unknown';
+        if (!groupedResults[type]) {
+          groupedResults[type] = [];
+        }
+        groupedResults[type].push(result);
+      });
+      
+      // Display grouped results
+      for (const [type, items] of Object.entries(groupedResults)) {
+        const typeHeading = document.createElement('h5');
+        typeHeading.textContent = `${type.charAt(0).toUpperCase()}${type.slice(1)}`;
+        resultsContainer.appendChild(typeHeading);
+        
+        items.forEach(item => {
+          const itemDiv = document.createElement('div');
+          itemDiv.className = 'result-item mb-2';
+          const label = item.label || (item.properties && (item.properties.title || item.properties.name)) || item.id;
+          itemDiv.innerHTML = `<a href="project-detail.html?node=${encodeURIComponent(item.id)}" class="result-link">${label}</a>`;
+          resultsContainer.appendChild(itemDiv);
+        });
+      }
+    } catch (err) {
+      console.error('Search error', err);
+    }
+  }
+  
+  // Event listeners
+  document.getElementById('search-button').addEventListener('click', performSearch);
+  document.getElementById('search-input').addEventListener('keypress', (e) => {
+    if (e.key === 'Enter') {
+      performSearch();
+    }
+  });
+  </script>

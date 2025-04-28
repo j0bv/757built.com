@@ -1,0 +1,16 @@
+[Unit]
+Description=Phi-3 Document Processor Service
+After=network.target ipfs.service
+Wants=ipfs.service
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/root/757built.com/crawler
+ExecStart=/usr/bin/python3 /root/757built.com/crawler/enhanced_document_processor.py --model-path /root/models/phi3-q3_k_l.gguf --llama-path /root/llama.cpp/main
+Restart=always
+RestartSec=10
+Environment=PYTHONUNBUFFERED=1
+
+[Install]
+WantedBy=multi-user.target

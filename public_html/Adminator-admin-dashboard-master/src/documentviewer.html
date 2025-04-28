@@ -1,0 +1,163 @@
+<div class="container-fluid">
+  <div class="row">
+    <div class="col-md-12">
+      <div class="card">
+        <div class="card-header">
+          <h4 class="card-title" id="document-title">Document Viewer</h4>
+          <div id="document-metadata" class="text-muted"></div>
+        </div>
+        <div class="card-body">
+          <div class="row">
+            <div class="col-md-8">
+              <div id="document-content" class="p-3 border rounded bg-light"></div>
+            </div>
+            <div class="col-md-4">
+              <div class="card mb-3">
+                <div class="card-header">
+                  <h5 class="card-title">Related Documents</h5>
+                </div>
+                <div class="card-body">
+                  <ul class="list-group" id="related-documents">
+                    <!-- Related documents will be added here -->
+                  </ul>
+                </div>
+              </div>
+              
+              <div class="card">
+                <div class="card-header">
+                  <h5 class="card-title">Metadata</h5>
+                </div>
+                <div class="card-body">
+                  <table class="table table-sm">
+                    <tbody id="metadata-table">
+                      <!-- Metadata will be added here -->
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="https://unpkg.com/ipfs-core/dist/index.min.js"></script>
+<script>
+let ipfsNode;
+window.addEventListener('DOMContentLoaded', async () => {
+  ipfsNode = await window.IpfsCore.create();
+});
+
+async function fetchDoc(cid) {
+  const decoder = new TextDecoder();
+  let data = '';
+  for await (const chunk of ipfsNode.cat(cid)) {
+    data += decoder.decode(chunk, { stream: true });
+  }
+  return data;
+}
+
+let documentId = null;
+let documentData = null;
+
+// Get document ID from URL
+function getDocumentId() {
+  const urlParams = new URLSearchParams(window.location.search);
+  return urlParams.get('id');
+}
+
+// Load and display document
+async function loadDocument() {
+  documentId = getDocumentId();
+  if (!documentId) return;
+  
+  try {
+    // First, get the document node from the graph
+    const response = await fetch(`/api/graph/subgraph/${documentId}?depth=0`);
+    const result = await response.json();
+    
+    if (!result.nodes || result.nodes.length === 0) {
+      document.getElementById('document-content').innerHTML = '<p>Document not found.</p>';
+      return;
+    }
+    
+    documentData = result.nodes[0];
+    
+    // Update UI with document details
+    document.getElementById('document-title').textContent = documentData.label;
+    
+    // Display document metadata
+    const properties = documentData.properties || {};
+    const metadataTable = document.getElementById('metadata-table');
+    metadataTable.innerHTML = '';
+    
+    for (const [key, value] of Object.entries(properties)) {
+      if (key === 'ipfs_hash') continue; // Skip IPFS hash for now
+      
+      const row = document.createElement('tr');
+      row.innerHTML = `
+        <td><strong>${key.replace('_', ' ')}</strong></td>
+        <td>${value}</td>
+      `;
+      metadataTable.appendChild(row);
+    }
+    
+    // If we have an IPFS hash, fetch and display the document content
+    if (properties.ipfs_hash) {
+      try {
+        const content = await fetchDoc(properties.ipfs_hash);
+        document.getElementById('document-content').innerHTML = `<pre>${content}</pre>`;
+      } catch (error) {
+        document.getElementById('document-content').innerHTML = 
+          `<p>Error loading document content. <a href="https://ipfs.io/ipfs/${properties.ipfs_hash}" target="_blank">View on IPFS</a></p>`;
+      }
+    } else {
+      document.getElementById('document-content').innerHTML = '<p>No content available for this document.</p>';
+    }
+    
+    // Load related documents
+    loadRelatedDocuments();
+  } catch (error) {
+    console.error('Error loading document:', error);
+    document.getElementById('document-content').innerHTML = '<p>Error loading document.</p>';
+  }
+}
+
+// Load related documents
+async function loadRelatedDocuments() {
+  try {
+    const response = await fetch(`/api/documents/${documentId}/related`);
+    const relatedItems = await response.json();
+    
+    const relatedDocsList = document.getElementById('related-documents');
+    relatedDocsList.innerHTML = '';
+    
+    // Filter to only include document nodes
+    const relatedDocs = relatedItems.filter(item => item.node.type === 'document');
+    
+    if (relatedDocs.length === 0) {
+      relatedDocsList.innerHTML = '<li class="list-group-item">No related documents found</li>';
+      return;
+    }
+    
+    relatedDocs.forEach(related => {
+      const listItem = document.createElement('li');
+      listItem.className = 'list-group-item';
+      listItem.innerHTML = `
+        <a href="documentviewer.html?id=${related.node.id}">${related.node.label}</a>
+        <span class="badge badge-info float-right">${related.relationship}</span>
+      `;
+      relatedDocsList.appendChild(listItem);
+    });
+  } catch (error) {
+    console.error('Error loading related documents:', error);
+    document.getElementById('related-documents').innerHTML = 
+      '<li class="list-group-item">Error loading related documents</li>';
+  }
+}
+
+// Initialize everything on page load
+document.addEventListener('DOMContentLoaded', loadDocument);
+</script>

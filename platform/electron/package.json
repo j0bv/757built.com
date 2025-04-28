@@ -1,0 +1,17 @@
+{
+  "name": "757built-desktop",
+  "version": "0.1.0",
+  "main": "main.js",
+  "author": "757built.com",
+  "scripts": {
+    "start": "electron .",
+    "package": "electron-packager . 757Built --platform=win32,darwin,linux --overwrite --icon=icon"
+  },
+  "dependencies": {
+    "electron": "25.3.2",
+    "ipfs-core": "^0.18.1"
+  },
+  "devDependencies": {
+    "electron-packager": "^17.1.1"
+  }
+}

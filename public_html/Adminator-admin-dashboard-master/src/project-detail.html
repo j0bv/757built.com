@@ -1,0 +1,341 @@
+<!-- project-detail.html -->
+<div class="container-fluid">
+    <div class="row">
+      <div class="col-md-12">
+        <div class="card">
+          <div class="card-header">
+            <h4 class="card-title" id="project-title">Project Details</h4>
+            <div class="text-muted" id="project-status"></div>
+          </div>
+          <div class="card-body">
+            <div class="row">
+              <div class="col-md-8">
+                <div id="project-summary"></div>
+                
+                <!-- Dates and Location Information -->
+                <div class="mt-4">
+                  <h5>Timeline</h5>
+                  <div class="row">
+                    <div class="col-md-6">
+                      <p><strong>Start Date:</strong> <span id="project-start-date"></span></p>
+                    </div>
+                    <div class="col-md-6">
+                      <p><strong>End Date:</strong> <span id="project-end-date"></span></p>
+                    </div>
+                  </div>
+                  <p><strong>Location:</strong> <span id="project-location"></span></p>
+                </div>
+              </div>
+              <div class="col-md-4">
+                <div id="project-map" style="height: 250px;"></div>
+              </div>
+            </div>
+            
+            <!-- Tabs for different sections -->
+            <ul class="nav nav-tabs mt-4" id="projectTabs" role="tablist">
+              <li class="nav-item">
+                <a class="nav-link active" id="documents-tab" data-toggle="tab" href="#documents" role="tab">Documents</a>
+              </li>
+              <li class="nav-item">
+                <a class="nav-link" id="entities-tab" data-toggle="tab" href="#entities" role="tab">Entities</a>
+              </li>
+              <li class="nav-item">
+                <a class="nav-link" id="graph-tab" data-toggle="tab" href="#graph" role="tab">Graph View</a>
+              </li>
+            </ul>
+            
+            <div class="tab-content" id="projectTabContent">
+              <!-- Documents Tab -->
+              <div class="tab-pane fade show active" id="documents" role="tabpanel">
+                <div class="mt-3">
+                  <div class="row" id="document-cards">
+                    <!-- Documents will be added here -->
+                  </div>
+                </div>
+              </div>
+              
+              <!-- Entities Tab -->
+              <div class="tab-pane fade" id="entities" role="tabpanel">
+                <div class="mt-3">
+                  <div class="row">
+                    <div class="col-md-4">
+                      <div class="card">
+                        <div class="card-header">
+                          <h5 class="card-title">People</h5>
+                        </div>
+                        <div class="card-body">
+                          <ul class="list-group" id="people-list"></ul>
+                        </div>
+                      </div>
+                    </div>
+                    <div class="col-md-4">
+                      <div class="card">
+                        <div class="card-header">
+                          <h5 class="card-title">Organizations</h5>
+                        </div>
+                        <div class="card-body">
+                          <ul class="list-group" id="org-list"></ul>
+                        </div>
+                      </div>
+                    </div>
+                    <div class="col-md-4">
+                      <div class="card">
+                        <div class="card-header">
+                          <h5 class="card-title">Companies</h5>
+                        </div>
+                        <div class="card-body">
+                          <ul class="list-group" id="company-list"></ul>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              
+              <!-- Graph View Tab -->
+              <div class="tab-pane fade" id="graph" role="tabpanel">
+                <div class="mt-3">
+                  <div id="graph-container" style="height: 600px;"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  
+  <script src="https://d3js.org/d3.v7.min.js"></script>
+  <script>
+  let projectId = null;
+  let projectData = null;
+  
+  // Get project ID from URL
+  function getProjectId() {
+    const urlParams = new URLSearchParams(window.location.search);
+    return urlParams.get('id');
+  }
+  
+  // Load and display project details
+  async function loadProjectDetails() {
+    projectId = getProjectId();
+    if (!projectId) return;
+    
+    try {
+      const response = await fetch(`/api/projects/${projectId}`);
+      projectData = await response.json();
+      
+      // Update UI with project details
+      document.getElementById('project-title').textContent = projectData.title;
+      document.getElementById('project-status').textContent = projectData.status;
+      document.getElementById('project-summary').innerHTML = `<p>${projectData.summary}</p>`;
+      document.getElementById('project-start-date').textContent = projectData.start_date || 'Not specified';
+      document.getElementById('project-end-date').textContent = projectData.end_date || 'Not specified';
+      
+      // Load project documents
+      loadProjectDocuments();
+      
+      // Load project entities
+      loadProjectEntities();
+      
+      // Initialize graph
+      initializeGraph();
+    } catch (error) {
+      console.error('Error loading project details:', error);
+    }
+  }
+  
+  // Load and display project documents
+  async function loadProjectDocuments() {
+    try {
+      const response = await fetch(`/api/projects/${projectId}/documents`);
+      const documents = await response.json();
+      
+      const documentCardsContainer = document.getElementById('document-cards');
+      documentCardsContainer.innerHTML = '';
+      
+      if (documents.length === 0) {
+        documentCardsContainer.innerHTML = '<div class="col-12"><p>No documents found for this project.</p></div>';
+        return;
+      }
+      
+      documents.forEach(doc => {
+        const docProperties = doc.properties || {};
+        const docCard = document.createElement('div');
+        docCard.className = 'col-md-4 mb-3';
+        docCard.innerHTML = `
+          <div class="card h-100">
+            <div class="card-body">
+              <h5 class="card-title">${doc.label}</h5>
+              <h6 class="card-subtitle mb-2 text-muted">${docProperties.content_type || 'Document'}</h6>
+            </div>
+            <div class="card-footer">
+              <a href="/view-document.html?id=${doc.id}" class="btn btn-sm btn-primary">View</a>
+              <a href="http://localhost:8080/ipfs/${docProperties.ipfs_hash}" class="btn btn-sm btn-outline-secondary" target="_blank">IPFS Link</a>
+            </div>
+          </div>
+        `;
+        documentCardsContainer.appendChild(docCard);
+      });
+    } catch (error) {
+      console.error('Error loading project documents:', error);
+    }
+  }
+  
+  // Load and display project entities
+  async function loadProjectEntities() {
+    try {
+      // For a real application, you'd fetch this data from an API endpoint
+      // For now, we'll use the graph subgraph endpoint
+      const response = await fetch(`/api/graph/subgraph/${projectId}?depth=1`);
+      const subgraph = await response.json();
+      
+      // Process and display entities
+      const peopleList = document.getElementById('people-list');
+      const orgList = document.getElementById('org-list');
+      const companyList = document.getElementById('company-list');
+      
+      peopleList.innerHTML = '';
+      orgList.innerHTML = '';
+      companyList.innerHTML = '';
+      
+      subgraph.nodes.forEach(node => {
+        if (node.id === projectId) return; // Skip the project node itself
+        
+        const listItem = document.createElement('li');
+        listItem.className = 'list-group-item d-flex justify-content-between align-items-center';
+        listItem.innerHTML = `
+          ${node.label}
+          <span class="badge badge-primary badge-pill">${node.type}</span>
+        `;
+        
+        // Add to appropriate list
+        if (node.type === 'person') {
+          peopleList.appendChild(listItem);
+        } else if (node.type === 'organization') {
+          orgList.appendChild(listItem);
+        } else if (node.type === 'company') {
+          companyList.appendChild(listItem);
+        }
+      });
+      
+      // Add "None found" messages if lists are empty
+      if (peopleList.children.length === 0) {
+        peopleList.innerHTML = '<li class="list-group-item">No people found</li>';
+      }
+      if (orgList.children.length === 0) {
+        orgList.innerHTML = '<li class="list-group-item">No organizations found</li>';
+      }
+      if (companyList.children.length === 0) {
+        companyList.innerHTML = '<li class="list-group-item">No companies found</li>';
+      }
+    } catch (error) {
+      console.error('Error loading project entities:', error);
+    }
+  }
+  
+  // Initialize the graph visualization
+  async function initializeGraph() {
+    try {
+      const response = await fetch(`/api/graph/subgraph/${projectId}?depth=2`);
+      const graphData = await response.json();
+      
+      // D3.js force-directed graph
+      const width = document.getElementById('graph-container').clientWidth;
+      const height = 600;
+      
+      const svg = d3.select('#graph-container')
+        .append('svg')
+        .attr('width', width)
+        .attr('height', height);
+      
+      // Create links
+      const links = svg.selectAll('.link')
+        .data(graphData.edges)
+        .enter()
+        .append('line')
+        .attr('class', 'link')
+        .style('stroke', '#999')
+        .style('stroke-width', 1);
+      
+      // Create nodes
+      const nodes = svg.selectAll('.node')
+        .data(graphData.nodes)
+        .enter()
+        .append('g')
+        .attr('class', 'node')
+        .call(d3.drag()
+          .on('start', dragstarted)
+          .on('drag', dragged)
+          .on('end', dragended));
+      
+      // Add circles for nodes
+      nodes.append('circle')
+        .attr('r', d => d.id === projectId ? 15 : 10)
+        .style('fill', d => {
+          if (d.id === projectId) return '#e74c3c'; // Project is red
+          switch(d.type) {
+            case 'document': return '#3498db'; // Blue
+            case 'person': return '#2ecc71'; // Green
+            case 'organization': return '#f39c12'; // Orange
+            case 'company': return '#9b59b6'; // Purple
+            case 'location': return '#1abc9c'; // Teal
+            default: return '#95a5a6'; // Grey
+          }
+        });
+      
+      // Add labels
+      nodes.append('text')
+        .attr('dx', 12)
+        .attr('dy', '.35em')
+        .text(d => d.label)
+        .style('font-size', '12px')
+        .style('fill', '#333');
+      
+      // Add title/tooltip
+      nodes.append('title')
+        .text(d => `${d.label} (${d.type})`);
+      
+      // Force simulation
+      const simulation = d3.forceSimulation(graphData.nodes)
+        .force('link', d3.forceLink(graphData.edges).id(d => d.id).distance(150))
+        .force('charge', d3.forceManyBody().strength(-200))
+        .force('center', d3.forceCenter(width / 2, height / 2));
+      
+      // Update positions on tick
+      simulation.on('tick', () => {
+        links
+          .attr('x1', d => d.source.x)
+          .attr('y1', d => d.source.y)
+          .attr('x2', d => d.target.x)
+          .attr('y2', d => d.target.y);
+        
+        nodes.attr('transform', d => `translate(${d.x}, ${d.y})`);
+      });
+      
+      // Drag functions
+      function dragstarted(event, d) {
+        if (!event.active) simulation.alphaTarget(0.3).restart();
+        d.fx = d.x;
+        d.fy = d.y;
+      }
+      
+      function dragged(event, d) {
+        d.fx = event.x;
+        d.fy = event.y;
+      }
+      
+      function dragended(event, d) {
+        if (!event.active) simulation.alphaTarget(0);
+        d.fx = null;
+        d.fy = null;
+      }
+    } catch (error) {
+      console.error('Error initializing graph:', error);
+      document.getElementById('graph-container').innerHTML = '<p>Error loading graph visualization.</p>';
+    }
+  }
+  
+  // Initialize everything on page load
+  document.addEventListener('DOMContentLoaded', loadProjectDetails);
+  </script>
