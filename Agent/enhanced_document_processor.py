@@ -11,6 +11,7 @@ from dotenv import load_dotenv
 import hashlib
 import ipfshttpclient
 import networkx as nx
+from pathlib import Path
 
 # Import our custom modules
 from phi3_wrapper import Phi3Processor
@@ -33,10 +34,11 @@ logger = logging.getLogger("document_processor")
 load_dotenv()
 
 # Configuration
-WEB_API_ENDPOINT = os.getenv('WEB_API_ENDPOINT', 'https://server250.web-hosting.com/api/ipfs_hashes.php')
+WEB_API_ENDPOINT = os.getenv('WEB_API_ENDPOINT', 'https://example.com/api/ipfs_hashes.php')
 API_KEY = os.getenv('API_KEY')
 DATA_DIR = 'data'
 ANALYSIS_DIR = os.path.join(DATA_DIR, 'analysis')
+PROCESSED_DIR = os.path.join(DATA_DIR, 'processed')
 DB_PATH = os.path.join(DATA_DIR, 'ipfs_hashes.json')
 GRAPH_DATA_PATH = os.path.join(DATA_DIR, 'graph_data.json')
 DOCUMENT_EXTENSIONS = ['.txt', '.pdf', '.docx', '.doc', '.rtf', '.json', '.csv']
@@ -680,6 +682,16 @@ def process_document(document_path, phi3_processor):
     # Update processed data with CID
     if metadata_cid:
         processed_data['metadata_cid'] = metadata_cid
+    
+    # Save processed JSON for downstream verification / IPFS batch upload
+    try:
+        Path(PROCESSED_DIR).mkdir(parents=True, exist_ok=True)
+        out_path = Path(PROCESSED_DIR) / (Path(document_path).stem + '.json')
+        with open(out_path, 'w', encoding='utf-8') as f:
+            json.dump(processed_data, f, ensure_ascii=False, indent=2)
+        logger.info("Wrote processed artefact → %s", out_path)
+    except Exception as exc:
+        logger.warning("Could not write processed JSON: %s", exc)
     
     # Add to graph
     G = add_document_to_graph(document_path, processed_data)

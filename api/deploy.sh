@@ -1,29 +1,33 @@
 #!/bin/bash
-set -e
+# Deployment script for 757Built API server
 
-# Check if running as root
-if [ "$EUID" -ne 0 ]; then 
-  echo "Please run as root"
-  exit 1
+# Exit on error
+set -e 
+
+echo "Starting 757Built API server deployment..."
+
+# Ensure root privileges
+if [[ $EUID -ne 0 ]]; then
+   echo "This script must be run as root" 
+   exit 1
 fi
 
-# Install system dependencies
+# Install required packages
 apt-get update
-apt-get install -y apache2 php8.1 php8.1-mysql php8.1-mbstring php8.1-xml php8.1-curl mariadb-server
+apt-get install -y apache2 php mysql-server php-mysql libapache2-mod-php php-curl php-xml php-gd php-mbstring
 
-# Enable required Apache modules
+# Enable Apache modules
 a2enmod rewrite
 a2enmod ssl
+a2enmod proxy
+a2enmod proxy_http
 
-# Configure Apache virtual host
+# Create Apache configuration
 cat > /etc/apache2/sites-available/757built-api.conf << 'EOF'
 <VirtualHost *:443>
     ServerName api.757built.com
+    ServerAdmin webmaster@757built.com
     DocumentRoot /var/www/757built-api
-
-    SSLEngine on
-    SSLCertificateFile /etc/ssl/certs/757built-api.crt
-    SSLCertificateKeyFile /etc/ssl/private/757built-api.key
 
     <Directory /var/www/757built-api>
         Options Indexes FollowSymLinks
@@ -31,43 +35,52 @@ cat > /etc/apache2/sites-available/757built-api.conf << 'EOF'
         Require all granted
     </Directory>
 
-    ErrorLog ${APACHE_LOG_DIR}/757built-api_error.log
-    CustomLog ${APACHE_LOG_DIR}/757built-api_access.log combined
+    ErrorLog ${APACHE_LOG_DIR}/757built-api-error.log
+    CustomLog ${APACHE_LOG_DIR}/757built-api-access.log combined
+
+    SSLEngine on
+    SSLCertificateFile /etc/ssl/certs/757built-api.crt
+    SSLCertificateKeyFile /etc/ssl/private/757built-api.key
+
+    ProxyPreserveHost On
+
+    # API endpoints
+    ProxyPass /api/ http://localhost:5000/api/
+    ProxyPassReverse /api/ http://localhost:5000/api/
 </VirtualHost>
 EOF
 
-# Create web directory
-mkdir -p /var/www/757built-api
-
-# Copy API files
-cp -r . /var/www/757built-api/
-chown -R www-data:www-data /var/www/757built-api
-
-# Set up database
-mysql -e "CREATE DATABASE IF NOT EXISTS 757built;"
-mysql -e "CREATE USER IF NOT EXISTS '757built'@'localhost' IDENTIFIED BY 'CHANGE_THIS_PASSWORD';"
-mysql -e "GRANT ALL PRIVILEGES ON 757built.* TO '757built'@'localhost';"
+# Set up MySQL database and user
+echo "Setting up MySQL database..."
+mysql -e "CREATE DATABASE IF NOT EXISTS 757built_db CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"
+mysql -e "CREATE USER IF NOT EXISTS '757built'@'localhost' IDENTIFIED BY '';"
+mysql -e "GRANT ALL PRIVILEGES ON 757built_db.* TO '757built'@'localhost';"
 mysql -e "FLUSH PRIVILEGES;"
-mysql 757built < dbtable.sql
 
-# Create config file from template
+# Create directory structure
+mkdir -p /var/www/757built-api/config
+
+# Create database configuration
 cat > /var/www/757built-api/config/database.php << 'EOF'
 <?php
 return [
     'host' => 'localhost',
-    'dbname' => '757built',
-    'username' => '757built',
-    'password' => 'CHANGE_THIS_PASSWORD'
+    'database' => '757built_db',
+    'user' => '757built',
+    'password' => ''
 ];
 EOF
 
+# Set permissions
+chown -R www-a:www-data /var/www/757built-api
+chmod -R 755 /var/www/757built-api
+
 # Enable site and restart Apache
-a2ensite 757built-api
+a2ensite 757built-api.conf
 systemctl restart apache2
 
-echo "API deployment complete!"
-echo "Please ensure you:"
+echo "Deployment completed!"
+echo "Please complete the following manual steps:"
 echo "1. Update the database password in /var/www/757built-api/config/database.php"
 echo "2. Install SSL certificates in /etc/ssl/certs/757built-api.crt and /etc/ssl/private/757built-api.key"
-echo "3. Update DNS records to point api.757built.com to this server"
-echo "4. Update the frontend configuration to use the new API endpoint" 
+echo "3. Copy the API files to /var/www/757built-api/" 

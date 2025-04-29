@@ -1,26 +1,33 @@
 #!/bin/bash
+# Web deployment script for 757built.com
 
-# Deploy 757built.com to cPanel server
-# This script should be run locally to deploy to Server 1
+# Configuration - Fill these with your actual values
+DEPLOY_USER="your_username"
+DEPLOY_HOST="your_hostname"
+DEPLOY_PORT="22"  # Standard SSH port
+REMOTE_DIR="public_html"
 
-echo "Deploying 757built.com to web server..."
+# SSH command
+SSH_CMD="ssh -p $DEPLOY_PORT $DEPLOY_USER@$DEPLOY_HOST"
 
-# SSH command with key authentication
-SSH_CMD="ssh -p 21098 ybqiflhd@server250.web-hosting.com"
+# Local files to deploy
+SOURCE_DIR="./public_html/"
 
-# Create necessary directories
-$SSH_CMD "mkdir -p ~/public_html"
+echo "Deploying 757built.com website..."
 
-# Clone the GitHub repository
-$SSH_CMD "cd ~/public_html && git clone https://github.com/j0bv/757built.com.git ."
+# Create deployment archive
+echo "Creating deployment archive..."
+tar -czf deploy.tar.gz $SOURCE_DIR
 
-# Set up MySQL database tables
-$SSH_CMD "cd ~/public_html && php create_tables.php"
+# Copy files
+echo "Uploading files to server..."
+scp -P $DEPLOY_PORT deploy.tar.gz "$DEPLOY_USER@$DEPLOY_HOST:~/"
 
-# Set up cron job for auto updates
-$SSH_CMD "crontab -l > mycron"
-$SSH_CMD "echo '0 */6 * * * cd ~/public_html && git pull origin main' >> mycron"
-$SSH_CMD "crontab mycron"
-$SSH_CMD "rm mycron"
+# Extract on remote server
+echo "Extracting files on server..."
+$SSH_CMD "cd ~/ && tar -xzf deploy.tar.gz -C $REMOTE_DIR --strip-components=1 && rm deploy.tar.gz"
 
-echo "Deployment complete!" 
+# Clean up local archive
+rm deploy.tar.gz
+
+echo "Deployment completed!" 

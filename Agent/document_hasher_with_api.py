@@ -24,7 +24,7 @@ logger = logging.getLogger("document_hasher")
 load_dotenv()
 
 # Configuration
-WEB_API_ENDPOINT = os.getenv('WEB_API_ENDPOINT', 'https://server250.web-hosting.com/api/ipfs_hashes.php')
+WEB_API_ENDPOINT = os.getenv('WEB_API_ENDPOINT', 'https://example.com/api/ipfs_hashes.php')
 API_KEY = os.getenv('API_KEY')
 DATA_DIR = 'data'
 DB_PATH = os.path.join(DATA_DIR, 'ipfs_hashes.json')

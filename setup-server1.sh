@@ -1,85 +1,97 @@
 #!/bin/bash
+# Setup script for 757Built API server
+
 set -e
 
-echo "=== Setting up 757Built backend on server1 ==="
+echo "Setting up 757Built.com API server..."
 
-# Install dependencies
-echo "Installing dependencies..."
-apt-get update
-apt-get install -y python3 python3-venv python3-pip redis-server nginx
-
-# Enable and start Redis
-systemctl enable --now redis
-
-# Pull content from server250 if needed
-if [ "$1" == "--pull" ]; then
-  echo "Pulling content from server250..."
-  SRC="ybqiflhd@server250:~/757built.com"
-  DST="~/757built.com"
-  mkdir -p $DST
-  rsync -av --delete \
-      --include='Agent/***' \
-      --include='api/***'   \
-      --include='data/***'  \
-      --exclude='*'         \
-      $SRC/ $DST/
+# Check if running as root
+if [ "$EUID" -ne 0 ]; then 
+  echo "Please run as root"
+  exit 1
 fi
 
-# Set up Python environment
-echo "Setting up Python environment..."
-cd ~/757built.com/Agent
+# Install system dependencies
+apt-get update
+apt-get install -y nginx python3 python3-pip python3-venv 
+
+# Set up directories
+mkdir -p /var/www/api.757built.com
+mkdir -p /var/www/757built.com
+
+# Clone or pull content if needed
+echo "Fetching content from repository..."
+SRC="https://github.com/your-username/757built.com.git"
+
+if [ -d "/var/www/757built.com" ]; then
+  cd /var/www/757built.com
+  git pull
+else
+  cd /var/www
+  git clone $SRC 757built.com
+fi
+
+# Set up API environment
+cd /var/www/757built.com/api
 python3 -m venv venv
 source venv/bin/activate
-pip install -r requirements.txt llama-cpp-python redis ipfshttpclient flask flask-cors gunicorn
+pip install -r requirements.txt
 
-# Install systemd service files
-echo "Installing service files..."
-cp ~/757built.com/Agent/document-processor.service /etc/systemd/system/
-cp ~/757built.com/api/api-server.service /etc/systemd/system/
-systemctl daemon-reload
+# Create systemd service
+cat > /etc/systemd/system/757built-api.service << EOF
+[Unit]
+Description=757Built API Service
+After=network.target
 
-# Create lightweight web folder (optional IPFS gateway fallback page)
-echo "Creating web directory..."
-mkdir -p /var/www/757built
-echo '<h1>Agent node running</h1>' > /var/www/757built/index.html
+[Service]
+User=www-data
+WorkingDirectory=/var/www/757built.com/api
+Environment="PATH=/var/www/757built.com/api/venv/bin"
+ExecStart=/var/www/757built.com/api/venv/bin/python api_server.py
+Restart=always
+RestartSec=5
 
-# Configure Nginx as reverse proxy
-echo "Configuring Nginx..."
-cat > /etc/nginx/sites-available/757built << 'EOF'
+[Install]
+WantedBy=multi-user.target
+EOF
+
+# Configure Nginx
+cat > /etc/nginx/sites-available/757built.com << EOF
 server {
     listen 80;
-    server_name _;
+    server_name 757built.com www.757built.com;
+
+    root /var/www/757built.com/public_html;
+    index index.html;
 
     location / {
-        root /var/www/757built;
-        index index.html;
+        try_files \$uri \$uri/ =404;
     }
+}
 
-    location /api/ {
+server {
+    listen 80;
+    server_name api.757built.com;
+
+    location / {
         proxy_pass http://localhost:5000/api/;
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header Host \$host;
+        proxy_set_header X-Real-IP \$remote_addr;
     }
 }
 EOF
 
-ln -sf /etc/nginx/sites-available/757built /etc/nginx/sites-enabled/
-rm -f /etc/nginx/sites-enabled/default
-nginx -t && systemctl restart nginx
+# Enable sites
+ln -sf /etc/nginx/sites-available/757built.com /etc/nginx/sites-enabled/
 
-# Enable and start services
-echo "Starting services..."
-systemctl enable document-processor api-server
-systemctl start document-processor
-systemctl start api-server
+# Set permissions
+chown -R www-data:www-data /var/www/757built.com
 
-echo "=== Setup complete ==="
-echo "You can check service status with:"
-echo "  systemctl status document-processor"
-echo "  systemctl status api-server"
-echo "  journalctl -u document-processor -f"
-echo "  journalctl -u api-server -f"
-echo
-echo "API endpoints available at:"
-echo "  http://server1:5000/api/projects"
-echo "  http://server1:5000/api/graph/subgraph/root" 
+# Reload services
+systemctl daemon-reload
+systemctl enable 757built-api
+systemctl start 757built-api
+systemctl restart nginx
+
+echo "Setup complete! 757Built API server is now running."
+echo "You should set up SSL certificates with Certbot for production use." 

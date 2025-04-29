@@ -183,14 +183,14 @@ function onEachFeature(feature, layer) {
 // Initialize the map and load data
 async function initMap() {
     try {
-        // Fetch the GeoJSON data for Hampton Roads localities
-        const geoJsonData = await fetchHamptonRoadsData();
-        
+    // Fetch the GeoJSON data for Hampton Roads localities
+    const geoJsonData = await fetchHamptonRoadsData();
+    
         if (!geoJsonData) {
             console.error('Failed to load GeoJSON data');
             return;
         }
-        
+
         // Create and add the GeoJSON layer for boundaries
         const geoJsonLayer = L.geoJSON(geoJsonData, {
             style: styleFeature,
@@ -365,14 +365,14 @@ function createNodePopup(node) {
             <div class="node-meta">
                 <p><strong>Type:</strong> ${node.type}</p>
                 ${node.locality ? `<p><strong>Locality:</strong> ${node.locality}</p>` : ''}
-            </div>
+          </div>
             <div class="node-actions">
                 <button onclick="selectNode('${node.id}')" class="btn btn-primary btn-sm">
                     View Details
                 </button>
-            </div>
+          </div>
         </div>
-    `;
+      `;
 }
 
 // Select a node for detailed view

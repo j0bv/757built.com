@@ -2,19 +2,26 @@
 // Database setup script for 757built.com
 // This will create the necessary tables for storing development data
 
-// Load environment variables if .env file exists
-if (file_exists('.env')) {
-    $env = parse_ini_file('.env');
-    foreach ($env as $key => $value) {
-        putenv("$key=$value");
+// Load environment variables from .env file
+$env_file = __DIR__ . '/.env';
+if (file_exists($env_file)) {
+    $env = parse_ini_file($env_file);
+    if ($env) {
+        foreach ($env as $key => $value) {
+            putenv("$key=$value");
+        }
     }
 }
 
-// Database connection parameters
+// Database connection details
 $db_host = getenv('DB_HOST') ?: 'localhost';
-$db_name = getenv('DB_NAME') ?: 'ybqiflhd_757built';
-$db_user = getenv('DB_USER') ?: 'ybqiflhd_admin';
+$db_name = getenv('DB_NAME') ?: 'your_database_name';
+$db_user = getenv('DB_USER') ?: 'your_database_user';
 $db_pass = getenv('DB_PASSWORD');
+
+if (!$db_pass) {
+    die("Error: DB_PASSWORD environment variable must be set.");
+}
 
 try {
     // Connect to database
@@ -40,17 +47,26 @@ try {
         technology_area_id INT NOT NULL,
         key_players TEXT,
         technological_development TEXT,
-        project_cost VARCHAR(255),
+        project_cost TEXT,
+        event_location VARCHAR(255),
         information_date DATE,
-        event_location TEXT,
         contact_information TEXT,
-        number_of_sources INT DEFAULT 1,
-        consolidation_date DATETIME,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        number_of_sources INT DEFAULT 0,
+        consolidation_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         FOREIGN KEY (technology_area_id) REFERENCES technology_areas(id)
     )");
     echo "Table 'consolidated_developments' created or already exists.\n";
+    
+    // Create sources table
+    $conn->exec("CREATE TABLE IF NOT EXISTS sources (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        development_id INT NOT NULL,
+        source_url VARCHAR(255),
+        source_date DATE,
+        source_content TEXT,
+        FOREIGN KEY (development_id) REFERENCES consolidated_developments(id)
+    )");
+    echo "Table 'sources' created or already exists.\n";
     
     // Create table for geographic coordinates
     $conn->exec("CREATE TABLE IF NOT EXISTS development_locations (

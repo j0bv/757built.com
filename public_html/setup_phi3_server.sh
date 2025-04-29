@@ -1,186 +1,87 @@
 #!/bin/bash
+# Setup script for Phi-3 inference engine for document processing
 
-# Setup script for Server 2 (root@server1)
-# This script installs Microsoft's Phi-3 model via Ollama
-# and sets up the crawler for document processing
+# Exit on errors
+set -e
 
-echo "Setting up Phi-3 AI processing server..."
+echo "Starting setup for 757Built document processing server..."
 
-# Update system and install dependencies
-apt-get update && apt-get upgrade -y
-apt-get install -y git python3 python3-pip ipfs-go python3-venv libmysqlclient-dev
+# Install system dependencies
+echo "Installing system dependencies..."
+apt-get update
+apt-get install -y python3 python3-pip python3-venv git nginx
 
-# Install Ollama
-curl -fsSL https://ollama.com/install.sh | sh
-
-# Set up workspace directory
-mkdir -p /opt/757built
-cd /opt/757built
+# Create a directory for the application
+APP_DIR="/opt/757built-processor"
+mkdir -p $APP_DIR
 
 # Clone the repository
-git clone https://github.com/j0bv/757built.com.git .
+echo "Cloning the repository..."
+git clone https://github.com/yourusername/757built.com.git $APP_DIR
 
 # Set up Python virtual environment
+echo "Setting up Python environment..."
+cd $APP_DIR
 python3 -m venv venv
 source venv/bin/activate
 
-# Install Python requirements
-cd crawler
-pip install -r requirements.txt
-pip install mysql-connector-python python-dateutil
+# Install Python dependencies
+pip install -r Agent/requirements.txt
+pip install torch torchvision torchaudio
 
-# Configure IPFS
-ipfs init
-systemctl enable --now ipfs
-ipfs config Addresses.Gateway /ip4/0.0.0.0/tcp/8080
-ipfs config --json API.HTTPHeaders.Access-Control-Allow-Origin '["*"]'
-ipfs config --json API.HTTPHeaders.Access-Control-Allow-Methods '["GET", "POST"]'
+# Create .env file
+echo "Creating environment configuration..."
+cat > $APP_DIR/.env << EOF
+# Database Configuration
+DB_HOST=your_db_host
+DB_NAME=your_db_name
+DB_USER=your_db_user
+DB_PASSWORD=
 
-# Download Phi-3 model with Ollama
-echo "Downloading Phi-3 model - this may take some time..."
-ollama pull phi3
+# IPFS Configuration
+IPFS_API=/ip4/127.0.0.1/tcp/5001
+GRAPH_IPNS_KEY=your_ipns_key_name
 
-# Create .env file for crawler settings
-cat > .env << EOF
-OLLAMA_ENDPOINT=http://localhost:11434/api/generate
-DB_HOST=server250.web-hosting.com
-DB_NAME=ybqiflhd_757built
-DB_USER=ybqiflhd_admin
-DB_PASSWORD=YOUR_PASSWORD_HERE
-IPFS_GATEWAY=http://localhost:8080
+# Web API Integration
+WEB_API_ENDPOINT=https://example.com/api/ipfs_hashes.php
+
+# Log Configuration
+LOG_LEVEL=INFO
 EOF
 
-# Test the Phi-3 model
-python test_phi3.py
-
-# Set up cron job for periodic crawling
-(crontab -l 2>/dev/null; echo "0 */4 * * * cd /opt/757built/crawler && /opt/757built/venv/bin/python direct_crawler.py && /opt/757built/venv/bin/python upload_to_db.py") | crontab -
-
-# Create a hash document upload service
-cat > /etc/systemd/system/ipfs-hash-service.service << EOF
+# Create systemd service
+echo "Setting up systemd service..."
+cat > /etc/systemd/system/phi3-document-processor.service << 'EOF'
 [Unit]
-Description=IPFS Document Hash Service
+Description=757Built Phi-3 Document Processor
 After=network.target
 
 [Service]
-User=root
-WorkingDirectory=/opt/757built/crawler
-ExecStart=/opt/757built/venv/bin/python document_hasher.py
+User=www-data
+Group=www-data
+WorkingDirectory=/opt/757built-processor
+Environment="PATH=/opt/757built-processor/venv/bin"
+EnvironmentFile=/opt/757built-processor/.env
+ExecStart=/opt/757built-processor/venv/bin/python /opt/757built-processor/Agent/phi3_processor.py
 Restart=always
-RestartSec=10
+RestartSec=5
 
 [Install]
 WantedBy=multi-user.target
 EOF
 
-# Create document hashing script
-cat > /opt/757built/crawler/document_hasher.py << EOF
-#!/usr/bin/env python3
-import os
-import glob
-import json
-import subprocess
-import time
-import requests
-from datetime import datetime
+# Set permissions
+chown -R www-data:www-data $APP_DIR
+chmod -R 755 $APP_DIR
 
-def hash_document(document_path):
-    """Add document to IPFS and return the hash"""
-    try:
-        result = subprocess.run(['ipfs', 'add', '-q', document_path], 
-                                capture_output=True, text=True, check=True)
-        return result.stdout.strip()
-    except subprocess.CalledProcessError as e:
-        print(f"Error hashing document: {e}")
-        return None
+# Start and enable the service
+systemctl daemon-reload
+systemctl enable phi3-document-processor.service
+systemctl start phi3-document-processor.service
 
-def update_hash_database(document_path, ipfs_hash):
-    """Record the hash in a local database"""
-    data_dir = os.path.dirname(document_path)
-    db_path = os.path.join(data_dir, 'ipfs_hashes.json')
-    
-    # Load existing database or create new one
-    if os.path.exists(db_path):
-        with open(db_path, 'r') as f:
-            db = json.load(f)
-    else:
-        db = {'documents': []}
-    
-    # Add new entry
-    db['documents'].append({
-        'document': os.path.basename(document_path),
-        'ipfs_hash': ipfs_hash,
-        'timestamp': datetime.now().isoformat()
-    })
-    
-    # Save updated database
-    with open(db_path, 'w') as f:
-        json.dump(db, f, indent=2)
-    
-    return True
-
-def sync_with_web_server(ipfs_hash, metadata):
-    """Send IPFS hash to the web server"""
-    # Load .env file for API endpoint and credentials
-    # Implementation depends on how you want to authenticate
-    # with the web server
-    pass
-
-def monitor_data_directory():
-    """Monitor the data directory for new documents"""
-    while True:
-        # Find all JSON files in the data directory
-        data_files = glob.glob('data/*.json')
-        hashes_db_path = 'data/ipfs_hashes.json'
-        
-        # Load hash database
-        if os.path.exists(hashes_db_path):
-            with open(hashes_db_path, 'r') as f:
-                hashes_db = json.load(f)
-                processed_files = [entry['document'] for entry in hashes_db['documents']]
-        else:
-            hashes_db = {'documents': []}
-            processed_files = []
-        
-        # Process new files
-        for file_path in data_files:
-            filename = os.path.basename(file_path)
-            if filename == 'ipfs_hashes.json' or filename in processed_files:
-                continue
-            
-            print(f"Adding new document to IPFS: {filename}")
-            
-            # Hash document
-            ipfs_hash = hash_document(file_path)
-            if ipfs_hash:
-                # Update hash database
-                update_hash_database(file_path, ipfs_hash)
-                
-                # Extract metadata
-                with open(file_path, 'r') as f:
-                    try:
-                        metadata = json.load(f)
-                        # Optionally sync with web server
-                        # sync_with_web_server(ipfs_hash, metadata)
-                    except json.JSONDecodeError:
-                        print(f"Error parsing JSON from {filename}")
-        
-        # Wait before next scan
-        time.sleep(60)
-
-if __name__ == "__main__":
-    # Ensure data directory exists
-    os.makedirs('data', exist_ok=True)
-    
-    # Start monitoring
-    monitor_data_directory()
-EOF
-
-# Make script executable
-chmod +x /opt/757built/crawler/document_hasher.py
-
-# Enable and start the service
-systemctl enable ipfs-hash-service
-systemctl start ipfs-hash-service
-
-echo "Phi-3 AI processing server setup complete!" 
+echo "Installation complete!"
+echo
+echo "IMPORTANT: Please update the .env file with your database credentials and API keys:"
+echo "nano $APP_DIR/.env"
+echo
+echo "Then restart the service with: systemctl restart phi3-document-processor.service" 

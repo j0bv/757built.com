@@ -8,9 +8,14 @@ import time
 from dotenv import load_dotenv
 import mysql.connector
 from mysql.connector import Error
+import sys
+import logging
 
 # Load environment variables
 load_dotenv()
+
+# Configure logging
+logger = logging.getLogger(__name__)
 
 class AIEnhancedCrawler:
     def __init__(self):
@@ -20,10 +25,15 @@ class AIEnhancedCrawler:
         # Database configuration
         self.db_config = {
             'host': os.getenv('DB_HOST', 'localhost'),
-            'database': os.getenv('DB_NAME', '757built_db'),
-            'user': os.getenv('DB_USER', 'db_user'),
-            'password': os.getenv('DB_PASSWORD', 'password')
+            'database': os.getenv('DB_NAME', 'your_database_name'),
+            'user': os.getenv('DB_USER', 'your_database_user'),
+            'password': os.getenv('DB_PASSWORD')
         }
+        
+        # Validate configuration
+        if not self.db_config['password']:
+            logger.error("Database password not set. Please configure DB_PASSWORD environment variable.")
+            sys.exit(1)
         
         # Ensure database tables exist
         self.init_database()
