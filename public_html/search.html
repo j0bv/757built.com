@@ -1,0 +1,472 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>757Built - Knowledge Graph Search</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background-color: #f8f9fa;
+            padding-top: 20px;
+        }
+        .search-container {
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+        .search-box {
+            position: relative;
+            margin-bottom: 30px;
+        }
+        .search-suggestions {
+            position: absolute;
+            width: 100%;
+            background: white;
+            border: 1px solid #ddd;
+            border-top: none;
+            border-radius: 0 0 8px 8px;
+            z-index: 1000;
+            display: none;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        }
+        .suggestion-item {
+            padding: 10px 15px;
+            cursor: pointer;
+        }
+        .suggestion-item:hover {
+            background-color: #f8f9fa;
+        }
+        .results-container {
+            margin-top: 20px;
+        }
+        .result-item {
+            padding: 15px;
+            margin-bottom: 15px;
+            border: 1px solid #eee;
+            border-radius: 8px;
+            background-color: white;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+        }
+        .result-item:hover {
+            border-color: #ddd;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+        }
+        .result-title {
+            font-size: 1.2rem;
+            font-weight: 600;
+            color: #2c3e50;
+            margin-bottom: 5px;
+        }
+        .result-type {
+            display: inline-block;
+            padding: 2px 8px;
+            font-size: 0.8rem;
+            background-color: #e9ecef;
+            color: #495057;
+            border-radius: 12px;
+            margin-right: 10px;
+        }
+        .result-score {
+            display: inline-block;
+            color: #6c757d;
+            font-size: 0.9rem;
+        }
+        .result-highlights {
+            margin-top: 10px;
+            font-size: 0.9rem;
+            color: #666;
+            background-color: #f8f9fa;
+            padding: 10px;
+            border-radius: 4px;
+        }
+        .result-connections {
+            margin-top: 10px;
+            font-size: 0.9rem;
+        }
+        .connection-item {
+            display: inline-block;
+            margin-right: 10px;
+            margin-bottom: 5px;
+            padding: 2px 8px;
+            background-color: #f1f8fe;
+            border-radius: 12px;
+            font-size: 0.8rem;
+        }
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 20px;
+        }
+        .spinner-border {
+            width: 3rem;
+            height: 3rem;
+        }
+        .example-queries {
+            margin-top: 20px;
+            padding: 15px;
+            background-color: #e9ecef;
+            border-radius: 8px;
+        }
+        .example-query {
+            display: inline-block;
+            margin: 5px;
+            padding: 5px 10px;
+            background-color: white;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        .example-query:hover {
+            background-color: #f8f9fa;
+        }
+        .api-url {
+            font-size: 0.8rem;
+            color: #6c757d;
+            margin-top: 5px;
+        }
+        .visualization-container {
+            margin-top: 30px;
+            height: 500px;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="search-container">
+            <h1 class="text-center mb-4">757Built Knowledge Graph Search</h1>
+            
+            <div class="search-box">
+                <div class="input-group mb-3">
+                    <input type="text" id="search-input" class="form-control form-control-lg" 
+                          placeholder="Enter your search query..." aria-label="Search query">
+                    <button class="btn btn-primary" type="button" id="search-button">Search</button>
+                </div>
+                <div class="api-url">
+                    API URL: <span id="api-url">http://localhost:5000</span>
+                    <button class="btn btn-sm btn-outline-secondary" id="change-api-url">Change</button>
+                </div>
+                <div class="search-suggestions" id="search-suggestions"></div>
+            </div>
+            
+            <div class="example-queries">
+                <p><strong>Try these example queries:</strong></p>
+                <div class="example-query">Projects in Norfolk since 2020</div>
+                <div class="example-query">Organizations involved in renewable energy research</div>
+                <div class="example-query">Patents related to environmental technology</div>
+                <div class="example-query">Find projects near military facilities and then filter by funding over $1M</div>
+            </div>
+            
+            <div class="loading">
+                <div class="spinner-border text-primary" role="status">
+                    <span class="visually-hidden">Loading...</span>
+                </div>
+                <p class="mt-2">Searching the knowledge graph...</p>
+            </div>
+            
+            <div class="results-container" id="results-container">
+                <!-- Results will be displayed here -->
+            </div>
+            
+            <div class="visualization-container" id="visualization-container">
+                <!-- Visualization will be shown here -->
+            </div>
+        </div>
+    </div>
+    
+    <!-- JavaScript for the search functionality -->
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // DOM elements
+            const searchInput = document.getElementById('search-input');
+            const searchButton = document.getElementById('search-button');
+            const searchSuggestions = document.getElementById('search-suggestions');
+            const resultsContainer = document.getElementById('results-container');
+            const loadingIndicator = document.querySelector('.loading');
+            const exampleQueries = document.querySelectorAll('.example-query');
+            const visualizationContainer = document.getElementById('visualization-container');
+            const apiUrlDisplay = document.getElementById('api-url');
+            const changeApiUrlButton = document.getElementById('change-api-url');
+            
+            // Default API URL (can be changed by the user)
+            let apiUrl = localStorage.getItem('757built_api_url') || 'http://localhost:5000';
+            apiUrlDisplay.textContent = apiUrl;
+            
+            // Allow changing the API URL
+            changeApiUrlButton.addEventListener('click', function() {
+                const newUrl = prompt('Enter the API URL:', apiUrl);
+                if (newUrl) {
+                    apiUrl = newUrl;
+                    localStorage.setItem('757built_api_url', apiUrl);
+                    apiUrlDisplay.textContent = apiUrl;
+                }
+            });
+            
+            // Handle search button click
+            searchButton.addEventListener('click', function() {
+                const query = searchInput.value.trim();
+                if (query) {
+                    performSearch(query);
+                }
+            });
+            
+            // Handle Enter key in search input
+            searchInput.addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') {
+                    const query = searchInput.value.trim();
+                    if (query) {
+                        performSearch(query);
+                    }
+                }
+            });
+            
+            // Show suggestions as the user types
+            searchInput.addEventListener('input', function() {
+                const query = searchInput.value.trim();
+                if (query.length >= 2) {
+                    fetchSuggestions(query);
+                } else {
+                    searchSuggestions.style.display = 'none';
+                }
+            });
+            
+            // Handle example query clicks
+            exampleQueries.forEach(example => {
+                example.addEventListener('click', function() {
+                    searchInput.value = this.textContent;
+                    performSearch(this.textContent);
+                });
+            });
+            
+            // Fetch search suggestions
+            function fetchSuggestions(query) {
+                fetch(`${apiUrl}/api/search/suggest?q=${encodeURIComponent(query)}`)
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.suggestions && data.suggestions.length > 0) {
+                            displaySuggestions(data.suggestions);
+                        } else {
+                            searchSuggestions.style.display = 'none';
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error fetching suggestions:', error);
+                        searchSuggestions.style.display = 'none';
+                    });
+            }
+            
+            // Display search suggestions
+            function displaySuggestions(suggestions) {
+                searchSuggestions.innerHTML = '';
+                
+                suggestions.forEach(suggestion => {
+                    const item = document.createElement('div');
+                    item.className = 'suggestion-item';
+                    item.textContent = suggestion;
+                    
+                    item.addEventListener('click', function() {
+                        searchInput.value = suggestion;
+                        searchSuggestions.style.display = 'none';
+                        performSearch(suggestion);
+                    });
+                    
+                    searchSuggestions.appendChild(item);
+                });
+                
+                searchSuggestions.style.display = 'block';
+            }
+            
+            // Close suggestions when clicking outside
+            document.addEventListener('click', function(e) {
+                if (e.target !== searchInput && e.target !== searchSuggestions) {
+                    searchSuggestions.style.display = 'none';
+                }
+            });
+            
+            // Perform the search
+            function performSearch(query) {
+                // Show loading indicator
+                loadingIndicator.style.display = 'block';
+                resultsContainer.innerHTML = '';
+                visualizationContainer.style.display = 'none';
+                
+                // Determine if this is a multi-step query
+                const isMultiStep = query.includes(' and then ') || 
+                                   query.includes(';') || 
+                                   query.includes(' after that ');
+                
+                const endpoint = isMultiStep ? '/api/search/multi' : '/api/search';
+                
+                // Send search request to API
+                fetch(`${apiUrl}${endpoint}`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        query: query,
+                        max_results: 20
+                    })
+                })
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! Status: ${response.status}`);
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    // Hide loading indicator
+                    loadingIndicator.style.display = 'none';
+                    
+                    // Display results
+                    if (isMultiStep && data.steps) {
+                        displayMultiStepResults(data);
+                    } else {
+                        displayResults(data);
+                    }
+                    
+                    // Show visualization container if we have results
+                    if ((data.results && data.results.length > 0) || 
+                        (data.final_results && data.final_results.length > 0)) {
+                        visualizationContainer.style.display = 'block';
+                        visualizationContainer.innerHTML = '<div class="p-3">Visualization placeholder - would show connections between entities here</div>';
+                    }
+                })
+                .catch(error => {
+                    console.error('Error performing search:', error);
+                    loadingIndicator.style.display = 'none';
+                    resultsContainer.innerHTML = `
+                        <div class="alert alert-danger">
+                            Error performing search: ${error.message}
+                        </div>
+                    `;
+                });
+            }
+            
+            // Display regular search results
+            function displayResults(data) {
+                if (!data.results || data.results.length === 0) {
+                    resultsContainer.innerHTML = '<div class="alert alert-info">No results found.</div>';
+                    return;
+                }
+                
+                let html = `
+                    <h2>Search Results</h2>
+                    <p>Found ${data.result_count} results for "${data.query}"</p>
+                    <div class="list-group">
+                `;
+                
+                data.results.forEach(result => {
+                    html += createResultHTML(result);
+                });
+                
+                html += '</div>';
+                resultsContainer.innerHTML = html;
+            }
+            
+            // Display multi-step search results
+            function displayMultiStepResults(data) {
+                let html = `
+                    <h2>Multi-Step Search Results</h2>
+                    <p>Found ${data.final_result_count} results for complex query "${data.query}"</p>
+                `;
+                
+                // Display individual steps
+                data.steps.forEach((step, index) => {
+                    html += `
+                        <div class="card mb-3">
+                            <div class="card-header">
+                                <strong>Step ${step.step}:</strong> ${step.query}
+                            </div>
+                            <div class="card-body">
+                                <p>Found ${step.result_count} results</p>
+                                <div class="list-group">
+                    `;
+                    
+                    // Show top 3 results for each step
+                    const topResults = step.results.slice(0, 3);
+                    topResults.forEach(result => {
+                        html += createResultHTML(result);
+                    });
+                    
+                    html += `
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                });
+                
+                // Display final results
+                html += `
+                    <h3>Final Results</h3>
+                    <div class="list-group">
+                `;
+                
+                data.final_results.forEach(result => {
+                    html += createResultHTML(result);
+                });
+                
+                html += '</div>';
+                resultsContainer.innerHTML = html;
+            }
+            
+            // Create HTML for a single result
+            function createResultHTML(result) {
+                const data = result.data;
+                
+                // Determine the title
+                const title = data.name || data.title || data.label || `Result ${result.id}`;
+                
+                // Determine the type
+                const type = data.type || 'unknown';
+                
+                // Format highlights if any
+                let highlightsHtml = '';
+                if (result.highlights && Object.keys(result.highlights).length > 0) {
+                    highlightsHtml = '<div class="result-highlights">';
+                    for (const field in result.highlights) {
+                        highlightsHtml += `<div><strong>${field}:</strong> ${result.highlights[field]}</div>`;
+                    }
+                    highlightsHtml += '</div>';
+                }
+                
+                // Format connections if any
+                let connectionsHtml = '';
+                if (data.connections && data.connections.length > 0) {
+                    connectionsHtml = '<div class="result-connections"><strong>Connected to:</strong> ';
+                    data.connections.forEach(connection => {
+                        connectionsHtml += `
+                            <span class="connection-item">
+                                ${connection.name} (${connection.type})
+                            </span>
+                        `;
+                    });
+                    connectionsHtml += '</div>';
+                }
+                
+                return `
+                    <div class="result-item">
+                        <div class="result-title">${title}</div>
+                        <div>
+                            <span class="result-type">${type}</span>
+                            <span class="result-score">Relevance: ${result.score.toFixed(2)}</span>
+                        </div>
+                        ${highlightsHtml}
+                        ${connectionsHtml}
+                    </div>
+                `;
+            }
+        });
+    </script>
+</body>
+</html> 

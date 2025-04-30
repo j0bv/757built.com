@@ -32,6 +32,8 @@
     <!-- Custom CSS -->
     <link rel="stylesheet" href="index.css">
     
+    <link rel="manifest" href="manifest.webmanifest" />
+    
     <style>
         /* App mode transitions */
         .mode-transition {
@@ -81,17 +83,19 @@
         
         /* Map container */
         #map-container {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100vh;
-            z-index: 1;
+            position: relative;
         }
         
         #map {
             width: 100%;
             height: 100%;
+        }
+        
+        /* Globe container */
+        #globe {
+            position: absolute;
+            inset: 0;
+            pointer-events: none;
         }
         
         /* Dashboard container */
@@ -170,7 +174,7 @@
         }
     </style>
 </head>
-<body class="font-sans bg-background h-screen map-mode">
+<body class="font-sans bg-background h-screen dashboard-mode" data-theme="dark">
     <!-- Mode toggle button -->
     <button id="modeToggle" class="mode-toggle">
         <i class="fas fa-th"></i>
@@ -178,14 +182,15 @@
     </button>
     
     <!-- Map container - Full screen when in map mode -->
-    <div id="map-container">
+    <div id="map-container" style="display:none;">
         <div id="map"></div>
+        <div id="globe"></div>
     </div>
     
     <!-- Dashboard container - Simple fixed layout instead of GridStack -->
-    <div id="dashboard" class="fixed inset-0 bg-gray-100 z-10 overflow-auto pt-20" style="display:none;">
+    <div id="dashboard" class="fixed inset-0 bg-cyberpunk z-10 overflow-auto pt-16">
         <div class="container mx-auto px-4">
-            <h1 class="text-2xl font-bold mb-6">Hampton Roads Development Dashboard</h1>
+            <h1 class="text-2xl font-bold mb-6 text-neon-blue">Hampton Roads Development Intelligence</h1>
             
             <div class="grid grid-cols-12 gap-6">
                 <!-- Calendar Widget -->
@@ -210,11 +215,14 @@
                 <div class="col-span-8 bg-white rounded-lg shadow-md overflow-hidden">
                     <div class="widget-header">
                         <span>Hampton Roads Map</span>
-                        <button class="text-gray-500 hover:text-gray-700 fullscreen-toggle">
+                        <button class="text-gray-500 hover:text-gray-700 fullscreen-toggle" id="mapToggle">
                             <i class="fas fa-expand"></i>
                         </button>
                     </div>
-                    <div class="h-80" id="mini-map"></div>
+                    <div class="h-80" id="mini-map">
+                        <div id="dashboard-map"></div>
+                        <div id="dashboard-globe"></div>
+                    </div>
                 </div>
                 
                 <!-- Graph Visualization Widget -->
@@ -263,6 +271,9 @@
         </div>
     </div>
     
+    <!-- Rotate prompt -->
+    <div id="rotatePrompt" style="display:none;position:fixed;inset:0;z-index:1000;background:#000a;color:#fff;align-items:center;justify-content:center;font-size:2rem;text-align:center;">Rotate device to landscape</div>
+    
     <!-- Leaflet JS -->
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" 
             integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" 
@@ -276,6 +287,9 @@
     
     <!-- Calendar Heatmap JS -->
     <script src="https://cdn.jsdelivr.net/npm/cal-heatmap@4.2.4/dist/cal-heatmap.min.js"></script>
+    
+    <!-- Globe.gl JS -->
+    <script src="https://unpkg.com/globe.gl"></script>
     
     <!-- Main Map JS -->
     <script src="script.js"></script>
@@ -521,5 +535,28 @@
         console.log('Event listeners added');
         });
     </script>
+    
+    <!-- Register service worker -->
+    <script>
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('/sw.js');
+        }
+    </script>
+    
+    <!-- Rotate prompt script -->
+    <script>
+      function checkOrientation(){
+        if(window.matchMedia('(orientation: portrait)').matches){
+          document.getElementById('rotatePrompt').style.display='flex';
+        } else {
+          document.getElementById('rotatePrompt').style.display='none';
+        }
+      }
+      addEventListener('orientationchange',checkOrientation);
+      addEventListener('load',checkOrientation);
+    </script>
+    
+    <!-- Load globe module -->
+    <script type="module" src="src/dashboard.js"></script>
 </body>
 </html>

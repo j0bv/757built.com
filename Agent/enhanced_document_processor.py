@@ -12,12 +12,28 @@ import hashlib
 import ipfshttpclient
 import networkx as nx
 from pathlib import Path
+from prometheus_client import Gauge
+from opentelemetry import trace
+from functools import lru_cache
+import redis
+from vector_search import upsert_document, similar_docs
+import sys
+
+# Add the parent directory to the system path
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+# Import the distributed storage module
+from ipfs_storage.distributed_storage import DistributedStorage
+from Agent.job_queue import DistributedJobQueue
 
 # Import our custom modules
 from phi3_wrapper import Phi3Processor
 from job_queue import dequeue_document
 from extraction.locality_detector import add_locality_relations_to_graph
 from graph_db.schema import NodeType, EdgeType, EDGE_TIMESTAMP
+from utils.prompt_hot_reload import start as start_prompt_hot_reload
+from utils.chunking import chunk_document
+from utils.merger import smart_union
 
 # Set up logging
 logging.basicConfig(
@@ -43,6 +59,138 @@ DB_PATH = os.path.join(DATA_DIR, 'ipfs_hashes.json')
 GRAPH_DATA_PATH = os.path.join(DATA_DIR, 'graph_data.json')
 DOCUMENT_EXTENSIONS = ['.txt', '.pdf', '.docx', '.doc', '.rtf', '.json', '.csv']
 GRAPH_IPNS_KEY = os.getenv('GRAPH_IPNS_KEY', 'self')
+
+PROCESSING_IN_FLIGHT = Gauge('processing_in_flight', 'Current number of documents being processed')
+
+class EnhancedDocumentProcessor:
+    def __init__(self, model_path, llama_path, threads=4, ctx_size=8192, 
+                 batch_size=512, storage_path="./temp_storage", 
+                 redis_url="redis://localhost:6379/0",
+                 replication_factor=2, storage_capacity_gb=50.0):
+        """Initialize the document processor with model paths and settings.
+        
+        Args:
+            model_path: Path to the Phi-3 model file
+            llama_path: Path to the llama.cpp executable
+            threads: Number of threads for inference
+            ctx_size: Context size for the model
+            batch_size: Batch size for processing
+            storage_path: Path for temporary document storage
+            redis_url: Redis connection string for coordination
+            replication_factor: Number of replicas for document storage
+            storage_capacity_gb: Local storage capacity in GB
+        """
+        self.model_path = model_path
+        self.llama_path = llama_path
+        self.threads = threads
+        self.ctx_size = ctx_size
+        self.batch_size = batch_size
+        
+        # Initialize distributed storage
+        self.storage = DistributedStorage(
+            redis_url=redis_url,
+            local_storage_path=storage_path,
+            replication_factor=replication_factor,
+            local_storage_capacity_gb=storage_capacity_gb
+        )
+        
+        # Initialize job queue
+        self.job_queue = DistributedJobQueue(redis_url=redis_url)
+        
+        # Register as a worker
+        self.worker_id = self.job_queue.register_worker(capabilities={
+            "cpu_count": os.cpu_count(),
+            "gpu_available": self._check_gpu_available(),
+            "model": "phi-3",
+            "threads": threads,
+            "ctx_size": ctx_size
+        })
+        
+        logger.info(f"Initialized document processor with worker ID: {self.worker_id}")
+        
+        # Load the model
+        # ... existing model loading code ...
+        
+    def _check_gpu_available(self):
+        """Check if GPU is available for processing."""
+        try:
+            import torch
+            return torch.cuda.is_available()
+        except ImportError:
+            return False
+
+    def process_document(self, document_path, metadata=None):
+        """Process a document and store results.
+        
+        Args:
+            document_path: Path to the document file
+            metadata: Additional metadata about the document
+            
+        Returns:
+            dict: Processing results with extracted information
+        """
+        # Store the document in distributed storage
+        logger.info(f"Storing document {document_path} in distributed storage")
+        storage_info = self.storage.store_file(document_path, metadata)
+        file_id = storage_info["file_id"]
+        
+        # ... existing document processing code ...
+        
+        # Mark document as complete in IPFS and update storage info
+        self.storage.retry_ipfs_uploads()
+        
+        # Return processing results
+        return results
+        
+    def run_processor(self):
+        """Run the document processor in continuous mode, processing from the queue."""
+        logger.info("Starting document processor in continuous mode")
+        
+        while True:
+            # Send heartbeat to indicate this worker is alive
+            self.job_queue.heartbeat()
+            
+            # Check for scheduled IPFS retry uploads
+            if time.time() % 300 < 10:  # Every ~5 minutes
+                self.storage.retry_ipfs_uploads(limit=20)
+                
+            # Check for cleanup of old files
+            if time.time() % 3600 < 10:  # Every ~hour
+                self.storage.cleanup_old_files()
+                
+            # Get the next job from the queue
+            job = self.job_queue.get_job(timeout=5)
+            if not job:
+                logger.debug("No jobs in queue, waiting...")
+                time.sleep(5)
+                continue
+                
+            logger.info(f"Processing job {job['job_id']}")
+            
+            try:
+                # Get the document from distributed storage or original path
+                document_path = job.get("document_path")
+                
+                if document_path.startswith("file_"):
+                    # This is a file ID from distributed storage
+                    local_file = self.storage.get_file(document_path)
+                    if not local_file:
+                        raise FileNotFoundError(f"Could not retrieve file {document_path}")
+                    document_path = local_file
+                    
+                # Process the document
+                result = self.process_document(document_path, job.get("metadata"))
+                
+                # Mark the job as complete
+                self.job_queue.complete_job(job["job_id"], result)
+                logger.info(f"Completed job {job['job_id']}")
+                
+            except Exception as e:
+                logger.error(f"Error processing job {job['job_id']}: {e}")
+                self.job_queue.fail_job(job["job_id"], str(e))
+                
+            # Brief pause to prevent CPU overuse
+            time.sleep(1)
 
 def extract_text_from_document(document_path):
     """Extract text from various document formats"""
@@ -668,38 +816,175 @@ def store_metadata_in_ipfs(metadata, metadata_type="document"):
         print(f"Warning: Could not store metadata in IPFS: {e}")
         return None
         
+@lru_cache(maxsize=10)
+def load_prompt_template(version: str = "v1") -> str:
+    """Load prompt template from file path Agent/prompts/extract_<version>.md"""
+    from pathlib import Path as _P
+    tpl = _P(f"Agent/prompts/extract_{version}.md")
+    if tpl.exists():
+        return tpl.read_text(encoding='utf-8')
+    return "You are an AI assistant. Document:\n{document_text}\nReturn JSON: {schema}"
+
+def process_text(document_text: str, phi3_processor) -> dict:
+    """Run Phi-3 on *document_text* and return structured JSON with contact info."""
+    import textwrap, json as _json
+
+    prompt = textwrap.dedent(f"""\
+        You are an AI assistant that extracts structured data about local development
+        projects in the Virginia 757 area.
+
+        Analyse the following document and return a **valid JSON** object matching
+        exactly this schema (order and keys must stay the same):
+
+        {{
+            "project": {{
+                "title": "",
+                "summary": "",
+                "start_date": "",
+                "end_date": "",
+                "status": ""
+            }},
+            "locations": [
+                {{"name": "", "lat": 0.0, "lng": 0.0}}
+            ],
+            "entities": {{
+                "people": [
+                    {{"name": "", "role": ""}}
+                ],
+                "organizations": [
+                    {{"name": "", "role": ""}}
+                ],
+                "companies": [
+                    {{"name": "", "role": ""}}
+                ]
+            }},
+            "relationships": [
+                {{"source": "", "target": "", "relationship": ""}}
+            ],
+            "funding": {{
+                "amount": "",
+                "source": "",
+                "details": ""
+            }},
+            "contact_info": {{
+                "email": "",
+                "phone": "",
+                "website": ""
+            }}
+        }}
+
+        Document:
+        ----------------
+        {document_text}
+        ----------------
+
+        Respond with ONLY the JSON – no commentary, markdown, or code fences.
+    """)
+
+    raw_output = phi3_processor.run_inference(prompt).strip()
+
+    # Remove potential markdown fences/backticks
+    if raw_output.startswith('```'):
+        raw_output = raw_output.strip('`')
+        raw_output = raw_output.lstrip('json').strip()
+
+    try:
+        result = _json.loads(raw_output)
+    except Exception as ex:
+        logger.error("Failed to parse Phi-3 output as JSON: %s", ex)
+        result = {"error": str(ex), "raw_output": raw_output}
+
+    # Attach original text for traceability
+    result["text_content"] = document_text
+    return result
+
+def process_text_chunk(chunk: str, phi3_processor) -> dict:
+    """Run Phi-3 on *chunk* and return structured JSON with contact info."""
+    import textwrap, json as _json
+
+    prompt_template = load_prompt_template()
+    detected_type = detect_document_type(chunk)
+    prompt = prompt_template.replace("{detected_type}", detected_type)
+
+    raw_output = phi3_processor.run_inference(prompt).strip()
+
+    # Remove potential markdown fences/backticks
+    if raw_output.startswith('```'):
+        raw_output = raw_output.strip('`')
+        raw_output = raw_output.lstrip('json').strip()
+
+    try:
+        result = _json.loads(raw_output)
+    except Exception as ex:
+        logger.error("Failed to parse Phi-3 output as JSON: %s", ex)
+        result = {"error": str(ex), "raw_output": raw_output}
+
+    # Attach original text for traceability
+    result["text_content"] = chunk
+    return result
+
+def detect_document_type(text: str) -> str:
+    """Heuristic detector to bias prompt with detected_type placeholder."""
+    patterns = {
+        "patent": r"\bUnited\s+States\s+Patent\b|\bpatent\s+number\b",
+        "research": r"\babstract\b.*\bmethodology\b|\breferences\b",
+        "project": r"\bproject\s+title\b|\bconstruction\s+status\b",
+    }
+    for dtype, pat in patterns.items():
+        if re.search(pat, text, re.IGNORECASE|re.DOTALL):
+            return dtype
+    return "other"
+
+def ensure_processed_output(document_path: str, processed_data: dict, output_dir: str = PROCESSED_DIR):
+    """Write *processed_data* to <output_dir>/<stem>.json. Return the path."""
+    from pathlib import Path as _Path, PurePath as _PurePath
+
+    _Path(output_dir).mkdir(parents=True, exist_ok=True)
+    out_file = _Path(output_dir) / (_PurePath(document_path).stem + '.json')
+    with open(out_file, 'w', encoding='utf-8') as fh:
+        json.dump(processed_data, fh, ensure_ascii=False, indent=2)
+    logger.info("Saved processed document to %s", out_file)
+    return str(out_file)
+
 def process_document(document_path, phi3_processor):
     """Main function to process a document and update the graph."""
-    # Extract text from document
-    document_text = extract_text_from_document(document_path)
-    
-    # Process text with Phi-3
-    processed_data = process_text(document_text)
-    
-    # Store metadata in IPFS and get CID
-    metadata_cid = store_metadata_in_ipfs(processed_data)
-    
-    # Update processed data with CID
-    if metadata_cid:
-        processed_data['metadata_cid'] = metadata_cid
-    
-    # Save processed JSON for downstream verification / IPFS batch upload
-    try:
-        Path(PROCESSED_DIR).mkdir(parents=True, exist_ok=True)
-        out_path = Path(PROCESSED_DIR) / (Path(document_path).stem + '.json')
-        with open(out_path, 'w', encoding='utf-8') as f:
-            json.dump(processed_data, f, ensure_ascii=False, indent=2)
-        logger.info("Wrote processed artefact → %s", out_path)
-    except Exception as exc:
-        logger.warning("Could not write processed JSON: %s", exc)
-    
-    # Add to graph
-    G = add_document_to_graph(document_path, processed_data)
-    
-    # Save graph
-    save_graph(G)
-    
-    return processed_data
+    PROCESSING_IN_FLIGHT.inc()
+    tracer = trace.get_tracer(__name__)
+    with tracer.start_as_current_span("process_document"):
+        try:
+            # Extract text from document
+            document_text = extract_text_from_document(document_path)
+            
+            # Chunk text and process with Phi-3
+            chunks = chunk_document(document_text)
+            processed_data = smart_union([process_text_chunk(chunk, phi3_processor) for chunk in chunks])
+            
+            # upsert into vector DB and fetch similar docs
+            try:
+                upsert_document(processed_data, document_text)
+                processed_data["similar_docs"] = similar_docs(document_text)
+            except Exception as ex:
+                logger.warning("Vector index error: %s", ex)
+            
+            # Store metadata in IPFS and get CID
+            metadata_cid = store_metadata_in_ipfs(processed_data)
+            
+            # Update processed data with CID
+            if metadata_cid:
+                processed_data['metadata_cid'] = metadata_cid
+            
+            # Persist processed JSON using helper
+            ensure_processed_output(document_path, processed_data)
+            
+            try:
+                r = redis.from_url(os.getenv('REDIS_URL', 'redis://localhost:6379/0'), decode_responses=True)
+                r.xadd('graph_updates', {'path': document_path, 'data': json.dumps(processed_data)}, maxlen=10000, approximate=True)
+            except Exception as ex:
+                logger.error('Failed to enqueue graph update: %s', ex)
+            
+            return processed_data
+        finally:
+            PROCESSING_IN_FLIGHT.dec()
 
 def monitor_data_directory(phi3_processor):
     """Monitor the data directory for new documents"""
@@ -758,34 +1043,39 @@ def queue_worker(phi3_processor):
         process_document(path, phi3_processor)
 
 def main():
-    """Main function"""
-    parser = argparse.ArgumentParser(description='Process documents with Phi-3 and IPFS')
-    parser.add_argument('--model-path', required=True, help='Path to the Phi-3 model GGUF file')
-    parser.add_argument('--llama-path', default='./main', help='Path to the llama.cpp executable')
-    parser.add_argument('--threads', type=int, default=6, help='Number of threads to use')
-    parser.add_argument('--gpu-layers', type=int, default=0, help='Number of GPU layers to use')
-    parser.add_argument('--ctx-size', type=int, default=4096, help='Context size for the model')
-    parser.add_argument('--single-file', help='Process a single file instead of monitoring directory')
-    parser.add_argument('--queue', action='store_true', help='Run as queue consumer instead of directory monitor')
+    parser = argparse.ArgumentParser(description="Enhanced Document Processor with Phi-3 model")
+    parser.add_argument("--model-path", required=True, help="Path to the Phi-3 GGUF model")
+    parser.add_argument("--llama-path", required=True, help="Path to the llama.cpp executable")
+    parser.add_argument("--threads", type=int, default=4, help="Number of threads for inference")
+    parser.add_argument("--ctx-size", type=int, default=8192, help="Context size for the model")
+    parser.add_argument("--batch-size", type=int, default=512, help="Batch size for processing")
+    parser.add_argument("--single-file", help="Process a single file instead of monitoring")
+    parser.add_argument("--storage-path", default="./temp_storage", help="Path for temporary document storage")
+    parser.add_argument("--redis-url", default="redis://localhost:6379/0", help="Redis connection string")
+    parser.add_argument("--replication", type=int, default=2, help="Storage replication factor")
+    parser.add_argument("--storage-capacity", type=float, default=50.0, help="Local storage capacity in GB")
     
     args = parser.parse_args()
     
-    # Initialize Phi-3 processor
-    phi3_processor = Phi3Processor(
+    processor = EnhancedDocumentProcessor(
         model_path=args.model_path,
+        llama_path=args.llama_path,
         threads=args.threads,
-        gpu_layers=args.gpu_layers,
         ctx_size=args.ctx_size,
-        llama_executable=args.llama_path
+        batch_size=args.batch_size,
+        storage_path=args.storage_path,
+        redis_url=args.redis_url,
+        replication_factor=args.replication,
+        storage_capacity_gb=args.storage_capacity
     )
     
-    # Process a single file or monitor directory
     if args.single_file:
-        process_document(args.single_file, phi3_processor)
-    elif args.queue:
-        queue_worker(phi3_processor)
+        logger.info(f"Processing single file: {args.single_file}")
+        result = processor.process_document(args.single_file)
+        logger.info(f"Processing complete: {result}")
     else:
-        monitor_data_directory(phi3_processor)
-
+        logger.info("Starting continuous processing mode")
+        processor.run_processor()
+        
 if __name__ == "__main__":
     main()

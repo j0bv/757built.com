@@ -78,6 +78,16 @@ module.exports = VirginiaBeachAdapter;// data-sync-manager.js
 const VirginiaBeachAdapter = require('./adapters/virginia-beach-adapter');
 const NorfolkAdapter = require('./adapters/norfolk-adapter');
 const ChesapeakeAdapter = require('./adapters/chesapeake-adapter');
+const HamptonAdapter = require('./adapters/hampton-adapter');
+const NewportNewsAdapter = require('./adapters/newport-news-adapter');
+const WilliamsburgAdapter = require('./adapters/williamsburg-adapter');
+const YorkCountyAdapter = require('./adapters/york-county-adapter');
+const SuffolkAdapter = require('./adapters/suffolk-adapter');
+const PortsmouthAdapter = require('./adapters/portsmouth-adapter');
+const FranklinAdapter = require('./adapters/franklin-adapter');
+const HamptonCityAdapter = require('./adapters/hampton-city-adapter');
+const IsleOfWightAdapter = require('./adapters/isle-of-wight-adapter');
+const SurryAdapter = require('./adapters/surry-adapter');
 // Import other adapters
 
 class DataSyncManager {
@@ -90,6 +100,16 @@ class DataSyncManager {
       virginiaBeach: new VirginiaBeachAdapter(this.developmentDB),
       norfolk: new NorfolkAdapter(this.developmentDB),
       chesapeake: new ChesapeakeAdapter(this.developmentDB),
+      hampton: new HamptonAdapter(this.developmentDB),
+      newportNews: new NewportNewsAdapter(this.developmentDB),
+      williamsburg: new WilliamsburgAdapter(this.developmentDB),
+      yorkCounty: new YorkCountyAdapter(this.developmentDB),
+      suffolk: new SuffolkAdapter(this.developmentDB),
+      portsmouth: new PortsmouthAdapter(this.developmentDB),
+      franklin: new FranklinAdapter(this.developmentDB),
+      hamptonCity: new HamptonCityAdapter(this.developmentDB),
+      isleOfWight: new IsleOfWightAdapter(this.developmentDB),
+      surry: new SurryAdapter(this.developmentDB),
       // Add other adapters
     };
     
@@ -106,6 +126,16 @@ class DataSyncManager {
       this.adapters.virginiaBeach.fetchBuildingPermits(oneMonthAgo, new Date()),
       this.adapters.norfolk.fetchDevelopmentProjects(),
       this.adapters.chesapeake.fetchZoningChanges(),
+      this.adapters.hampton.fetchBuildingPermits(oneMonthAgo, new Date()),
+      this.adapters.newportNews.fetchBuildingPermits(oneMonthAgo, new Date()),
+      this.adapters.williamsburg.fetchBuildingPermits(oneMonthAgo, new Date()),
+      this.adapters.yorkCounty.fetchBuildingPermits(oneMonthAgo, new Date()),
+      this.adapters.suffolk.fetchBuildingPermits(oneMonthAgo, new Date()),
+      this.adapters.portsmouth.fetchBuildingPermits(oneMonthAgo, new Date()),
+      this.adapters.franklin.fetchBuildingPermits(oneMonthAgo, new Date()),
+      this.adapters.hamptonCity.fetchBuildingPermits(oneMonthAgo, new Date()),
+      this.adapters.isleOfWight.fetchBuildingPermits(oneMonthAgo, new Date()),
+      this.adapters.surry.fetchBuildingPermits(oneMonthAgo, new Date()),
       // Sync other data sources
     ]);
     

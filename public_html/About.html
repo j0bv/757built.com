@@ -1,0 +1,1242 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>757Built Documentation - Knowledge Graph Platform</title>
+    <!-- D3.js library for interactive visualizations -->
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            margin: 0;
+            padding: 0;
+            background-color: #f9f9f9;
+        }
+        .container {
+            display: flex;
+            max-width: 100%;
+        }
+        .main-content {
+            flex: 1;
+            max-width: 900px;
+            padding: 20px;
+            margin-left: 280px; /* Width of sidebar plus some space */
+        }
+        header {
+            text-align: center;
+            margin-bottom: 40px;
+            border-bottom: 1px solid #eee;
+            padding: 20px;
+            background-color: #fff;
+            border-radius: 5px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #2c3e50;
+            font-size: 2.5em;
+        }
+        h2 {
+            color: #3498db;
+            font-size: 1.8em;
+            margin-top: 40px;
+            border-bottom: 1px solid #eee;
+            padding-bottom: 10px;
+        }
+        h3 {
+            color: #2980b9;
+            font-size: 1.4em;
+            margin-top: 30px;
+        }
+        h4 {
+            color: #3498db;
+            font-size: 1.2em;
+            margin-top: 25px;
+        }
+        p {
+            margin-bottom: 20px;
+        }
+        code {
+            background-color: #f8f8f8;
+            border: 1px solid #ddd;
+            border-radius: 3px;
+            font-family: Consolas, Monaco, 'Andale Mono', monospace;
+            padding: 2px 4px;
+            font-size: 0.9em;
+        }
+        pre {
+            background-color: #f8f8f8;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            padding: 15px;
+            overflow: auto;
+            font-family: Consolas, Monaco, 'Andale Mono', monospace;
+            line-height: 1.4;
+        }
+        .section {
+            margin-bottom: 60px;
+            padding: 25px;
+            border-radius: 8px;
+            background-color: #fff;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        .section:nth-of-type(odd) {
+            background-color: #fff;
+        }
+        .section:nth-of-type(even) {
+            background-color: #fff;
+        }
+        .highlight {
+            background-color: #fffde7;
+            padding: 15px;
+            border-left: 5px solid #ffd600;
+            margin: 20px 0;
+        }
+        .tech-term {
+            font-style: italic;
+            color: #16a085;
+        }
+        .diagram {
+            margin: 20px auto;
+            padding: 15px;
+            background-color: #f9f9f9;
+            border: 1px solid #eee;
+            text-align: center;
+            overflow-x: auto;
+        }
+        .diagram svg {
+            max-width: 100%;
+            height: auto;
+        }
+        footer {
+            margin-top: 60px;
+            text-align: center;
+            color: #7f8c8d;
+            font-size: 0.9em;
+            border-top: 1px solid #eee;
+            padding-top: 20px;
+            background-color: #fff;
+            border-radius: 5px;
+            padding: 20px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        nav {
+            margin-top: 20px;
+        }
+        nav a {
+            margin: 0 10px;
+            color: #2980b9;
+            text-decoration: none;
+            font-weight: 600;
+        }
+        nav a:hover {
+            text-decoration: underline;
+        }
+        .citation {
+            font-size: 0.85em;
+            color: #555;
+        }
+        .entry-level {
+            background-color: #e8f7f5;
+            padding: 12px;
+            border-radius: 5px;
+            margin: 10px 0;
+            font-size: 0.95em;
+        }
+        .abstract {
+            font-style: italic;
+            border-left: 4px solid #3498db;
+            padding-left: 15px;
+            margin: 20px 0;
+        }
+        .keywords {
+            margin-top: 10px;
+            font-size: 0.9em;
+        }
+        .keywords span {
+            background-color: #f1f1f1;
+            padding: 3px 8px;
+            border-radius: 15px;
+            margin-right: 5px;
+            display: inline-block;
+            margin-bottom: 5px;
+        }
+        .research-section {
+            margin-top: 30px;
+        }
+        .d3-container {
+            width: 100%;
+            height: 600px;
+            background-color: #fff;
+            border: 1px solid #eee;
+            margin: 20px auto;
+            overflow: hidden;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            border-radius: 8px;
+        }
+        .node {
+            cursor: pointer;
+        }
+        .node circle {
+            stroke-width: 2px;
+        }
+        .node text {
+            font-size: 12px;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        .link {
+            fill: none;
+            stroke-width: 2px;
+        }
+        .tooltip {
+            position: absolute;
+            background-color: rgba(255, 255, 255, 0.95);
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            padding: 10px;
+            font-size: 12px;
+            pointer-events: none;
+            max-width: 300px;
+            z-index: 10;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+        }
+        .arrow {
+            fill: #666;
+        }
+        .process-group {
+            stroke-dasharray: 5,5;
+            stroke: #888;
+            stroke-width: 1.5px;
+            fill: none;
+        }
+        .process-label {
+            font-size: 14px;
+            font-weight: bold;
+            text-anchor: middle;
+        }
+        /* Documentation-style navigation */
+        .doc-nav {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 260px;
+            height: 100vh;
+            background-color: #fff;
+            padding: 15px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            overflow-y: auto;
+            z-index: 100;
+        }
+        .doc-nav h3 {
+            margin-top: 0;
+            border-bottom: 1px solid #eee;
+            padding-bottom: 10px;
+        }
+        .doc-nav ul {
+            list-style-type: none;
+            padding-left: 0;
+        }
+        .doc-nav li {
+            margin-bottom: 8px;
+        }
+        .doc-nav a {
+            color: #2980b9;
+            text-decoration: none;
+        }
+        .doc-nav a:hover {
+            text-decoration: underline;
+        }
+        .doc-nav ul ul {
+            padding-left: 15px;
+            margin-top: 5px;
+            margin-bottom: 10px;
+            border-left: 1px solid #eee;
+        }
+        .doc-nav ul ul li {
+            margin-bottom: 5px;
+            font-size: 0.9em;
+        }
+        /* Table styles */
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+            background-color: #fff;
+        }
+        th {
+            background-color: #f2f2f2;
+            padding: 10px;
+            text-align: left;
+            border: 1px solid #ddd;
+        }
+        td {
+            padding: 10px;
+            border: 1px solid #ddd;
+        }
+        tr:nth-child(even) {
+            background-color: #f9f9f9;
+        }
+    </style>
+</head>
+<body>
+    <!-- Navigation sidebar with TOC -->
+    <div class="doc-nav">
+        <h3>757Built Documentation</h3>
+        <ul>
+            <li><a href="#part1">1. For Journalists</a>
+                <ul>
+                    <li><a href="#what-is-757built">What is 757Built?</a></li>
+                    <li><a href="#uncovering-stories">Uncovering Local Stories</a></li>
+                    <li><a href="#tracking-money">Tracking Money and Influence</a></li>
+                    <li><a href="#permanent-record">Permanent Public Record</a></li>
+                    <li><a href="#calendar">Calendar Integration</a></li>
+                    <li><a href="#real-world-cases">Real-World Cases</a></li>
+                </ul>
+            </li>
+            <li><a href="#part2">2. Contributor's Guide</a>
+                <ul>
+                    <li><a href="#architecture">System Architecture</a></li>
+                    <li><a href="#file-structure">File Structure</a></li>
+                    <li><a href="#key-components">Key Components</a></li>
+                    <li><a href="#development">Development Setup</a></li>
+                    <li><a href="#core-workflow">Core Workflow</a></li>
+                    <li><a href="#new-doc-types">Adding Document Types</a></li>
+                    <li><a href="#phi3-prompt">Extending Phi-3 Prompt</a></li>
+                    <li><a href="#web-interface">Web Interface</a></li>
+                    <li><a href="#testing">Testing Changes</a></li>
+                    <li><a href="#deployment">Deployment Pipeline</a></li>
+                </ul>
+            </li>
+            <li><a href="#part3">3. Technical Research Report</a>
+                <ul>
+                    <li><a href="#abstract">Abstract</a></li>
+                    <li><a href="#introduction">Introduction</a></li>
+                    <li><a href="#decentralized">Decentralized Information</a></li>
+                    <li><a href="#cognitive">Cognitive Augmentation</a></li>
+                    <li><a href="#knowledge-graph">Knowledge Graph as Commons</a></li>
+                    <li><a href="#architecture-multi">Multi-Server Architecture</a></li>
+                    <li><a href="#challenges">Technical Challenges</a></li>
+                    <li><a href="#implications">Civic Technology Implications</a></li>
+                </ul>
+            </li>
+            <li><a href="#references">References</a></li>
+        </ul>
+    </div>
+
+    <div class="container">
+        <div class="main-content">
+            <header>
+                <h1>757Built Knowledge Platform</h1>
+                <p>A comprehensive document processing and knowledge graph system for Virginia's 757 area development projects, patents, and research</p>
+                <nav>
+                    <a href="#part1">Part 1</a> |
+                    <a href="#part2">Part 2</a> |
+                    <a href="#part3">Part 3</a>
+                </nav>
+            </header>
+
+            <div class="section">
+                <h2 id="part1">Part 1: For Journalists - Understanding the 757Built Platform</h2>
+                
+                <h3 id="what-is-757built">What is 757Built?</h3>
+                <p>
+                    The 757Built platform is a cutting-edge investigation and documentation tool specifically designed for journalists, researchers, and the public to track and understand development projects, research initiatives, and patents in Virginia's 757 area. It creates a searchable, visual archive that reveals connections between organizations, people, projects, and their locations—connections that would otherwise remain hidden in disparate documents. <span class="citation">[Knight Foundation, 2021]</span>
+                </p>
+                
+                <div class="entry-level">
+                    <strong>In plain English:</strong> Think of 757Built like a smart filing cabinet that reads documents for you. When you add a document about a local construction project, patent filing, or research grant, the system automatically pulls out key facts like "who's involved," "how much money," "where it's happening," and "when it started." It then connects these facts across all your documents, showing you patterns you'd miss if reading them one by one.
+                </div>
+                
+                <div class="diagram">
+                    <svg viewBox="0 0 600 200" xmlns="http://www.w3.org/2000/svg">
+                        <!-- Document -->
+                        <rect x="30" y="70" width="120" height="60" rx="5" fill="#f5f5f5" stroke="#333"/>
+                        <text x="90" y="105" text-anchor="middle" font-size="12">Document</text>
+                        <!-- Arrow 1 -->
+                        <polygon points="150,100 170,100 170,105 180,95 170,85 170,90 150,90" fill="#333"/>
+                        <!-- Magic box -->
+                        <rect x="180" y="60" width="140" height="80" rx="5" fill="#e8f7f5" stroke="#16a085"/>
+                        <text x="250" y="95" text-anchor="middle" font-size="14" fill="#16a085">AI Document</text>
+                        <text x="250" y="110" text-anchor="middle" font-size="14" fill="#16a085">Reader</text>
+                        <!-- Arrow 2 -->
+                        <polygon points="320,100 340,100 340,105 350,95 340,85 340,90 320,90" fill="#333"/>
+                        <!-- Structured data -->
+                        <rect x="350" y="50" width="180" height="100" rx="5" fill="#fff" stroke="#333"/>
+                        <text x="440" y="75" text-anchor="middle" font-size="12">Structured Information</text>
+                        <!-- Data elements -->
+                        <rect x="370" y="85" width="140" height="15" rx="2" fill="#f1c40f" stroke="#333" stroke-width="0.5"/>
+                        <text x="440" y="96" text-anchor="middle" font-size="10">Who: Norfolk City Council</text>
+                        <rect x="370" y="105" width="140" height="15" rx="2" fill="#3498db" stroke="#333" stroke-width="0.5"/>
+                        <text x="440" y="116" text-anchor="middle" font-size="10">What: Waterfront Project</text>
+                        <rect x="370" y="125" width="140" height="15" rx="2" fill="#e74c3c" stroke="#333" stroke-width="0.5"/>
+                        <text x="440" y="136" text-anchor="middle" font-size="10">When: June 2023-2025</text>
+                    </svg>
+                    <p class="citation">Figure: How 757Built extracts structured information from documents</p>
+                </div>
+                
+                <h3 id="uncovering-stories">Uncovering Local Development Stories</h3>
+                <p>
+                    For journalists covering local development, 757Built functions like a collective institutional memory. When you encounter a new development proposal, the system can immediately show you the history of similar projects, the organizations and individuals behind them, and their track record. The platform automatically extracts key information like project timelines, funding amounts, and organizational relationships—information that typically requires hours of document searches and phone calls.
+                </p>
+                
+                <h3 id="tracking-money">Tracking Money and Influence</h3>
+                <p>
+                    One of the most powerful aspects of 757Built is its ability to trace funding relationships and organizational connections across multiple projects. When a new document is added to the system—whether a planning document, research paper, or patent filing—it's automatically analyzed to extract information about financial backers, project stakeholders, and institutional affiliations. These connections are then visualized in an interactive graph that reveals patterns of funding and influence over time. <span class="citation"><a href="https://projects.icij.org/panama-papers" target="_blank">[ICIJ Panama Papers Graph, 2017]</a>; see <a href="https://github.com/j0bv/757built.com/blob/main/757built.com/public_html/git-graph-demo.html" target="_blank"><code>git-graph-demo.html</code></a></span>
+                </p>
+                
+                <div class="entry-level">
+                    <strong>How it works:</strong> When you upload a PDF about a construction project, the system's code in <code>Agent/enhanced_document_processor.py</code> uses Phi-3 to extract structured information like project cost ($2.5M), funding source (Hampton Roads Development Corp), developer names, and other entities. When you later add a different document mentioning the same developer or funder, the system automatically links them, letting you see all projects tied to that entity—revealing patterns a human reader might miss across dozens of documents.
+                </div>
+                
+                <div class="highlight">
+                    <strong>Example Use Case:</strong> A journalist investigating a new waterfront development could upload related documents to 757Built. The system would automatically identify the developer, their previous projects, funding sources, and connections to other stakeholders. It might reveal that the same investment group backed three other controversial developments, providing a critical insight for the story.
+                </div>
+                
+                <h3 id="permanent-record">Permanent Public Record</h3>
+                <p>
+                    Documents analyzed by 757Built are stored using a technology called IPFS (InterPlanetary File System), which creates permanent, tamper-resistant records that exist outside any single server or organization. This creates an immutable archive of public interest documents that cannot be easily removed or altered—even if the original sources are taken offline or changed. For journalists, this means evidence gathered for investigations remains accessible and verifiable indefinitely. <span class="citation">[ICIJ, 2017]</span>
+                </p>
+                
+                <div class="entry-level">
+                    <strong>What this means:</strong> Unlike traditional websites where documents can disappear when a server goes down or a government changes policy, 757Built stores documents on a network of computers using special digital fingerprints (called "content IDs" or CIDs). Once a document is in the system, you can always retrieve it with its unique ID, even if the original website disappears. It's like making thousands of permanent backups all at once, with cryptographic proof they haven't been altered.
+                </div>
+                
+                <h3 id="calendar">Calendar Integration for Story Planning</h3>
+                <p>
+                    The platform automatically identifies and extracts dates from documents—public hearings, comment periods, construction timelines, and other events—and organizes them in a calendar interface. This allows journalists to plan coverage around important local development milestones, ensuring that critical public participation opportunities don't pass unreported.
+                </p>
+
+                <h3 id="real-world-cases">Real-World Cases Demonstrating the Need for Immutable, Decentralized Records</h3>
+                <ul>
+                    <li><strong>Hong Kong Protests (2019):</strong> Activists mirrored censored news articles and protest footage on IPFS to circumvent website takedowns. <span class="citation">[Human Rights Watch, 2020]</span></li>
+                    <li><strong>Wikipedia Block in Turkey (2017-2020):</strong> Volunteers used IPFS snapshots of Wikipedia to keep knowledge accessible during the nationwide ban. <span class="citation">[Wikimedia Foundation, 2020]</span></li>
+                    <li><strong>COVID-19 Early Research (2020):</strong> Scientists shared pre-print studies via decentralized networks to ensure open access despite paywalls and rapidly changing information. <span class="citation">[UNESCO Open Science Report, 2021]</span></li>
+                    <li><strong>Panama &amp; Paradise Papers (2016-2017):</strong> Journalists relied on immutable document hashes to verify the authenticity of leaked financial documents. <span class="citation">[ICIJ, 2017]</span></li>
+                    <li><strong>Ukraine Conflict OSINT (2022):</strong> Investigators archived social-media videos on IPFS to preserve evidence of potential war crimes before deletion. <span class="citation">[Bellingcat, 2022]</span></li>
+                </ul>
+            </div>
+
+            <div class="section">
+                <h2 id="part2">Part 2: Contributor's Guide to the 757Built Repository</h2>
+                
+                <h3 id="architecture">System Architecture Overview</h3>
+                <p>
+                    The 757Built platform is divided between two primary server components:
+                </p>
+                <ol>
+                    <li><strong>Server1 (Processing Node):</strong> Handles document ingestion, analysis with the Phi-3 language model, and IPFS storage</li>
+                    <li><strong>Server250 (Web Node):</strong> Hosts the public-facing website, API, and visualization components</li>
+                </ol>
+                
+                <h4 id="architecture">Interactive System Architecture Diagram</h4>
+                <p>
+                    The following interactive diagram illustrates the complete data flow through the 757Built system architecture. Hover over any component to see details about its function, and click on server boundaries to expand or collapse sections.
+                </p>
+                
+                <div id="architecture-diagram" class="d3-container">
+                    <!-- D3.js visualization will be rendered here -->
+                </div>
+                
+                <script>
+                    // Data for the system architecture diagram
+                    const architectureData = {
+                        name: "757Built Architecture",
+                        children: [
+                            {
+                                name: "Server1 (Processing Node)",
+                                description: "Handles compute-intensive document processing, analysis, and IPFS storage",
+                                type: "server",
+                                children: [
+                                    {
+                                        name: "Document Ingestion",
+                                        description: "Monitors directories and API endpoints for new documents to process",
+                                        type: "component",
+                                        children: [
+                                            {
+                                                name: "File Watchers",
+                                                description: "Detects new files in monitored directories",
+                                                type: "process"
+                                            },
+                                            {
+                                                name: "API Upload Endpoint",
+                                                description: "Accepts document uploads via API calls",
+                                                type: "process"
+                                            }
+                                        ]
+                                    },
+                                    {
+                                        name: "Redis Queue",
+                                        description: "Manages document processing jobs for distributed workers",
+                                        type: "component"
+                                    },
+                                    {
+                                        name: "Document Processor",
+                                        description: "Extracts text and processes documents with Phi-3",
+                                        type: "component",
+                                        children: [
+                                            {
+                                                name: "Format Extractors",
+                                                description: "Extracts text from various document formats (PDF, DOCX, etc.)",
+                                                type: "process"
+                                            },
+                                            {
+                                                name: "Document Chunking",
+                                                description: "Splits documents into manageable chunks with overlap",
+                                                type: "process"
+                                            },
+                                            {
+                                                name: "Phi-3 LLM",
+                                                description: "Applies language model to extract structured information",
+                                                type: "process"
+                                            },
+                                            {
+                                                name: "Result Merger",
+                                                description: "Combines results from multiple chunks into coherent document representation",
+                                                type: "process"
+                                            }
+                                        ]
+                                    },
+                                    {
+                                        name: "IPFS Node",
+                                        description: "Provides content-addressed storage for documents and processed data",
+                                        type: "component",
+                                        children: [
+                                            {
+                                                name: "Private Swarm",
+                                                description: "Connects to Server250 IPFS node in a private, secure network",
+                                                type: "process"
+                                            },
+                                            {
+                                                name: "Content Storage",
+                                                description: "Stores documents with cryptographic content addressing (CIDs)",
+                                                type: "process"
+                                            }
+                                        ]
+                                    }
+                                ]
+                            },
+                            {
+                                name: "Server250 (Web Node)",
+                                description: "Hosts public-facing website, API, and visualization components",
+                                type: "server",
+                                children: [
+                                    {
+                                        name: "IPFS Gateway",
+                                        description: "Provides HTTP access to content-addressed documents in IPFS",
+                                        type: "component"
+                                    },
+                                    {
+                                        name: "Knowledge Graph DB",
+                                        description: "Stores relationships between entities extracted from documents",
+                                        type: "component"
+                                    },
+                                    {
+                                        name: "Flask API",
+                                        description: "Provides programmatic access to the knowledge graph and documents",
+                                        type: "component",
+                                        children: [
+                                            {
+                                                name: "Search Endpoints",
+                                                description: "Enables querying of documents and entities",
+                                                type: "process"
+                                            },
+                                            {
+                                                name: "Graph Query Endpoints",
+                                                description: "Supports complex relationship queries across entities",
+                                                type: "process"
+                                            },
+                                            {
+                                                name: "Document Upload",
+                                                description: "Accepts new documents and forwards to Server1 for processing",
+                                                type: "process"
+                                            }
+                                        ]
+                                    },
+                                    {
+                                        name: "Web Interface",
+                                        description: "Interactive front-end for exploring the knowledge graph",
+                                        type: "component",
+                                        children: [
+                                            {
+                                                name: "GitGraph Visualization",
+                                                description: "Visual interface for exploring entity relationships",
+                                                type: "process"
+                                            },
+                                            {
+                                                name: "Calendar View",
+                                                description: "Timeline visualization of events and project milestones",
+                                                type: "process"
+                                            },
+                                            {
+                                                name: "Map View",
+                                                description: "Geographic visualization of development projects",
+                                                type: "process"
+                                            }
+                                        ]
+                                    }
+                                ]
+                            }
+                        ]
+                    };
+
+                    // Create the interactive visualization
+                    document.addEventListener('DOMContentLoaded', function() {
+                        // Set up dimensions and margins
+                        const margin = {top: 40, right: 120, bottom: 40, left: 120};
+                        const width = document.getElementById('architecture-diagram').offsetWidth - margin.left - margin.right;
+                        const height = document.getElementById('architecture-diagram').offsetHeight - margin.top - margin.bottom;
+                        
+                        // Create SVG container
+                        const svg = d3.select("#architecture-diagram")
+                            .append("svg")
+                            .attr("width", width + margin.left + margin.right)
+                            .attr("height", height + margin.top + margin.bottom)
+                            .append("g")
+                            .attr("transform", `translate(${margin.left},${margin.top})`);
+                        
+                        // Create tooltip div
+                        const tooltip = d3.select("body").append("div")
+                            .attr("class", "tooltip")
+                            .style("opacity", 0);
+                        
+                        // Create a hierarchy from the data
+                        const root = d3.hierarchy(architectureData);
+                        
+                        // Set up the tree layout
+                        const treeLayout = d3.tree().size([height, width]);
+                        
+                        // Assign the computed positions to the nodes
+                        treeLayout(root);
+                        
+                        // Define color scheme based on node type
+                        const colorScale = d3.scaleOrdinal()
+                            .domain(["server", "component", "process"])
+                            .range(["#3498db", "#2ecc71", "#9b59b6"]);
+                        
+                        // Center the diagram
+                        svg.attr("transform", `translate(${margin.left + width/8},${margin.top})`);
+                        
+                        // Add the links
+                        svg.selectAll(".link")
+                            .data(root.links())
+                            .enter()
+                            .append("path")
+                            .attr("class", "link")
+                            .attr("d", d => {
+                                return "M" + d.source.y + "," + d.source.x
+                                    + "C" + (d.source.y + d.target.y) / 2 + "," + d.source.x
+                                    + " " + (d.source.y + d.target.y) / 2 + "," + d.target.x
+                                    + " " + d.target.y + "," + d.target.x;
+                            })
+                            .style("stroke", "#999");
+                        
+                        // Add arrowheads to links
+                        svg.append("defs").selectAll("marker")
+                            .data(["arrow"])
+                            .enter().append("marker")
+                            .attr("id", d => d)
+                            .attr("viewBox", "0 -5 10 10")
+                            .attr("refX", 15)
+                            .attr("refY", 0)
+                            .attr("markerWidth", 6)
+                            .attr("markerHeight", 6)
+                            .attr("orient", "auto")
+                            .append("path")
+                            .attr("d", "M0,-5L10,0L0,5")
+                            .attr("class", "arrow");
+                        
+                        // Add the nodes
+                        const nodes = svg.selectAll(".node")
+                            .data(root.descendants())
+                            .enter()
+                            .append("g")
+                            .attr("class", "node")
+                            .attr("transform", d => `translate(${d.y},${d.x})`)
+                            .on("mouseover", function(event, d) {
+                                tooltip.transition()
+                                    .duration(200)
+                                    .style("opacity", .9);
+                                tooltip.html(`<strong>${d.data.name}</strong><br>${d.data.description || ""}`)
+                                    .style("left", (event.pageX + 15) + "px")
+                                    .style("top", (event.pageY - 10) + "px");
+                            })
+                            .on("mouseout", function() {
+                                tooltip.transition()
+                                    .duration(500)
+                                    .style("opacity", 0);
+                            })
+                            .on("click", function(event, d) {
+                                if (d.data.type === "server" || d.data.type === "component") {
+                                    // Toggle children on click for servers and components
+                                    if (d._children) {
+                                        d.children = d._children;
+                                        d._children = null;
+                                    } else if (d.children) {
+                                        d._children = d.children;
+                                        d.children = null;
+                                    }
+                                    update(d);
+                                }
+                            });
+                        
+                        // Add circles to nodes
+                        nodes.append("circle")
+                            .attr("r", d => d.data.type === "server" ? 10 : (d.data.type === "component" ? 8 : 5))
+                            .style("fill", d => colorScale(d.data.type))
+                            .style("stroke", d => d3.rgb(colorScale(d.data.type)).darker());
+                        
+                        // Add labels to nodes
+                        nodes.append("text")
+                            .attr("dy", ".35em")
+                            .attr("x", d => d.children ? -13 : 13)
+                            .style("text-anchor", d => d.children ? "end" : "start")
+                            .text(d => d.data.name);
+                        
+                        // Add server boundaries
+                        const serverNodes = root.descendants().filter(d => d.data.type === "server");
+                        
+                        serverNodes.forEach(server => {
+                            // Find all descendants of this server
+                            const descendants = server.descendants();
+                            
+                            // Calculate the bounding box
+                            const minX = d3.min(descendants, d => d.x) - 30;
+                            const maxX = d3.max(descendants, d => d.x) + 30;
+                            const minY = d3.min(descendants, d => d.y) - 30;
+                            const maxY = d3.max(descendants, d => d.y) + 150;
+                            
+                            // Add a rectangle around the server and its components
+                            svg.append("rect")
+                                .attr("x", minY)
+                                .attr("y", minX)
+                                .attr("width", maxY - minY)
+                                .attr("height", maxX - minX)
+                                .attr("rx", 15)
+                                .attr("ry", 15)
+                                .attr("class", "process-group")
+                                .style("stroke", d3.rgb(colorScale("server")).darker())
+                                .style("stroke-dasharray", "5,5")
+                                .style("fill", d3.rgb(colorScale("server")).brighter().brighter())
+                                .style("fill-opacity", 0.1);
+                                
+                            // Add server label at the top of the boundary
+                            svg.append("text")
+                                .attr("x", (minY + maxY) / 2)
+                                .attr("y", minX - 10)
+                                .attr("class", "process-label")
+                                .style("text-anchor", "middle")
+                                .style("fill", d3.rgb(colorScale("server")).darker())
+                                .text(server.data.name);
+                        });
+                        
+                        // Function to update the visualization when nodes are expanded/collapsed
+                        function update(source) {
+                            // Recalculate layout
+                            treeLayout(root);
+                            
+                            // Update links
+                            const links = svg.selectAll(".link")
+                                .data(root.links());
+                            
+                            links.enter()
+                                .append("path")
+                                .attr("class", "link")
+                                .merge(links)
+                                .transition()
+                                .duration(750)
+                                .attr("d", d => {
+                                    return "M" + d.source.y + "," + d.source.x
+                                        + "C" + (d.source.y + d.target.y) / 2 + "," + d.source.x
+                                        + " " + (d.source.y + d.target.y) / 2 + "," + d.target.x
+                                        + " " + d.target.y + "," + d.target.x;
+                                });
+                            
+                            links.exit().remove();
+                            
+                            // Update nodes
+                            const nodeUpdate = svg.selectAll(".node")
+                                .data(root.descendants(), d => d.id || (d.id = ++i));
+                            
+                            const nodeEnter = nodeUpdate.enter()
+                                .append("g")
+                                .attr("class", "node")
+                                .attr("transform", d => `translate(${source.y0 || source.y},${source.x0 || source.x})`)
+                                .on("mouseover", function(event, d) {
+                                    tooltip.transition()
+                                        .duration(200)
+                                        .style("opacity", .9);
+                                    tooltip.html(`<strong>${d.data.name}</strong><br>${d.data.description || ""}`)
+                                        .style("left", (event.pageX + 15) + "px")
+                                        .style("top", (event.pageY - 10) + "px");
+                                })
+                                .on("mouseout", function() {
+                                    tooltip.transition()
+                                        .duration(500)
+                                        .style("opacity", 0);
+                                })
+                                .on("click", function(event, d) {
+                                    if (d.data.type === "server" || d.data.type === "component") {
+                                        // Toggle children on click for servers and components
+                                        if (d._children) {
+                                            d.children = d._children;
+                                            d._children = null;
+                                        } else if (d.children) {
+                                            d._children = d.children;
+                                            d.children = null;
+                                        }
+                                        update(d);
+                                    }
+                                });
+                            
+                            nodeEnter.append("circle")
+                                .attr("r", 0)
+                                .style("fill", d => colorScale(d.data.type))
+                                .style("stroke", d => d3.rgb(colorScale(d.data.type)).darker());
+                            
+                            nodeEnter.append("text")
+                                .attr("dy", ".35em")
+                                .attr("x", d => d.children ? -13 : 13)
+                                .style("text-anchor", d => d.children ? "end" : "start")
+                                .text(d => d.data.name)
+                                .style("fill-opacity", 0);
+                            
+                            // Merge enter and update selections
+                            const nodeUpdateMerged = nodeEnter.merge(nodeUpdate);
+                            
+                            // Transition nodes to their new position
+                            nodeUpdateMerged.transition()
+                                .duration(750)
+                                .attr("transform", d => `translate(${d.y},${d.x})`);
+                            
+                            nodeUpdateMerged.select("circle")
+                                .transition()
+                                .duration(750)
+                                .attr("r", d => d.data.type === "server" ? 10 : (d.data.type === "component" ? 8 : 5));
+                            
+                            nodeUpdateMerged.select("text")
+                                .transition()
+                                .duration(750)
+                                .style("fill-opacity", 1);
+                            
+                            // Remove exiting nodes
+                            const nodeExit = nodeUpdateMerged.exit()
+                                .transition()
+                                .duration(750)
+                                .attr("transform", d => `translate(${source.y},${source.x})`)
+                                .remove();
+                            
+                            nodeExit.select("circle")
+                                .attr("r", 0);
+                            
+                            nodeExit.select("text")
+                                .style("fill-opacity", 0);
+                            
+                            // Store the old positions for transition
+                            root.descendants().forEach(d => {
+                                d.x0 = d.x;
+                                d.y0 = d.y;
+                            });
+                        }
+                        
+                        // Add a legend for the diagram
+                        const legend = svg.append("g")
+                            .attr("transform", `translate(${width - 200}, 20)`);
+                        
+                        const legendItems = [
+                            { type: "server", label: "Server" },
+                            { type: "component", label: "Component" },
+                            { type: "process", label: "Process" }
+                        ];
+                        
+                        legendItems.forEach((item, i) => {
+                            const legendItem = legend.append("g")
+                                .attr("transform", `translate(0, ${i * 25})`);
+                            
+                            legendItem.append("circle")
+                                .attr("r", item.type === "server" ? 8 : (item.type === "component" ? 6 : 4))
+                                .style("fill", colorScale(item.type))
+                                .style("stroke", d3.rgb(colorScale(item.type)).darker());
+                            
+                            legendItem.append("text")
+                                .attr("x", 15)
+                                .attr("y", 5)
+                                .text(item.label);
+                        });
+                        
+                        // Add note about interactivity
+                        svg.append("text")
+                            .attr("x", width / 2)
+                            .attr("y", height - 20)
+                            .attr("text-anchor", "middle")
+                            .style("font-style", "italic")
+                            .style("font-size", "12px")
+                            .text("Hover for details. Click on servers or components to expand/collapse.");
+                    });
+                </script>
+                
+                <p>
+                    The main components of the codebase include:
+                </p>
+                <ul>
+                    <li><code>Agent/</code> - Document processing pipeline and Phi-3 integration</li>
+                    <li><code>extractors/</code> - Document parsing modules for different file formats</li>
+                    <li><code>enrichers/</code> - Data enhancement modules (geocoding, patent data, etc.)</li>
+                    <li><code>models/</code> - Pydantic data models for validation</li>
+                    <li><code>api/</code> - Flask-based API for frontend data access</li>
+                    <li><code>public_html/</code> - Web interface and visualization components</li>
+                    <li><code>ipfs/</code> - IPFS integration utilities</li>
+                </ul>
+                
+                <h3 id="file-structure">Repository File Structure</h3>
+                <p>
+                    The 757Built repository is organized into several key directories with specific purposes. Understanding this structure will help you navigate and contribute to the codebase effectively.
+                </p>
+                
+                <div style="background-color: #f8f8f8; border: 1px solid #ddd; border-radius: 4px; padding: 15px; font-family: monospace; line-height: 1.4; overflow: auto; margin-bottom: 20px;">
+                    <pre style="margin: 0; white-space: pre-wrap; font-size: 14px;">
+757built.com/ (root project directory)
+├── .github/                    # CI/CD workflows and GitHub configurations
+├── .venv/                      # Python virtual environment (not tracked in git)
+├── 757built.com/               # Core application code
+│   ├── .github/                # Repository-specific GitHub configurations
+│   │   ├── utils/              # Helper functions for the agent
+│   │   │   ├── chunking.py     # Document text chunking for Phi-3
+│   │   │   ├── duplicate.py    # Duplicate detection algorithms
+│   │   │   ├── housekeeping.py # Cleanup and maintenance tasks
+│   │   │   ├── merger.py       # Merge results from multiple chunks
+│   │   │   └── prompt_hot_reload.py # Dynamic prompt template loading
+│   │   ├── .env                # Environment variables (template)
+│   │   ├── agent.py            # Main agent logic
+│   │   ├── agent_intruct.py    # Phi-3 instruction formatting
+│   │   ├── deploy.sh           # Deployment script
+│   │   ├── document-processor.service # Systemd service definition
+│   │   ├── document_hasher_with_api.py # Document hashing and API integration
+│   │   ├── enhanced_document_processor.py # Main document processing pipeline
+│   │   ├── job_queue.py        # Redis queue management
+│   │   ├── phi3-document-processor.service # Phi-3 specific service
+│   │   ├── phi3_wrapper.py     # Wrapper for Phi-3 model
+│   │   ├── README.md           # Agent documentation
+│   │   ├── README_ENHANCED.md  # Enhanced processor documentation
+│   │   ├── requirements.txt    # Python dependencies
+│   │   ├── test_phi3.py        # Test suite for Phi-3 integration
+│   │   └── upload_to_db.py     # Database upload utilities
+│   └── setup-server1.sh        # Server 1 setup script
+├── ingestion/                  # Document ingestion utilities
+├── ipfs/                       # IPFS integration components
+├── ops/                        # Operational scripts and infrastructure
+│   ├── Local/                  # Local development configurations
+│   ├── server1/                # Server 1 (Processing) configuration
+│   ├── server250/              # Server 250 (Web) configuration
+│   ├── quick_setup.md          # Quick start guide
+│   ├── server_deployment_guide.md # Comprehensive deployment instructions
+│   └── server_test_instructions.md # Testing procedures
+├── About.html                  # This documentation page
+└── import_requirements.txt     # Global dependencies
+</pre>
+                </div>
+                
+                <h3 id="key-components">Key Components Explained</h3>
+                
+                <h4>Processing Pipeline <code>(757built.com/Agent/)</code></h4>
+                <p>
+                    The core document processing functionality lives in the Agent directory:
+                </p>
+                <ul>
+                    <li><strong><code>enhanced_document_processor.py</code></strong>: The main processing pipeline that handles document extraction, chunking, Phi-3 analysis, and result merging. This is the primary entry point for document processing.</li>
+                    <li><strong><code>phi3_wrapper.py</code></strong>: Provides a clean API for interacting with the Phi-3 language model, handling prompt formatting, token management, and response parsing.</li>
+                    <li><strong><code>job_queue.py</code></strong>: Implements Redis-based job queuing for asynchronous document processing, allowing the system to scale across multiple worker instances.</li>
+                    <li><strong><code>utils/</code></strong>: Contains specialized utilities:
+                        <ul>
+                            <li><code>chunking.py</code>: Splits large documents into overlapping chunks to fit within Phi-3's context window.</li>
+                            <li><code>merger.py</code>: Intelligently combines results from multiple chunks into a coherent document representation.</li>
+                            <li><code>duplicate.py</code>: Detects and prevents processing duplicate documents, saving processing time and storage space.</li>
+                        </ul>
+                    </li>
+                </ul>
+                
+                <h4>Infrastructure & Operations <code>(ops/)</code></h4>
+                <p>
+                    The ops directory contains everything needed to deploy and manage the two-server architecture:
+                </p>
+                <ul>
+                    <li><strong><code>server1/</code></strong>: Configuration files and setup scripts for the Processing Server (Server1), which runs the Phi-3 model, document processor, and IPFS storage.</li>
+                    <li><strong><code>server250/</code></strong>: Configuration files and setup scripts for the Web Server (Server250), which hosts the public-facing website, API, and IPFS gateway proxy.</li>
+                    <li><strong><code>server_deployment_guide.md</code></strong>: Comprehensive documentation for setting up both servers from scratch, including security hardening, private swarm key generation, and firewall rules.</li>
+                </ul>
+                
+                <h4>CI/CD & Deployment <code>(.github/)</code></h4>
+                <p>
+                    Continuous integration and deployment is handled through GitHub Actions:
+                </p>
+                <ul>
+                    <li><strong><code>workflows/ci-cd.yml</code></strong>: Defines the automated testing and deployment pipeline that runs on each push to the main branch.</li>
+                    <li><strong><code>deploy.sh</code></strong>: Server-side script that receives updates from GitHub and applies them to the appropriate server.</li>
+                </ul>
+                
+                <h4>Web Interface <code>(public_html/)</code></h4>
+                <p>
+                    Located inside the 757built.com directory, the public_html folder contains the user interface components:
+                </p>
+                <ul>
+                    <li><strong><code>git-graph-demo.html</code></strong>: Interactive visualization of entity relationships using GitGraph.js.</li>
+                    <li><strong><code>calendar.html</code></strong>: Calendar view showing project timelines and events.</li>
+                    <li><strong><code>Adminator-admin-dashboard-master/</code></strong>: Base template providing the common UI elements and styling.</li>
+                </ul>
+                
+                <h3 id="development">Setting Up Your Development Environment</h3>
+                <pre>
+# Clone the repository
+git clone https://github.com/j0bv/757built.com.git
+cd 757built.com
+
+# Install dependencies
+pip install -r Agent/requirements.txt
+
+# Download the Phi-3 model
+wget https://huggingface.co/microsoft/phi-3-mini-4k-instruct-gguf/resolve/main/phi-3-mini-4k-instruct-q3_k_l.gguf -O phi3-q3_k_l.gguf
+
+# Install IPFS
+# On Windows: Download from https://dist.ipfs.tech/
+# On Linux: apt install kubo
+
+# Install Redis
+# On Windows: Use Memurai
+# On Linux: apt install redis-server
+
+# Start services for development
+redis-server
+ipfs daemon
+</pre>
+                
+                <h3 id="core-workflow">Core Workflow: How Documents Become Knowledge</h3>
+                <p>
+                    Understanding the document processing pipeline is essential for contributors:
+                </p>
+                <ol>
+                    <li><strong>Ingestion:</strong> Documents are added through the API or monitoring directories</li>
+                    <li><strong>Text Extraction:</strong> The <code>extractors</code> package pulls text from various file formats</li>
+                    <li><strong>Text Processing:</strong> Documents are chunked and analyzed with the Phi-3 model</li>
+                    <li><strong>Data Enrichment:</strong> Location data is geocoded, patent information is supplemented</li>
+                    <li><strong>Validation:</strong> Pydantic models ensure data integrity</li>
+                    <li><strong>Storage:</strong> Processed data is stored in IPFS with permanent CIDs</li>
+                    <li><strong>Graph Integration:</strong> Entities and relationships are added to the knowledge graph</li>
+                    <li><strong>API Exposure:</strong> Data becomes available through the web API</li>
+                </ol>
+                
+                <h3 id="new-doc-types">Adding New Document Types</h3>
+                <p>
+                    To support a new document format:
+                </p>
+                <ol>
+                    <li>Create a new extractor in <code>extractors/</code> following the pattern in existing modules</li>
+                    <li>Implement the <code>extract_text(file_path)</code> method</li>
+                    <li>Register your extractor in <code>extractors/__init__.py</code></li>
+                </ol>
+                
+                <h3 id="phi3-prompt">Extending the Phi-3 Prompt</h3>
+                <p>
+                    The system's document understanding capabilities are defined by prompt templates in <code>prompts/</code>. To improve entity extraction:
+                </p>
+                <ol>
+                    <li>Create a new version (e.g., <code>extract_v3.md</code>)</li>
+                    <li>Modify the instructions and schema to capture additional information</li>
+                    <li>Test with sample documents</li>
+                    <li>Update <code>PROMPT_VERSION</code> environment variable or pass it as a CLI argument</li>
+                </ol>
+                
+                <h3 id="web-interface">Contributing to the Web Interface</h3>
+                <p>
+                    The frontend is built with modern web standards and includes:
+                </p>
+                <ul>
+                    <li>Knowledge graph visualization using GitGraph.js</li>
+                    <li>Calendar integration for project timelines</li>
+                    <li>Map visualization for geographic data</li>
+                </ul>
+                <p>
+                    To contribute to the frontend, explore the existing components in <code>public_html/</code> and ensure your changes maintain the same pattern and styling.
+                </p>
+                
+                <h3 id="testing">Testing Your Changes</h3>
+                <pre>
+# Run a single document test
+python Agent/enhanced_document_processor.py --model-path /path/to/phi3-q3_k_l.gguf --single-file /path/to/test_document.pdf
+
+# Run the processor in queue mode
+python Agent/enhanced_document_processor.py --model-path /path/to/phi3-q3_k_l.gguf --queue
+
+# Run the API for frontend testing
+cd api
+python api_server.py
+</pre>
+                
+                <h3 id="deployment">Deployment Pipeline</h3>
+                <p>
+                    The repository includes a CI/CD workflow that:
+                </p>
+                <ol>
+                    <li>Builds and tests code on each push to the main branch</li>
+                    <li>Deploys web components to Server250</li>
+                    <li>Updates processor components on Server1</li>
+                </ol>
+                <p>
+                    To contribute effectively, ensure your changes pass all tests and don't break the deployment pipeline.
+                </p>
+            </div>
+
+            <div class="section">
+                <h2 id="part3">Part 3: Technical Research Report - Wider Implications and Innovations</h2>
+                
+                <div id="abstract" class="abstract">
+                    <p><strong>Abstract:</strong> This paper examines the architectural and technical innovations of the 757Built platform in creating a decentralized, AI-enhanced system for public records analysis. We present a two-server architecture utilizing Phi-3 language models, IPFS storage, and knowledge graph technology to transform isolated documents into an interconnected computational knowledge system. Key contributions include solutions to context length limitations in document analysis, content-addressed storage for journalistic source preservation, and graph-based visualization of regional development patterns. We conclude with an analysis of how this architecture can be applied to broader civic technology challenges and outline areas for future research.</p>
+                    
+                    <div class="keywords">
+                        <strong>Keywords:</strong> 
+                        <span>decentralized storage</span>
+                        <span>knowledge graphs</span>
+                        <span>AI document analysis</span>
+                        <span>civic technology</span>
+                        <span>IPFS</span>
+                        <span>computational journalism</span>
+                    </div>
+                </div>
+                
+                <h3 id="introduction" class="research-section">1. Introduction</h3>
+                <p>
+                    Public records about regional development, while technically accessible, often remain functionally opaque due to their volume, complexity, and distribution across multiple sources. This opacity creates significant information asymmetry between institutions with resources to analyze these documents and the general public, undermining principles of democratic oversight and informed civic participation.
+                </p>
+                <p>
+                    The 757Built platform addresses this challenge through a novel integration of language model-based document analysis, content-addressed storage, and graph-based data visualization. Unlike previous approaches that focus on document retrieval or basic metadata extraction, our system creates a computational knowledge layer that enables relationship-based reasoning about development patterns across the Virginia 757 region.
+                </p>
+                <p>
+                    This paper describes the technical architecture of the 757Built system, analyzes its key innovations, and discusses both current limitations and future research directions. We organize our discussion around three core contributions: (1) decentralized information preservation, (2) AI-enhanced document understanding, and (3) graph-based civic knowledge representation.
+                </p>
+                
+                <h3 id="decentralized" class="research-section">2. Decentralized Information Preservation in Public Interest Research</h3>
+                <p>
+                    The 757Built platform represents a significant advancement in the decentralized preservation of public knowledge. By leveraging IPFS (InterPlanetary File System), the platform creates content-addressed, immutable records of documents rather than traditional location-addressed storage. This architectural decision solves several critical problems in public records research:
+                </p>
+                <ol>
+                    <li><strong>Link Rot and Content Drift:</strong> Public records often disappear or change over time, undermining journalistic and research efforts. Content-addressed storage ensures that once a document is added to the system, its exact content remains permanently accessible by its cryptographic hash, regardless of changes to the original source.</li>
+                    <li><strong>Censorship Resilience:</strong> Because IPFS distributes content across a network rather than centralizing it on a single server, the platform creates natural resistance to attempts to remove or suppress public interest documents. This is particularly valuable for preservation of controversial development records that stakeholders might later wish to obscure.</li>
+                    <li><strong>Verifiable Provenance:</strong> The content-addressing system creates cryptographic guarantees of document integrity, allowing researchers to verify that records haven't been altered.</li>
+                </ol>
+                
+                <h3 id="cognitive" class="research-section">Cognitive Augmentation Through AI-Enhanced Document Analysis</h3>
+                <p>
+                    The integration of the Phi-3 language model into the document processing pipeline represents a novel approach to augmenting human cognitive capabilities in complex research tasks. The technical implementation addresses several challenges: <span class="citation">[Nature, 2023]</span>
+                </p>
+                <ol>
+                    <li><strong>Context Length Limitations:</strong> By implementing an intelligent document chunking system with overlap, the platform overcomes the inherent token limitations of language models. This approach ensures that contextual information spanning page boundaries isn't lost during processing.</li>
+                    <li><strong>Structured Knowledge Extraction:</strong> Rather than producing unstructured text summaries, the system employs prompt engineering and pydantic validation to transform documents into structured, machine-readable knowledge. This structured approach enables computational reasoning about the data that would be impossible with traditional text analysis.</li>
+                    <li><strong>Computational Investigative Methods:</strong> By automatically identifying and cross-referencing entities and relationships across documents, the system enables new forms of computational journalism and public interest research that would be impossible through manual methods.</li>
+                </ol>
+                
+                <h3 id="knowledge-graph" class="research-section">Local Knowledge Graph as Digital Commons</h3>
+                <p>
+                    Perhaps the most significant innovation of the 757Built platform is its creation of a public knowledge graph as a digital commons—an information resource that is shared, maintained, and accessible to all. This approach has important technical and societal implications: <span class="citation">[Stanford, 2021]</span>
+                </p>
+                <ol>
+                    <li><strong>Graph-Based Information Architecture:</strong> By modeling information as a connected graph rather than isolated documents, the system enables understanding of complex relationships in regional development that would otherwise remain obscured.</li>
+                    <li><strong>Temporal Analysis of Development Patterns:</strong> The inclusion of chronological data enables temporal analysis of development patterns, revealing how projects, funding, and stakeholders evolve over time.</li>
+                    <li><strong>Geographic Contextualization:</strong> Automatic geocoding and spatial reference of development projects creates new possibilities for understanding the geographic distribution and impact of economic activity.</li>
+                    <li><strong>Democratization of Regional Development Knowledge:</strong> By making complex document analysis accessible to non-experts, the platform reduces information asymmetry between developers, officials, and the public.</li>
+                </ol>
+                
+                <h3 id="architecture-multi" class="research-section">Scalable Multi-Server Architecture for Distributed Analysis</h3>
+                <p>
+                    The platform's architecture solves several technical challenges in distributed document processing: <span class="citation">[Knight Lab, 2022]</span>
+                </p>
+                <ol>
+                    <li><strong>Computation-Storage Separation:</strong> By separating the compute-intensive processing node (Server1) from the web-facing node (Server250), the system achieves better resource utilization and security isolation.</li>
+                    <li><strong>Redis-Based Job Queueing:</strong> The implementation of a Redis-based document queue enables scalable, asynchronous processing across multiple nodes with automatic load balancing.</li>
+                    <li><strong>Stateless Processing Pipeline:</strong> The document processor is designed as a stateless component that can be horizontally scaled across multiple servers for increased throughput.</li>
+                    <li><strong>Eventual Consistency Model:</strong> Using IPFS as the primary data store creates an eventually consistent system where processed documents propagate through the network without requiring tight coupling between components.</li>
+                </ol>
+                
+                <h3 id="challenges" class="research-section">Technical Challenges and Future Research Directions</h3>
+                <p>
+                    The current implementation exposes several areas for future technical research:
+                </p>
+                <ol>
+                    <li><strong>Private Data Handling:</strong> Extending the platform to handle private or sensitive documents while maintaining the security guarantees would require implementing encrypted IPFS storage with access control layers.</li>
+                    <li><strong>Graph Neural Networks for Pattern Recognition:</strong> Applying GNNs to the knowledge graph could enable automatic detection of unusual development patterns or conflicts of interest that might indicate corruption.</li>
+                    <li><strong>Cross-Regional Linking:</strong> Expanding beyond the 757 area to interconnect with similar systems in other regions could create a national map of development activity and stakeholder networks.</li>
+                    <li><strong>Specialized LLM Fine-Tuning:</strong> Creating a version of Phi-3 fine-tuned specifically on development documents and patterns could significantly increase extraction accuracy.</li>
+                    <li><strong>Temporal Graph Reasoning:</strong> Developing algorithms to reason about causality and temporal patterns in the knowledge graph could enable predictive analytics about development trajectories.</li>
+                </ol>
+                
+                <h3 id="implications" class="research-section">Implications for Civic Technology</h3>
+                <p>
+                    Beyond its technical innovations, 757Built represents a new model for civic technology that merges decentralized web technology with AI-enhanced research tools. This model addresses significant challenges in civic participation:
+                </p>
+                <ol>
+                    <li><strong>Information Asymmetry:</strong> By automatically analyzing and contextualizing complex development documents, the platform reduces the expertise required for meaningful civic participation.</li>
+                    <li><strong>Institutional Memory:</strong> The permanent storage model creates institutional memory that persists beyond electoral cycles and administrative changes.</li>
+                    <li><strong>Cross-Jurisdictional Analysis:</strong> By tracking development across municipal boundaries, the system reveals regional patterns that might otherwise remain hidden within separate administrative siloes.</li>
+                    <li><strong>Evidence-Based Civic Discourse:</strong> The factual, data-driven nature of the platform has the potential to ground civic discourse in shared evidence rather than competing narratives.</li>
+                </ol>
+                
+                <div class="highlight">
+                    <strong>Technical Impact Summary:</strong> The 757Built platform demonstrates how combining language models, decentralized storage, and knowledge graph technology can transform public records from isolated documents into an interconnected, computational knowledge system. This transformation enables new forms of civic participation, journalistic investigation, and public oversight that would be impossible through traditional research methods.
+                </div>
+
+                <div class="diagram">
+                    <svg viewBox="0 0 800 160" xmlns="http://www.w3.org/2000/svg">
+                        <!-- Ingestion -->
+                        <rect x="10" y="50" width="120" height="40" rx="8" fill="#3498db"/>
+                        <text x="70" y="75" fill="#fff" font-size="12" text-anchor="middle">Ingestion</text>
+                        <!-- Arrow -->
+                        <polygon points="130,70 150,70 150,75 160,65 150,55 150,60 130,60" fill="#333"/>
+                        <!-- Extractor -->
+                        <rect x="160" y="50" width="120" height="40" rx="8" fill="#1abc9c"/>
+                        <text x="220" y="75" fill="#fff" font-size="12" text-anchor="middle">Extractor</text>
+                        <!-- Arrow -->
+                        <polygon points="280,70 300,70 300,75 310,65 300,55 300,60 280,60" fill="#333"/>
+                        <!-- Phi-3 -->
+                        <rect x="310" y="50" width="120" height="40" rx="8" fill="#9b59b6"/>
+                        <text x="370" y="75" fill="#fff" font-size="12" text-anchor="middle">Phi-3 LLM</text>
+                        <!-- Arrow -->
+                        <polygon points="430,70 450,70 450,75 460,65 450,55 450,60 430,60" fill="#333"/>
+                        <!-- IPFS -->
+                        <rect x="460" y="50" width="120" height="40" rx="8" fill="#e67e22"/>
+                        <text x="520" y="75" fill="#fff" font-size="12" text-anchor="middle">IPFS</text>
+                        <!-- Arrow -->
+                        <polygon points="580,70 600,70 600,75 610,65 600,55 600,60 580,60" fill="#333"/>
+                        <!-- Knowledge Graph -->
+                        <rect x="610" y="50" width="160" height="40" rx="8" fill="#f39c12"/>
+                        <text x="690" y="75" fill="#fff" font-size="12" text-anchor="middle">Knowledge Graph</text>
+                    </svg>
+                    <p class="citation">Figure 1 – Document flow from ingestion through analysis to the public knowledge graph.</p>
+                </div>
+            </div>
+
+            <footer>
+                <p>757Built Knowledge Platform - Connecting community development through advanced document intelligence.</p>
+                <p>Repository: <a href="https://github.com/j0bv/757built.com">https://github.com/j0bv/757built.com</a></p>
+                <div id="references" style="margin-top:30px; text-align:left; max-width:900px; margin-left:auto; margin-right:auto;">
+                    <h3>References</h3>
+                    <ul style="font-size:0.95em;">
+                        <li>ICIJ. "How the ICIJ Used Decentralized Storage for the Panama Papers." 2017.</li>
+                        <li>ICIJ. "Panama Papers Interactive Graph." 2017. Available at: https://projects.icij.org/panama-papers</li>
+                        <li>757Built Codebase. <code>git-graph-demo.html</code> – Example implementation of interactive graph visualization using GitGraph.js.</li>
+                        <li>757Built Codebase. <code>Agent/enhanced_document_processor.py</code> – Implementation of the document text extraction and Phi-3 processing with structured schema.</li>
+                        <li>Knight Foundation. "Decentralized Web and Journalism: Opportunities and Challenges." 2021.</li>
+                        <li>World Bank. "Knowledge Graphs for Development." 2020.</li>
+                        <li>Stanford. "Knowledge Graphs: Past, Present, and Future." 2021.</li>
+                        <li>Knight Lab. "AI and Document Analysis in Newsrooms." 2022.</li>
+                        <li>Nature. "AI for Document Understanding." 2023.</li>
+                        <li>UNESCO Open Science Report, 2021.</li>
+                        <li>Human Rights Watch, 2020.</li>
+                        <li>Wikimedia Foundation, 2020.</li>
+                        <li>Bellingcat, 2022.</li>
+                    </ul>
+                </div>
+            </footer>
+        </div>
+    </div>
+</body>
+</html>

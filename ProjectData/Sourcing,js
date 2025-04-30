@@ -17,27 +17,27 @@ class DataSourcer {
   }
 
   /**
-   * Web scrape data using Playwright browser automation
-   * @param {string} url - URL to scrape
+   * Web source data using Playwright browser automation
+   * @param {string} url - URL to source
    * @param {Function} extractorFn - Function to extract data from the page
    * @returns {Array|Object} - Extracted and formatted data
    */
-  async scrapeWebPage(url, extractorFn) {
+  async sourceWebPage(url, extractorFn) {
     const browser = await playwright.chromium.launch();
     const context = await browser.newContext();
     const page = await context.newPage();
     
     try {
-      console.log(`Scraping ${url}...`);
+      console.log(`sourcing ${url}...`);
       await page.goto(url, { waitUntil: 'domcontentloaded' });
       
       // Execute the extractor function which should return data in the correct format
       const data = await extractorFn(page);
       
-      console.log(`Successfully scraped data from ${url}`);
+      console.log(`Successfully sourced data from ${url}`);
       return data;
     } catch (error) {
-      console.error(`Error scraping ${url}:`, error);
+      console.error(`Error sourcing ${url}:`, error);
       return null;
     } finally {
       await browser.close();
@@ -46,23 +46,23 @@ class DataSourcer {
 
   /**
    * Extract data from a website using Cheerio (for simpler pages)
-   * @param {string} url - URL to scrape
+   * @param {string} url - URL to source
    * @param {Function} extractorFn - Function that takes a Cheerio instance and returns extracted data
    * @returns {Array|Object} - Extracted and formatted data
    */
-  async scrapeWithCheerio(url, extractorFn) {
+  async sourceWithCheerio(url, extractorFn) {
     try {
-      console.log(`Scraping ${url} with Cheerio...`);
+      console.log(`sourcing ${url} with Cheerio...`);
       const response = await axios.get(url);
       const $ = cheerio.load(response.data);
       
       // Execute extractor function with Cheerio instance
       const data = extractorFn($);
       
-      console.log(`Successfully scraped data from ${url} using Cheerio`);
+      console.log(`Successfully sourced data from ${url} using Cheerio`);
       return data;
     } catch (error) {
-      console.error(`Error scraping ${url} with Cheerio:`, error);
+      console.error(`Error sourcing ${url} with Cheerio:`, error);
       return null;
     }
   }
@@ -130,6 +130,7 @@ class DataSourcer {
    * @param {string} query - Search query
    * @param {number} maxResults - Maximum number of results to return
    * @returns {Array} - Array of search result objects
+   * 
    */
   async searchPrimaryDocuments(query, maxResults = 10) {
     const browser = await playwright.chromium.launch();
@@ -629,7 +630,7 @@ async function collectHamptonRoadsPrimaryDocuments(options = {}) {
   
   // Process planning documents
   for (const docSource of HamptonRoadsPrimarySources.planningDocuments) {
-    const data = await sourcer.scrapeWebPage(docSource.url, docSource.extractor);
+    const data = await sourcer.sourceWebPage(docSource.url, docSource.extractor);
     if (data && data.length > 0) {
       collectedData.planningDocuments = collectedData.planningDocuments.concat(data);
     }
@@ -637,7 +638,7 @@ async function collectHamptonRoadsPrimaryDocuments(options = {}) {
   
   // Process economic development reports
   for (const reportSource of HamptonRoadsPrimarySources.economicDevelopment) {
-    const data = await sourcer.scrapeWebPage(reportSource.url, reportSource.extractor);
+    const data = await sourcer.sourceWebPage(reportSource.url, reportSource.extractor);
     if (data && data.length > 0) {
       collectedData.economicReports = collectedData.economicReports.concat(data);
     }

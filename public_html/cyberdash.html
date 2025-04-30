@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <meta name="theme-color" content="#000000">
+    <meta name="description" content="757Built - Hampton Roads Development Intelligence">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="orientation" content="landscape">
+    
+    <title>757Built Cyber Dashboard</title>
+    
+    <!-- PWA Assets -->
+    <link rel="manifest" href="manifest.webmanifest">
+    <link rel="icon" type="image/png" href="assets/icon-192.png">
+    <link rel="apple-touch-icon" href="assets/icon-192.png">
+
+    <!-- Fonts -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/firacode@6.2.0/distr/fira_code.css">
+    
+    <!-- Core styles -->
+    <link rel="stylesheet" href="assets/dashboard.css">
+    <link rel="stylesheet" href="src/assets/css/main.css">
+    <link rel="stylesheet" href="src/assets/css/keyboard.css">
+    <link rel="stylesheet" href="src/assets/css/media_player.css">
+    
+    <!-- Widget styles -->
+    <link rel="stylesheet" href="src/assets/css/mod_clock.css">
+    <link rel="stylesheet" href="src/assets/css/mod_toplist.css">
+    <link rel="stylesheet" href="src/assets/css/mod_netstat.css">
+    <link rel="stylesheet" href="src/assets/css/mod_globe.css">
+    <link rel="stylesheet" href="src/assets/css/mod_cpuinfo.css">
+    <link rel="stylesheet" href="src/assets/css/mod_filesystem.css">
+    
+    <!-- Fallback styles for browsers without CSS Grid -->
+    <style>
+        @supports not (display: grid) {
+            .wrapper {
+                display: flex;
+                flex-wrap: wrap;
+            }
+            .wrapper > div {
+                flex: 1 1 300px;
+                margin: 10px;
+            }
+        }
+        
+        /* Force landscape orientation */
+        @media screen and (orientation: portrait) {
+            #rotatePrompt {
+                display: flex !important;
+            }
+        }
+        
+        /* Accessibility enhancement: focus indicators */
+        :focus {
+            outline: 2px solid var(--neon-blue);
+            outline-offset: 2px;
+        }
+        
+        /* Reduced motion settings */
+        @media (prefers-reduced-motion: reduce) {
+            * {
+                animation-duration: 0.001ms !important;
+                animation-iteration-count: 1 !important;
+                transition-duration: 0.001ms !important;
+            }
+        }
+    </style>
+</head>
+<body data-theme="dark" class="cyberdash">
+    <!-- Rotate device prompt -->
+    <div id="rotatePrompt" style="display:none;position:fixed;inset:0;z-index:1000;background:#000a;color:#fff;align-items:center;justify-content:center;font-size:2rem;text-align:center;">
+        <div>
+            <i class="fas fa-sync fa-spin" style="font-size:3rem;margin-bottom:1rem;"></i>
+            <p>Please rotate your device to landscape mode for optimal experience</p>
+        </div>
+    </div>
+
+    <!-- Main grid layout for dashboard -->
+    <div class="wrapper">
+        <!-- 1. System clock and status (top-left) -->
+        <div class="mod_column" id="mod_clockContainer">
+            <h1>757<span>BUILT</span></h1>
+            <div id="mod_clock"></div>
+            <div id="systemStats">
+                <div class="stat" aria-live="polite">
+                    <span class="label">PROJECTS</span>
+                    <span class="value" id="projectCount">--</span>
+                </div>
+                <div class="stat" aria-live="polite">
+                    <span class="label">ENTITIES</span>
+                    <span class="value" id="entityCount">--</span>
+                </div>
+                <div class="stat" aria-live="polite">
+                    <span class="label">ACTIVE</span>
+                    <span class="value" id="activeCount">--</span>
+                </div>
+            </div>
+        </div>
+        
+        <!-- 2. Main terminal / data table (center-left) -->
+        <div id="mod_toplist" class="mod_toplist">
+            <p class="mod_toplist_title">PROJECT TERMINAL</p>
+            <table id="mod_toplist_table">
+                <thead>
+                    <tr>
+                        <th>PROJECT</th>
+                        <th>LOCALITY</th>
+                        <th>STATUS</th>
+                        <th>FUNDING</th>
+                    </tr>
+                </thead>
+                <tbody id="project-table-body">
+                    <tr><td colspan="4" class="loading">Loading project data...</td></tr>
+                </tbody>
+            </table>
+        </div>
+        
+        <!-- 3. Process Monitor / Timeline (top-center) -->
+        <div id="mod_cpuinfo">
+            <div class="mod_cpuinfo_title">DEVELOPMENT TIMELINE</div>
+            <div id="timeline-chart" aria-label="Timeline of project development activities">
+                <!-- Timeline will be rendered here via JavaScript -->
+                <div class="loading-indicator">
+                    <div class="spinner"></div>
+                    <span>Loading timeline data...</span>
+                </div>
+            </div>
+        </div>
+        
+        <!-- 4. Network Monitor / Connection Graph (top-right) -->
+        <div id="mod_netstat">
+            <div class="mod_netstat_title">NETWORK GRAPH</div>
+            <div id="network-graph" aria-label="Network visualization of project connections">
+                <!-- Graph will be rendered here -->
+                <div class="loading-indicator">
+                    <div class="spinner"></div>
+                    <span>Loading relationship data...</span>
+                </div>
+            </div>
+        </div>
+        
+        <!-- 5. CPU/Memory Monitor / Funding Metrics (right) -->
+        <div id="mod_ramwatcher">
+            <div class="mod_ramwatcher_title">FUNDING ALLOCATION</div>
+            <div id="funding-gauges"></div>
+            <div class="mod_ramwatcher_bars">
+                <div class="mod_ramwatcher_bar_container">
+                    <p>Federal</p>
+                    <div class="mod_ramwatcher_bar">
+                        <div id="federal-alloc" style="width: 45%"></div>
+                    </div>
+                    <p>45%</p>
+                </div>
+                <div class="mod_ramwatcher_bar_container">
+                    <p>State</p>
+                    <div class="mod_ramwatcher_bar">
+                        <div id="state-alloc" style="width: 28%"></div>
+                    </div>
+                    <p>28%</p>
+                </div>
+                <div class="mod_ramwatcher_bar_container">
+                    <p>Private</p>
+                    <div class="mod_ramwatcher_bar">
+                        <div id="private-alloc" style="width: 27%"></div>
+                    </div>
+                    <p>27%</p>
+                </div>
+            </div>
+        </div>
+        
+        <!-- 6. File Browser / Document Library (middle-right) -->
+        <div id="mod_hardwareInspector">
+            <div id="mod_hardwareInspector_inner">
+                <div id="mod_hardwareInspector_title">DOCUMENT LIBRARY</div>
+                <div id="document-library">
+                    <ul class="document-list" aria-label="Document categories">
+                        <li tabindex="0"><i class="fas fa-project-diagram"></i> Projects</li>
+                        <li tabindex="0"><i class="fas fa-flask"></i> Research</li>
+                        <li tabindex="0"><i class="fas fa-file-contract"></i> Patents</li>
+                        <li tabindex="0"><i class="fas fa-users"></i> Organizations</li>
+                        <li tabindex="0"><i class="fas fa-dollar-sign"></i> Funding</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+        
+        <!-- 7. On-screen Keyboard (bottom) -->
+        <div id="keyboard">
+            <!-- Keyboard will be injected here by keyboard.class.js -->
+        </div>
+        
+        <!-- 8. Quick Launch / Project Shortcuts (bottom-left) -->
+        <div id="shortcut-dock">
+            <div id="mod_dock_title">SHORTCUTS</div>
+            <div class="shortcut-icons">
+                <button aria-label="Search projects" class="shortcut-icon">
+                    <i class="fas fa-search"></i>
+                </button>
+                <button aria-label="Map view" class="shortcut-icon">
+                    <i class="fas fa-map-marked-alt"></i>
+                </button>
+                <button aria-label="Media player" class="shortcut-icon" id="openMediaPlayer">
+                    <i class="fas fa-play-circle"></i>
+                </button>
+                <button aria-label="Settings" class="shortcut-icon">
+                    <i class="fas fa-cog"></i>
+                </button>
+                <button aria-label="Help" class="shortcut-icon">
+                    <i class="fas fa-question-circle"></i>
+                </button>
+            </div>
+        </div>
+        
+        <!-- 9. System Monitor / Map Mini-view (left sidebar) -->
+        <div id="mod_globe">
+            <div id="mod_globe_title">HR MAP</div>
+            <div id="mod_globe_innercontainer">
+                <div id="dashboard-map"></div>
+                <div id="dashboard-globe"></div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Media Player Component (hidden initially) -->
+    <div id="mediaPlayer" style="display:none">
+        <div id="mediaPlayer_header">
+            <span>Media Player</span>
+            <div class="media_close_button" id="closeMediaPlayer">×</div>
+        </div>
+        <div id="mediaPlayer_body">
+            <div class="media_album_art">
+                <i class="fas fa-music fa-5x"></i>
+            </div>
+            <div class="media_controls">
+                <div class="media_title">Hampton Roads Innovation Audio Tour</div>
+                <div class="media_artist">757Built Curated</div>
+                <div class="media_progress">
+                    <div class="media_time_current">0:00</div>
+                    <div class="media_progress_bar">
+                        <div class="media_progress_current"></div>
+                    </div>
+                    <div class="media_time_total">5:30</div>
+                </div>
+                <div class="media_buttons">
+                    <button class="media_previous" aria-label="Previous track"><i class="fas fa-step-backward"></i></button>
+                    <button class="media_play_pause" aria-label="Play or pause track"><i class="fas fa-play"></i></button>
+                    <button class="media_next" aria-label="Next track"><i class="fas fa-step-forward"></i></button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Register service worker -->
+    <script>
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('/sw.js');
+        }
+        
+        // Check orientation
+        function checkOrientation() {
+            if (window.matchMedia('(orientation: portrait)').matches) {
+                document.getElementById('rotatePrompt').style.display = 'flex';
+            } else {
+                document.getElementById('rotatePrompt').style.display = 'none';
+            }
+        }
+        window.addEventListener('orientationchange', checkOrientation);
+        window.addEventListener('load', checkOrientation);
+    </script>
+
+    <!-- Core libraries -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://unpkg.com/globe.gl@2.34.11/dist/globe.gl.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/d3@7"></script>
+    
+    <!-- Component classes from original eDEX UI -->
+    <script src="src/classes/clock.class.js"></script>
+    <script src="src/classes/mediaPlayer.class.js"></script>
+    <script src="src/classes/keyboard.class.js"></script>
+    <script src="src/classes/locationGlobe.class.js"></script>
+    
+    <!-- Our custom code -->
+    <script src="src/cyberdash.js" type="module"></script>
+</body>
+</html>
