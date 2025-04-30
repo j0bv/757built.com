@@ -1,0 +1,79 @@
+# Edge Mapping - Maps free-text relationships to canonical EdgeType values
+# Used by EnhancedDocumentProcessor to normalize edge types extracted from text
+
+# Format: "text relation": ENUM_NAME
+
+# Derivation/Lineage relations
+derives from: DERIVES_FROM
+is derived from: DERIVES_FROM
+based on: DERIVES_FROM
+originated from: DERIVES_FROM
+builds upon: DERIVES_FROM
+implements: IMPLEMENTS
+is an implementation of: IMPLEMENTS
+influenced: INFLUENCED
+was influenced by: INFLUENCED
+supersedes: SUPERSEDES
+succeeds: SUPERSEDES
+replaces: SUPERSEDES
+newer version of: SUPERSEDES
+
+# Authorship
+authored by: AUTHORED_BY
+written by: AUTHORED_BY
+created by: AUTHORED_BY
+developed by: AUTHORED_BY
+
+# Funding
+funded by: FUNDED_BY
+financed by: FUNDED_BY
+sponsored by: FUNDED_BY
+received funding from: FUNDED_BY
+grant from: FUNDED_BY
+
+# Spatial relations
+located in: LOCATED_IN
+based in: LOCATED_IN
+housed in: LOCATED_IN
+situated in: LOCATED_IN
+serves region: SERVES_REGION
+provides service to region: SERVES_REGION
+covers region: SERVES_REGION
+
+# Collaboration/business relations
+worked with: WORKED_WITH
+collaborated with: WORKED_WITH
+partnered with: PARTNERED_WITH
+in partnership with: PARTNERED_WITH
+strategic alliance with: PARTNERED_WITH
+joint venture with: PARTNERED_WITH
+cited by: CITED_BY
+references: CITED_BY
+contracted by: CONTRACTED_BY
+subcontracted by: CONTRACTED_BY
+hired by: CONTRACTED_BY
+merged with: MERGED_WITH
+merged into: MERGED_WITH
+acquired: ACQUIRED
+purchased: ACQUIRED
+bought: ACQUIRED
+took over: ACQUIRED
+invested in: INVESTED_IN
+funded: INVESTED_IN
+backed: INVESTED_IN
+supplies to: SUPPLIES_TO
+is a supplier for: SUPPLIES_TO
+provides parts to: SUPPLIES_TO
+provides materials to: SUPPLIES_TO
+provides service to: PROVIDES_SERVICE_TO
+services: PROVIDES_SERVICE_TO
+consults for: PROVIDES_SERVICE_TO
+hosts at: HOSTS_AT
+held at: HOSTS_AT
+located near: LOCATED_NEAR
+close to: LOCATED_NEAR
+adjacent to: LOCATED_NEAR
+in proximity to: LOCATED_NEAR
+originated from: ORIGINATED_FROM
+started in: ORIGINATED_FROM
+founded in: ORIGINATED_FROM 

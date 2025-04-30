@@ -10,10 +10,14 @@ import redis
 import uuid
 import socket
 import shutil
+import subprocess
 from typing import Optional, Dict, Any
 from datetime import datetime
 
 from dotenv import load_dotenv
+import sys
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from graph_db.schema import SCHEMA_VERSION
 
 load_dotenv()
 
@@ -61,7 +65,9 @@ class DistributedJobQueue:
         self.redis_client.sadd(self.worker_set, worker_id)
         self.redis_client.hset(f"worker:{worker_id}", mapping={
             "last_heartbeat": time.time(),
-            "capabilities": json.dumps(capabilities)
+            "capabilities": json.dumps(capabilities),
+            "schema_version": SCHEMA_VERSION,
+            "git_sha": self._get_git_sha()
         })
         return worker_id
         
@@ -190,8 +196,37 @@ class DistributedJobQueue:
         return None
     
     def heartbeat(self):
-        """Update the worker's heartbeat timestamp."""
-        self.redis_client.hset(f"worker:{self.node_id}", "last_heartbeat", time.time())
+        """Update the worker's heartbeat timestamp and additional info."""
+        worker_info = {
+            "last_heartbeat": time.time(),
+            "hostname": self.hostname,
+            "pid": os.getpid(),
+            "schema_version": SCHEMA_VERSION,
+            "git_sha": self._get_git_sha(),
+            "uptime_seconds": self._get_process_uptime()
+        }
+        
+        # Add memory usage if available
+        try:
+            import psutil
+            process = psutil.Process(os.getpid())
+            worker_info["memory_mb"] = process.memory_info().rss / (1024 * 1024)
+            worker_info["cpu_percent"] = process.cpu_percent(interval=0.1)
+        except (ImportError, Exception):
+            pass
+            
+        # Add GPU info if available
+        try:
+            import torch
+            if torch.cuda.is_available():
+                worker_info["gpu_memory_mb"] = torch.cuda.memory_allocated() / (1024 * 1024)
+                worker_info["gpu_utilization"] = torch.cuda.utilization()
+        except (ImportError, Exception):
+            pass
+            
+        self.redis_client.hset(f"worker:{self.node_id}", mapping=worker_info)
+        # Refresh TTL - worker entry expires after 2 minutes if no heartbeat
+        self.redis_client.expire(f"worker:{self.node_id}", 120)
         
     def _check_gpu_available(self):
         """Check if GPU is available on this node."""
@@ -207,6 +242,30 @@ class DistributedJobQueue:
             total, used, free = shutil.disk_usage(path)
             return used / (1024 * 1024 * 1024)  # Convert to GB
         except:
+            return 0
+            
+    def _get_git_sha(self):
+        """Get the current git commit SHA."""
+        try:
+            result = subprocess.run(
+                ["git", "rev-parse", "--short", "HEAD"],
+                capture_output=True,
+                text=True,
+                check=False
+            )
+            if result.returncode == 0:
+                return result.stdout.strip()
+        except Exception:
+            pass
+        return "unknown"
+        
+    def _get_process_uptime(self):
+        """Get the process uptime in seconds."""
+        try:
+            import psutil
+            process = psutil.Process(os.getpid())
+            return time.time() - process.create_time()
+        except (ImportError, Exception):
             return 0
 
 # For backward compatibility

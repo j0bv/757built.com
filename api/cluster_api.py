@@ -16,6 +16,7 @@ from datetime import datetime
 import sys
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from Agent.job_queue import DistributedJobQueue
+from graph_db.schema import SCHEMA_VERSION
 
 # Create blueprint
 cluster_api = Blueprint('cluster_api', __name__, url_prefix='/api/cluster')
@@ -94,6 +95,115 @@ def cluster_status():
         "stale_workers": stale_workers,
         "worker_details": worker_details,
         "storage_details": storage_nodes
+    })
+
+@cluster_api.route('/heartbeats', methods=['GET'])
+def worker_heartbeats():
+    """Get detailed heartbeat information from all worker nodes.
+    
+    Returns information about:
+    - Worker status (active/idle/stale/offline)
+    - Schema version compatibility 
+    - Code version (git SHA)
+    - Resource usage (CPU, memory, GPU)
+    - Uptime
+    """
+    job_queue = get_job_queue()
+    
+    # Get all worker keys with pattern worker:*
+    worker_keys = job_queue.redis_client.keys("worker:*")
+    
+    # Gather worker heartbeat data
+    workers = []
+    current_time = time.time()
+    
+    for worker_key in worker_keys:
+        worker_key = worker_key.decode('utf-8') if isinstance(worker_key, bytes) else worker_key
+        worker_id = worker_key.split(':', 1)[1] if ':' in worker_key else worker_key
+        
+        # Get worker data
+        worker_data = job_queue.redis_client.hgetall(worker_key)
+        if not worker_data:
+            continue
+            
+        # Convert to dictionary with string keys/values
+        worker_info = {
+            "worker_id": worker_id,
+            "status": "unknown"
+        }
+        
+        for k, v in worker_data.items():
+            k = k.decode('utf-8') if isinstance(k, bytes) else k
+            v = v.decode('utf-8') if isinstance(v, bytes) else v
+            
+            # Handle specific fields
+            if k == 'last_heartbeat':
+                try:
+                    last_heartbeat = float(v)
+                    worker_info['last_heartbeat'] = last_heartbeat
+                    worker_info['last_heartbeat_iso'] = datetime.fromtimestamp(last_heartbeat).isoformat()
+                    
+                    # Calculate heartbeat age
+                    heartbeat_age = current_time - last_heartbeat
+                    worker_info['heartbeat_age_seconds'] = heartbeat_age
+                    
+                    # Determine status based on heartbeat age
+                    if heartbeat_age < 60:  # 1 minute
+                        worker_info['status'] = "active"
+                    elif heartbeat_age < 300:  # 5 minutes
+                        worker_info['status'] = "idle"
+                    else:
+                        worker_info['status'] = "stale"
+                except Exception as e:
+                    worker_info['heartbeat_error'] = str(e)
+            elif k == 'capabilities' and v:
+                try:
+                    worker_info['capabilities'] = json.loads(v)
+                except Exception:
+                    worker_info['capabilities'] = v
+            elif k == 'schema_version':
+                try:
+                    schema_version = int(v)
+                    worker_info['schema_version'] = schema_version
+                    # Check if schema version matches current version
+                    worker_info['schema_compatible'] = (schema_version == SCHEMA_VERSION)
+                except Exception:
+                    worker_info['schema_version'] = v
+                    worker_info['schema_compatible'] = False
+            elif k in ['memory_mb', 'cpu_percent', 'gpu_memory_mb', 'gpu_utilization', 'uptime_seconds']:
+                try:
+                    worker_info[k] = float(v)
+                except Exception:
+                    worker_info[k] = v
+            else:
+                worker_info[k] = v
+        
+        # Is worker in active workers set?
+        worker_info['registered'] = job_queue.redis_client.sismember("active_workers", worker_id)
+        
+        workers.append(worker_info)
+    
+    # Sort by status
+    status_order = {"active": 0, "idle": 1, "stale": 2, "unknown": 3}
+    workers.sort(key=lambda w: (
+        status_order.get(w.get("status", "unknown"), 4),  # First by status
+        -1 * w.get("heartbeat_age_seconds", float('inf'))  # Then by heartbeat age (newest first)
+    ))
+    
+    # Summary statistics
+    summary = {
+        "total_workers": len(workers),
+        "active_workers": sum(1 for w in workers if w.get("status") == "active"),
+        "idle_workers": sum(1 for w in workers if w.get("status") == "idle"),
+        "stale_workers": sum(1 for w in workers if w.get("status") == "stale"),
+        "schema_compatible_workers": sum(1 for w in workers if w.get("schema_compatible", False)),
+        "schema_incompatible_workers": sum(1 for w in workers if w.get("schema_compatible") is False),
+        "current_schema_version": SCHEMA_VERSION
+    }
+    
+    return jsonify({
+        "summary": summary,
+        "workers": workers
     })
 
 @cluster_api.route('/workers', methods=['GET'])

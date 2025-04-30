@@ -7,6 +7,8 @@ plus helper attribute keys shared across the codebase.
 """
 from enum import Enum
 
+# Current schema version - increment on breaking changes
+SCHEMA_VERSION = 3
 
 class NodeType(str, Enum):
     RESEARCH_PAPER = "research_paper"
@@ -74,4 +76,5 @@ __all__ = [
     "EDGE_DISTANCE",
     "NODE_LAT",
     "NODE_LON",
+    "SCHEMA_VERSION",
 ]

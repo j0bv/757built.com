@@ -276,7 +276,7 @@ function initCalendarHeatmap() {
     legend: [1, 3, 5, 7],
     legendColors: {
       min: '#ebedf0',
-      max: var(--neon-green, '#00FF00')
+      max: '#00FF00'
     },
     data: '/api/activity?year=2025' // API endpoint for activity data
   });

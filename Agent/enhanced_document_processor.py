@@ -6,6 +6,7 @@ import logging
 import argparse
 import subprocess
 import glob
+import re
 from datetime import datetime
 from dotenv import load_dotenv
 import hashlib
@@ -28,9 +29,11 @@ from Agent.job_queue import DistributedJobQueue
 
 # Import our custom modules
 from phi3_wrapper import Phi3Processor
+from llm_client import LLMClient, LLMType
 from job_queue import dequeue_document
 from extraction.locality_detector import add_locality_relations_to_graph
-from graph_db.schema import NodeType, EdgeType, EDGE_TIMESTAMP
+from graph_db.schema import NodeType, EdgeType, EDGE_TIMESTAMP, SCHEMA_VERSION
+from graph_db.edge_mapping import canonical_edge
 from utils.prompt_hot_reload import start as start_prompt_hot_reload
 from utils.chunking import chunk_document
 from utils.merger import smart_union
@@ -63,15 +66,30 @@ GRAPH_IPNS_KEY = os.getenv('GRAPH_IPNS_KEY', 'self')
 PROCESSING_IN_FLIGHT = Gauge('processing_in_flight', 'Current number of documents being processed')
 
 class EnhancedDocumentProcessor:
-    def __init__(self, model_path, llama_path, threads=4, ctx_size=8192, 
-                 batch_size=512, storage_path="./temp_storage", 
+    def __init__(self, 
+                 llm_type=None, 
+                 model_path=None, 
+                 llama_path=None, 
+                 api_base=None,
+                 api_key=None,
+                 model_name=None,
+                 threads=4, 
+                 ctx_size=8192, 
+                 batch_size=512, 
+                 storage_path="./temp_storage", 
                  redis_url="redis://localhost:6379/0",
-                 replication_factor=2, storage_capacity_gb=50.0):
-        """Initialize the document processor with model paths and settings.
+                 replication_factor=2, 
+                 storage_capacity_gb=50.0,
+                 temperature=0.2):
+        """Initialize the document processor with LLM settings.
         
         Args:
-            model_path: Path to the Phi-3 model file
-            llama_path: Path to the llama.cpp executable
+            llm_type: Type of LLM to use (phi3, openai, openai_compatible)
+            model_path: Path to the local model file (for phi3)
+            llama_path: Path to the llama.cpp executable (for phi3)
+            api_base: Base URL for API calls (for openai/openai_compatible)
+            api_key: API key for model access (for openai/openai_compatible)
+            model_name: Model name/identifier (for openai/openai_compatible)
             threads: Number of threads for inference
             ctx_size: Context size for the model
             batch_size: Batch size for processing
@@ -79,12 +97,44 @@ class EnhancedDocumentProcessor:
             redis_url: Redis connection string for coordination
             replication_factor: Number of replicas for document storage
             storage_capacity_gb: Local storage capacity in GB
+            temperature: Model temperature setting
         """
+        # Initialize parameters
+        self.llm_type = llm_type or os.getenv("LLM_TYPE", "phi3")
         self.model_path = model_path
         self.llama_path = llama_path
+        self.api_base = api_base or os.getenv("OPENAI_API_BASE")
+        self.api_key = api_key or os.getenv("OPENAI_API_KEY")
+        self.model_name = model_name or os.getenv("LLM_MODEL", "llama-3-70b-instruct")
         self.threads = threads
         self.ctx_size = ctx_size
         self.batch_size = batch_size
+        self.temperature = temperature
+        
+        # Initialize LLM client
+        self.llm_client = LLMClient(
+            llm_type=self.llm_type,
+            model_path=self.model_path,
+            llama_executable=self.llama_path,
+            api_key=self.api_key,
+            api_base=self.api_base,
+            model=self.model_name,
+            threads=self.threads,
+            ctx_size=self.ctx_size,
+            temperature=self.temperature
+        )
+        
+        # For backward compatibility - existing code uses Phi3Processor directly
+        if self.llm_type == "phi3":
+            self.phi3_processor = Phi3Processor(
+                model_path=self.model_path,
+                llama_executable=self.llama_path,
+                threads=self.threads,
+                ctx_size=self.ctx_size
+            )
+        else:
+            # Create a compatibility layer to redirect to the llm_client
+            self.phi3_processor = PhiCompatLayer(self.llm_client)
         
         # Initialize distributed storage
         self.storage = DistributedStorage(
@@ -101,15 +151,15 @@ class EnhancedDocumentProcessor:
         self.worker_id = self.job_queue.register_worker(capabilities={
             "cpu_count": os.cpu_count(),
             "gpu_available": self._check_gpu_available(),
-            "model": "phi-3",
+            "model_type": self.llm_type,
+            "model": self.model_name if self.llm_type != "phi3" else "phi-3",
             "threads": threads,
-            "ctx_size": ctx_size
+            "ctx_size": ctx_size,
+            "schema_version": SCHEMA_VERSION
         })
         
         logger.info(f"Initialized document processor with worker ID: {self.worker_id}")
-        
-        # Load the model
-        # ... existing model loading code ...
+        logger.info(f"Using LLM type: {self.llm_type}, Model: {self.model_name if self.llm_type != 'phi3' else 'phi-3'}")
         
     def _check_gpu_available(self):
         """Check if GPU is available for processing."""
@@ -191,6 +241,79 @@ class EnhancedDocumentProcessor:
                 
             # Brief pause to prevent CPU overuse
             time.sleep(1)
+
+# Compatibility layer to make LLMClient work with code expecting Phi3Processor
+class PhiCompatLayer:
+    """Adapter class to make the LLMClient interface compatible with Phi3Processor."""
+    
+    def __init__(self, llm_client):
+        self.llm_client = llm_client
+    
+    def _run_model(self, prompt, max_tokens=1024):
+        """Compatibility with Phi3Processor._run_model method."""
+        return self.llm_client.generate(prompt, max_tokens)
+    
+    def extract_coordinates(self, text):
+        """Extract coordinates from text."""
+        prompt = f"""
+Extract all geographic locations and their coordinates from the following text, focusing only on locations in Southeastern Virginia (757 area code). 
+If coordinates aren't directly mentioned, don't invent them; just extract the location names.
+Return the results as a JSON array of objects with "name", "lat", and "lng" fields.
+
+Text: {text}
+
+JSON Result:
+"""
+        response = self.llm_client.generate(prompt)
+        try:
+            # Try to find JSON array in response
+            json_match = re.search(r'\[.*?\]', response, re.DOTALL)
+            if json_match:
+                return json.loads(json_match.group(0))
+            return []
+        except Exception as e:
+            logger.error(f"Error extracting coordinates: {e}")
+            return []
+    
+    # Forward other method calls to the llm_client.generate
+    def __getattr__(self, name):
+        """Forward any other method calls to a compatible function."""
+        def wrapper(*args, **kwargs):
+            # If the first arg is a string, assume it's a prompt
+            if args and isinstance(args[0], str):
+                prompt = args[0]
+                # Simulate behavior of Phi3Processor methods by returning specific response formats
+                response = self.llm_client.generate(prompt)
+                
+                # For method names that expect JSON
+                if name in ["extract_funding_info", "extract_key_entities", 
+                           "extract_project_summary", "extract_classifications"]:
+                    try:
+                        return json.loads(response)
+                    except:
+                        logger.error(f"Failed to parse JSON response from {name}")
+                        return {}
+                
+                # For method names that expect arrays
+                if name in ["identify_relationships"]:
+                    try:
+                        json_match = re.search(r'\[.*?\]', response, re.DOTALL)
+                        if json_match:
+                            return json.loads(json_match.group(0))
+                        return []
+                    except:
+                        return []
+                
+                # For method names that expect a simple string response
+                if name in ["classify_document_type"]:
+                    return response.strip()
+                
+                # Default fallback
+                return response
+            
+            logger.warning(f"Unsupported method call: {name}")
+            return None
+        return wrapper
 
 def extract_text_from_document(document_path):
     """Extract text from various document formats"""
@@ -1107,12 +1230,19 @@ def queue_worker(phi3_processor):
         process_document(path, phi3_processor)
 
 def main():
-    parser = argparse.ArgumentParser(description="Enhanced Document Processor with Phi-3 model")
-    parser.add_argument("--model-path", required=True, help="Path to the Phi-3 GGUF model")
-    parser.add_argument("--llama-path", required=True, help="Path to the llama.cpp executable")
+    parser = argparse.ArgumentParser(description="Enhanced Document Processor with LLM integration")
+    parser.add_argument("--llm-type", choices=["phi3", "openai", "openai_compatible"],
+                      default=os.getenv("LLM_TYPE", "phi3"),
+                      help="LLM backend type")
+    parser.add_argument("--model-path", help="Path to the local model file (for phi3)")
+    parser.add_argument("--llama-path", help="Path to the llama.cpp executable (for phi3)")
+    parser.add_argument("--api-base", help="Base URL for API calls (for openai/openai_compatible)")
+    parser.add_argument("--api-key", help="API key for model access (for openai/openai_compatible)")
+    parser.add_argument("--model-name", help="Model name/identifier (for openai/openai_compatible)")
     parser.add_argument("--threads", type=int, default=4, help="Number of threads for inference")
     parser.add_argument("--ctx-size", type=int, default=8192, help="Context size for the model")
     parser.add_argument("--batch-size", type=int, default=512, help="Batch size for processing")
+    parser.add_argument("--temperature", type=float, default=0.2, help="Model temperature setting")
     parser.add_argument("--single-file", help="Process a single file instead of monitoring")
     parser.add_argument("--storage-path", default="./temp_storage", help="Path for temporary document storage")
     parser.add_argument("--redis-url", default="redis://localhost:6379/0", help="Redis connection string")
@@ -1121,16 +1251,31 @@ def main():
     
     args = parser.parse_args()
     
+    # Validate arguments based on LLM type
+    if args.llm_type == "phi3" and (not args.model_path or not args.llama_path):
+        parser.error("When using llm-type=phi3, both --model-path and --llama-path are required")
+    
+    if args.llm_type in ["openai", "openai_compatible"] and not args.api_base:
+        parser.error(f"When using llm-type={args.llm_type}, --api-base is required")
+    
+    if args.llm_type == "openai" and not args.api_key:
+        parser.error("When using llm-type=openai, --api-key is required")
+    
     processor = EnhancedDocumentProcessor(
+        llm_type=args.llm_type,
         model_path=args.model_path,
         llama_path=args.llama_path,
+        api_base=args.api_base,
+        api_key=args.api_key,
+        model_name=args.model_name,
         threads=args.threads,
         ctx_size=args.ctx_size,
         batch_size=args.batch_size,
         storage_path=args.storage_path,
         redis_url=args.redis_url,
         replication_factor=args.replication,
-        storage_capacity_gb=args.storage_capacity
+        storage_capacity_gb=args.storage_capacity,
+        temperature=args.temperature
     )
     
     if args.single_file:
