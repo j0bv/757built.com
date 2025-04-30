@@ -596,6 +596,70 @@ def update_graph_database(analysis):
                         'document': doc_name
                     })
         
+        # Detect document type and create corresponding node
+        doc_type = analysis.get('document_type', '').lower()
+        if doc_type in ['patent', 'research', 'research_paper', 'paper']:
+            dtype_enum = 'patent' if 'patent' in doc_type else 'research_paper'
+            type_node_id = f"{dtype_enum}_{len([n for n in graph['nodes'] if n.get('type') == dtype_enum])}"
+            graph['nodes'].append({
+                'id': type_node_id,
+                'label': doc_name,
+                'type': dtype_enum,
+                'properties': {
+                    'document': doc_name,
+                    'cid': cid if 'cid' in locals() else None
+                }
+            })
+            # link the document node to this type node
+            graph['edges'].append({
+                'source': doc_id,
+                'target': type_node_id,
+                'relationship': 'is_a',
+                'document': doc_name
+            })
+        
+        # Add funding node if present
+        if 'funding' in analysis and analysis['funding'] and analysis['funding'].get('amount'):
+            funding_id = f"funding_{len([n for n in graph['nodes'] if n.get('type') == 'funding'])}"
+            graph['nodes'].append({
+                'id': funding_id,
+                'label': f"$ {analysis['funding'].get('amount')}",
+                'type': 'funding',
+                'properties': analysis['funding']
+            })
+            # Link funding to project or document
+            target_ref = project_id if 'project_id' in locals() else doc_id
+            graph['edges'].append({
+                'source': funding_id,
+                'target': target_ref,
+                'relationship': 'funded_by',
+                'document': doc_name
+            })
+        
+        # Ensure Hampton Roads (region) node exists and link local projects/docs
+        region_name = 'Hampton Roads'
+        region_node = next((n for n in graph['nodes'] if n.get('type') == 'region' and n.get('label') == region_name), None)
+        if not region_node:
+            region_node = {
+                'id': 'region_757',
+                'label': region_name,
+                'type': 'region',
+                'properties': {
+                    'country': 'USA',
+                    'state': 'Virginia'
+                }
+            }
+            graph['nodes'].append(region_node)
+        
+        # Link project/doc nodes to Hampton Roads region
+        for loc_id in locality_ids:
+            graph['edges'].append({
+                'source': loc_id,
+                'target': region_node['id'],
+                'relationship': 'located_in_region',
+                'document': doc_name
+            })
+        
         # Save updated graph data
         with open(GRAPH_DATA_PATH, 'w') as f:
             json.dump(graph, f, indent=2)

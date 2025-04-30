@@ -36,6 +36,22 @@ class EdgeType(str, Enum):
     LOCATED_IN = "located_in"       # document/project → locality
     SERVES_REGION = "serves_region" # project → region
 
+    # collaboration / bibliometrics / business relations
+    WORKED_WITH = "worked_with"       # A worked_with B (collaborative relation)
+    CITED_BY = "cited_by"             # A cited_by B (bibliographic citation)
+    CONTRACTED_BY = "contracted_by"   # A contracted_by B (service or subcontract)
+    MERGED_WITH = "merged_with"       # company A merged_with B
+    ACQUIRED = "acquired"             # company A acquired B
+
+    # new relations
+    PARTNERED_WITH = "partnered_with"   # strategic partnership
+    INVESTED_IN = "invested_in"       # investor → project/company
+    SUPPLIES_TO = "supplies_to"       # supplier → organisation
+    PROVIDES_SERVICE_TO = "provides_service_to" # service provider → client
+    HOSTS_AT = "hosts_at"             # event → venue/locality
+    LOCATED_NEAR = "located_near"     # proximity relation
+    ORIGINATED_FROM = "originated_from" # company/startup → locality
+
 
 # Common attribute keys for edges
 EDGE_TIMESTAMP = "timestamp"   # ISO-8601 string
@@ -44,6 +60,9 @@ EDGE_MESSAGE = "message"       # free-text description
 EDGE_SUBTYPE = "subtype"       # further classification of edge
 EDGE_DISTANCE = "distance_km"  # numeric distance for 'nearby' edges
 
+# Standard node coordinate keys
+NODE_LAT = "lat"
+NODE_LON = "lng"
 
 __all__ = [
     "NodeType",
@@ -53,4 +72,6 @@ __all__ = [
     "EDGE_MESSAGE",
     "EDGE_SUBTYPE",
     "EDGE_DISTANCE",
+    "NODE_LAT",
+    "NODE_LON",
 ]
