@@ -1,0 +1,392 @@
+/* Graph UI Custom Styling */
+
+:root {
+    --graph-node-color-document: #36a3ff;
+    --graph-node-color-person: #ff5e5e;
+    --graph-node-color-locality: #7bff36;
+    --graph-node-color-building: #ffb336;
+    --graph-node-color-project: #9e36ff;
+    --graph-node-color-research-paper: #36ffe8;
+    --graph-node-color-patent: #ff36d0;
+    --graph-node-color-funding: #ffff36;
+    --graph-node-color-dataset: #ff9e36;
+    --graph-node-color-region: #36ff86;
+    --graph-node-color-default: #5efaff;
+}
+
+/* Base layout adjustments */
+section#main_shell {
+    width: 65%;
+    height: 60.3%;
+    padding: 0.74vh;
+    --aug-border: 0.18vh;
+    --aug-border-bg: rgb(var(--color_r), var(--color_g), var(--color_b));
+    --aug-border-opacity: 0.5;
+
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    justify-content: flex-start;
+    overflow: hidden;
+    position: relative;
+    background-color: rgba(0, 0, 0, 0.15);
+}
+
+#header_shell {
+    width: 100%;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 0.18vh solid rgba(var(--color_r), var(--color_g), var(--color_b), 0.5);
+    margin-bottom: 0.5vh;
+    padding-bottom: 0.5vh;
+    padding-left: 0.5vh;
+    padding-right: 0.5vh;
+}
+
+#shell_title {
+    font-size: 1.2vh;
+    margin: 0;
+    text-transform: uppercase;
+    font-family: var(--font_main_mono);
+}
+
+#shell_header_logo {
+    font-size: 1.5vh;
+    margin: 0;
+    color: rgb(var(--color_r), var(--color_g), var(--color_b));
+    font-family: var(--font_main_mono);
+    letter-spacing: 0.1vh;
+}
+
+#main_shell_inner {
+    width: 100%;
+    height: calc(100% - 3vh);
+    overflow: hidden;
+    position: relative;
+}
+
+/* Graph container */
+#graph_container {
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.3);
+    overflow: hidden;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-family: var(--font_main_mono);
+}
+
+/* Left column modules */
+section#mod_column_left {
+    width: 17%;
+    top: 2.5vh;
+    min-height: 10%;
+    max-height: 96%;
+    padding: 1.39vh;
+    padding-bottom: 0vh;
+    box-sizing: border-box;
+    position: absolute;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-start;
+    left: -0.555vh;
+    align-items: flex-end;
+    opacity: 1;
+    gap: 1.5vh;
+}
+
+/* Right column modules */
+section#mod_column_right {
+    width: 17%;
+    top: 2.5vh;
+    min-height: 10%;
+    max-height: 96%;
+    padding: 1.39vh;
+    padding-bottom: 0vh;
+    box-sizing: border-box;
+    position: absolute;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-start;
+    right: -0.555vh;
+    align-items: flex-start;
+    opacity: 1;
+    gap: 1.5vh;
+}
+
+/* Clock module */
+#mod_clock {
+    width: 100%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    margin-bottom: 1.5vh;
+    --aug-border: 0.18vh;
+    --aug-border-bg: rgb(var(--color_r), var(--color_g), var(--color_b));
+    --aug-border-opacity: 0.5;
+    --aug-inset: 0.5vh;
+    padding: 1vh;
+    box-sizing: border-box;
+    background-color: rgba(0, 0, 0, 0.15);
+}
+
+#mod_clock_text {
+    font-size: 3.5vh;
+    margin: 0;
+    text-align: center;
+    font-family: var(--font_main_mono);
+}
+
+/* Module styling */
+div[id^="mod_"] {
+    width: 100%;
+    margin-bottom: 1.5vh;
+    --aug-border: 0.18vh;
+    --aug-border-bg: rgb(var(--color_r), var(--color_g), var(--color_b));
+    --aug-border-opacity: 0.5;
+    --aug-inset: 0.5vh;
+    padding: 1vh;
+    box-sizing: border-box;
+    background-color: rgba(0, 0, 0, 0.15);
+    height: auto;
+}
+
+div[id^="mod_"] > div {
+    width: 100%;
+    height: 100%;
+}
+
+div[id^="mod_"] h1 {
+    font-size: 1.1vh;
+    margin: 0;
+    margin-bottom: 0.5vh;
+    text-align: center;
+    border-bottom: 0.092vh solid rgba(var(--color_r), var(--color_g), var(--color_b), 0.3);
+    padding-bottom: 0.5vh;
+    font-family: var(--font_main_mono);
+    text-transform: uppercase;
+    letter-spacing: 0.05vh;
+}
+
+div[id^="mod_"] h2 {
+    font-size: 1.1vh;
+    margin: 0;
+    margin-bottom: 0.5vh;
+    opacity: 0.8;
+}
+
+/* System info module */
+#mod_sysinfo {
+    height: 25vh;
+}
+
+/* Node details */
+#node_details {
+    padding: 10px;
+    font-family: var(--font_main_mono);
+    overflow-y: auto;
+    max-height: 100%;
+    font-size: 1.1vh;
+}
+
+/* Data inspector */
+#mod_hardwareInspector {
+    height: 42vh;
+}
+
+/* Filesystem panel */
+#filesystem {
+    width: 17%;
+    height: 60.3%;
+    padding: 0.74vh;
+    position: absolute;
+    bottom: 24.5vh;
+    left: 0;
+    --aug-border: 0.18vh;
+    --aug-border-bg: rgb(var(--color_r), var(--color_g), var(--color_b));
+    --aug-border-opacity: 0.5;
+    display: flex;
+    flex-direction: column;
+    background-color: rgba(0, 0, 0, 0.15);
+}
+
+#fs_header {
+    width: 100%;
+    margin-bottom: 0.5vh;
+    border-bottom: 0.18vh solid rgba(var(--color_r), var(--color_g), var(--color_b), 0.5);
+}
+
+#fs_header h3 {
+    font-size: 1.5vh;
+    margin: 0;
+    padding-bottom: 0.5vh;
+}
+
+#fs_disp {
+    flex: 1;
+    overflow: hidden;
+}
+
+/* Node list */
+#nodes_list {
+    list-style-type: none;
+    padding: 0;
+    margin: 0;
+    font-family: var(--font_main_mono);
+    height: 100%;
+    overflow-y: auto;
+    font-size: 0.95vh;
+    color: rgb(var(--color_r), var(--color_g), var(--color_b));
+}
+
+#nodes_list li {
+    padding: 0.5vh 0.8vh;
+    border-bottom: 0.092vh solid rgba(var(--color_r), var(--color_g), var(--color_b), 0.1);
+    cursor: pointer;
+    display: flex;
+    justify-content: space-between;
+    white-space: nowrap;
+}
+
+#nodes_list li:hover {
+    background-color: rgba(var(--color_r), var(--color_g), var(--color_b), 0.1);
+}
+
+/* Network modules */
+#mod_netstat {
+    height: 21vh;
+}
+
+#mod_conninfo {
+    height: 21vh;
+}
+
+#mod_globe {
+    height: 32vh;
+}
+
+.interface-item, .stat-item, .type-item {
+    display: flex;
+    justify-content: space-between;
+    padding: 0.5vh 0;
+    border-bottom: 0.092vh solid rgba(var(--color_r), var(--color_g), var(--color_b), 0.1);
+    font-size: 1.1vh;
+}
+
+/* Keyboard section */
+section#keyboard {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    height: 24vh;
+    --aug-border: 0.18vh;
+    --aug-border-bg: rgb(var(--color_r), var(--color_g), var(--color_b));
+    --aug-border-opacity: 0.5;
+    background-color: rgba(0, 0, 0, 0.15);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+#keyboard_inner {
+    width: 100%;
+    height: 100%;
+    padding: 1vh;
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+}
+
+/* Boot screen */
+#boot_screen {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: var(--color_black);
+    z-index: 1000;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+#boot_splash {
+    color: rgb(var(--color_r), var(--color_g), var(--color_b));
+    text-align: center;
+}
+
+#boot_splash pre.ascii-art {
+    font-family: var(--font_main_mono);
+    margin-bottom: 2vh;
+    font-size: 1.5vh;
+}
+
+.boot-progress {
+    width: 0%;
+    height: 0.5vh;
+    background-color: rgb(var(--color_r), var(--color_g), var(--color_b));
+    transition: width 0.5s ease;
+}
+
+@keyframes fadeOut {
+    from { opacity: 1; }
+    to { opacity: 0; }
+}
+
+.bootscreen-fade-out {
+    animation: fadeOut 1s forwards;
+}
+
+/* Data visualization elements */
+.property-item {
+    margin-bottom: 0.8vh;
+    border-bottom: 0.092vh solid rgba(var(--color_r), var(--color_g), var(--color_b), 0.1);
+    padding-bottom: 0.5vh;
+}
+
+.property-name {
+    color: rgb(var(--color_r), var(--color_g), var(--color_b));
+    font-weight: bold;
+}
+
+.property-value {
+    color: rgba(var(--color_r), var(--color_g), var(--color_b), 0.8);
+    word-break: break-all;
+}
+
+.edge-list {
+    margin-top: 1vh;
+}
+
+.edge-item {
+    margin: 0.5vh 0;
+    padding: 0.5vh;
+    background-color: rgba(var(--color_r), var(--color_g), var(--color_b), 0.1);
+    border-radius: 0.3vh;
+}
+
+/* Apply 757built-ui styles to augmented UI elements */
+[augmented-ui] {
+    --aug-clip-tl1: initial;
+    --aug-clip-tr1: initial;
+    --aug-clip-br1: initial;
+    --aug-clip-bl1: initial;
+    --aug-b: initial;
+    --aug-r: initial;
+    --aug-t: initial;
+    --aug-l: initial;
+    --aug-tl: initial;
+    --aug-tr: initial;
+    --aug-br: initial;
+    --aug-bl: initial;
+    --aug-tl-clip: initial;
+    --aug-tr-clip: initial;
+    --aug-br-clip: initial;
+    --aug-bl-clip: initial;
+}

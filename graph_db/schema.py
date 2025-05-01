@@ -8,7 +8,7 @@ plus helper attribute keys shared across the codebase.
 from enum import Enum
 
 # Current schema version - increment on breaking changes
-SCHEMA_VERSION = 3
+SCHEMA_VERSION = 4
 
 class NodeType(str, Enum):
     RESEARCH_PAPER = "research_paper"
@@ -21,6 +21,11 @@ class NodeType(str, Enum):
     DOCUMENT = "document"
     LOCALITY = "locality"
     REGION = "region"
+    # Telemetry node types
+    TELEMETRY_STREAM = "telemetry_stream"  # A stream of telemetry data
+    TELEMETRY_READING = "telemetry_reading"  # Individual reading
+    METRIC = "metric"  # Measured quantity (e.g., temperature, traffic count)
+    SENSOR = "sensor"  # Physical or virtual sensor
 
 
 class EdgeType(str, Enum):
@@ -37,6 +42,12 @@ class EdgeType(str, Enum):
     # spatial relations
     LOCATED_IN = "located_in"       # document/project → locality
     SERVES_REGION = "serves_region" # project → region
+    
+    # telemetry relations
+    MEASURES = "measures"           # sensor → metric
+    OBSERVES = "observes"          # sensor → locality
+    PROVIDED_BY = "provided_by"     # telemetry_stream → organization
+    CONTAINS = "contains"           # telemetry_stream → telemetry_reading
 
     # collaboration / bibliometrics / business relations
     WORKED_WITH = "worked_with"       # A worked_with B (collaborative relation)
@@ -62,6 +73,12 @@ EDGE_MESSAGE = "message"       # free-text description
 EDGE_SUBTYPE = "subtype"       # further classification of edge
 EDGE_DISTANCE = "distance_km"  # numeric distance for 'nearby' edges
 
+# Telemetry node attributes
+NODE_VALUE = "value"           # numeric value for telemetry reading
+NODE_UNIT = "unit"             # unit of measurement
+NODE_SOURCE_URL = "source_url" # origin of the data
+NODE_LICENSE = "license"       # license of the data
+
 # Standard node coordinate keys
 NODE_LAT = "lat"
 NODE_LON = "lng"
@@ -76,5 +93,9 @@ __all__ = [
     "EDGE_DISTANCE",
     "NODE_LAT",
     "NODE_LON",
+    "NODE_VALUE",
+    "NODE_UNIT",
+    "NODE_SOURCE_URL",
+    "NODE_LICENSE",
     "SCHEMA_VERSION",
 ]

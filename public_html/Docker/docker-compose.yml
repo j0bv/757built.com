@@ -1,0 +1,41 @@
+version: '3.8'
+
+services:
+  # Document processor with Phi3/Ollama
+  processor:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    volumes:
+      - ./data:/app/data
+      - ${OLLAMA_MODELS_PATH:-~/.ollama/models}:/root/.ollama/models
+    environment:
+      - REDIS_URL=redis://redis:6379/0
+      - MODEL_NAME=${MODEL_NAME:-phi3}
+    ports:
+      - "11434:11434"
+    deploy:
+      resources:
+        reservations:
+        
+      - "5000:5000"
+    environment:
+      - REDIS_URL=redis://redis:6379/0
+    depends_on:
+      - redis
+    restart: unless-stopped
+
+  # IPFS node (optional)
+  ipfs:
+    image: ipfs/kubo:latest
+    volumes:
+      - ipfs-data:/data/ipfs
+    ports:
+      - "4001:4001"
+      - "5001:5001"
+      - "8080:8080"
+    restart: unless-stopped
+
+volumes:
+  redis-data:
+  ipfs-data:

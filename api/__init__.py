@@ -7,6 +7,7 @@ for the 757Built knowledge graph platform.
 
 from flask import Flask
 from .search_routes import init_app as init_search_routes
+from .telemetry_routes import init_app as init_telemetry_routes
 
 __version__ = '0.1.0'
 
@@ -28,6 +29,7 @@ def create_app(config=None):
     
     # Register blueprints
     init_search_routes(app)
+    init_telemetry_routes(app)
     
     # Add a basic index route
     @app.route('/')
@@ -38,8 +40,11 @@ def create_app(config=None):
             'endpoints': {
                 'search': '/api/search',
                 'multi-step': '/api/search/multi',
-                'suggestions': '/api/search/suggest'
+                'suggestions': '/api/search/suggest',
+                'telemetry': '/api/telemetry',
+                'telemetry_streams': '/api/telemetry/streams',
+                'telemetry_map': '/api/telemetry/map-data'
             }
         }
     
-    return app 
+    return app

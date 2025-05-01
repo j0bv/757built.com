@@ -1,0 +1,1313 @@
+/* CSS for document explorer and viewer in Theia-like style */
+:root {
+    --theia-ui-font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+    --theia-editor-background: #1e1e1e;
+    --theia-editor-foreground: #cccccc;
+    --theia-activityBar-background: #333333;
+    --theia-sideBar-background: #252526;
+    --theia-editor-lineHighlightBackground: #2a2d2e;
+    --theia-sideBar-foreground: #cccccc;
+    --theia-tree-indentGuidesStroke: rgba(255, 255, 255, 0.1);
+    --theia-focusBorder: #007fd4;
+    --theia-contrastBorder: rgba(255, 255, 255, 0.18);
+    --theia-list-activeSelectionBackground: #094771;
+    --theia-list-hoverBackground: #2a2d2e;
+    
+    /* Markdown colors */
+    --md-header-color: #569cd6;
+    --md-emphasis-color: #ce9178;
+    --md-link-color: #4ec9b0;
+    --md-blockquote-color: #999999;
+    --md-code-block-background: #1e1e1e;
+    --md-table-border-color: #3c3c3c;
+    --md-list-color: #dcdcaa;
+    
+    /* Syntax highlighting colors */
+    --syntax-keyword-color: #569cd6;
+    --syntax-string-color: #ce9178;
+    --syntax-number-color: #b5cea8;
+    --syntax-comment-color: #6a9955;
+    --syntax-tag-color: #569cd6;
+    --syntax-attr-color: #9cdcfe;
+
+    /* Document Viewer Styles */
+    --doc-primary-color: #4285F4;
+    --doc-secondary-color: #34A853;
+    --doc-tertiary-color: #FBBC05;
+    --doc-quaternary-color: #EA4335;
+    
+    --doc-bg-color: #ffffff;
+    --doc-text-color: #333333;
+    --doc-border-color: #e0e0e0;
+    
+    --doc-sidebar-bg: #f5f5f5;
+    --doc-toolbar-bg: #f9f9f9;
+    --doc-tab-bg: #f0f0f0;
+    --doc-tab-active-bg: #ffffff;
+    
+    --doc-hover-color: rgba(66, 133, 244, 0.1);
+    --doc-selection-color: rgba(66, 133, 244, 0.2);
+}
+
+/* Main document container - Theia-like layout */
+.documents-container {
+    display: flex;
+    height: 100%;
+    font-family: var(--theia-ui-font-family);
+    background-color: var(--theia-editor-background);
+    color: var(--theia-editor-foreground);
+}
+
+/* Left sidebar - File explorer */
+.document-explorer {
+    width: 240px;
+    background-color: var(--theia-sideBar-background);
+    color: var(--theia-sideBar-foreground);
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    border-right: 1px solid var(--theia-contrastBorder);
+}
+
+.document-explorer-header {
+    padding: 5px 12px;
+    font-weight: bold;
+    font-size: 11px;
+    text-transform: uppercase;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background-color: var(--theia-activityBar-background);
+    color: #bbbbbb;
+    height: 22px;
+    border-bottom: 1px solid var(--theia-contrastBorder);
+}
+
+.document-search {
+    padding: 8px 12px;
+    margin-bottom: 0;
+    border-bottom: 1px solid var(--theia-contrastBorder);
+}
+
+.document-search-input {
+    width: 100%;
+    padding: 4px 6px;
+    background-color: #3c3c3c;
+    color: #cccccc;
+    border: 1px solid #3c3c3c;
+    border-radius: 2px;
+    font-size: 12px;
+}
+
+.document-search-input:focus {
+    border-color: var(--theia-focusBorder);
+    outline: none;
+}
+
+.document-tree {
+    flex: 1;
+    overflow-y: auto;
+    padding: 0;
+    max-height: none;
+}
+
+.document-category {
+    padding: 2px 12px;
+    font-size: 11px;
+    color: #bbbbbb;
+    margin-top: 8px;
+}
+
+.document-item {
+    display: flex;
+    align-items: center;
+    padding: 3px 12px 3px 24px;
+    cursor: pointer;
+    border-left: none;
+    margin: 0;
+    font-size: 13px;
+    height: 22px;
+    position: relative;
+}
+
+.document-item:hover {
+    background-color: var(--theia-list-hoverBackground);
+}
+
+.document-item.active {
+    background-color: var(--theia-list-activeSelectionBackground);
+    font-weight: normal;
+}
+
+.document-item-icon {
+    margin-right: 5px;
+    width: 16px;
+    height: 16px;
+    font-size: 14px;
+    display: inline-flex;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+/* Main content area */
+.document-main {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    position: relative;
+}
+
+/* Tabs bar */
+.document-tabs {
+    display: flex;
+    height: 35px;
+    background-color: #2d2d2d;
+    border-bottom: 1px solid #1e1e1e;
+    overflow-x: auto;
+    scrollbar-width: none; /* Firefox */
+}
+
+.document-tabs::-webkit-scrollbar {
+    display: none; /* Chrome, Safari, Edge */
+}
+
+.document-tab {
+    display: flex;
+    align-items: center;
+    padding: 0 10px;
+    background-color: #2d2d2d;
+    color: #969696;
+    border-right: 1px solid #1e1e1e;
+    height: 35px;
+    font-size: 13px;
+    user-select: none;
+    cursor: pointer;
+    min-width: 100px;
+    max-width: 200px;
+}
+
+.document-tab.active {
+    background-color: var(--theia-editor-background);
+    color: #ffffff;
+}
+
+.document-tab-close {
+    margin-left: 5px;
+    width: 16px;
+    height: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 3px;
+}
+
+.document-tab-close:hover {
+    background-color: rgba(255,255,255,0.1);
+}
+
+/* Document editor area */
+.document-editor-container {
+    display: flex;
+    flex: 1;
+    overflow: hidden;
+}
+
+.document-viewer {
+    flex: 1;
+    padding: 0;
+    background-color: var(--theia-editor-background);
+    overflow: auto;
+    position: relative;
+}
+
+.document-content {
+    white-space: pre-wrap;
+    word-wrap: break-word;
+    font-family: 'Menlo', 'Monaco', 'Courier New', monospace;
+    font-size: 14px;
+    line-height: 1.5;
+    color: var(--theia-editor-foreground);
+    padding: 10px 20px;
+}
+
+.document-content .line {
+    display: block;
+    position: relative;
+}
+
+.document-content .line:hover {
+    background-color: var(--theia-editor-lineHighlightBackground);
+}
+
+.document-content .line-number {
+    position: absolute;
+    left: -50px;
+    width: 40px;
+    text-align: right;
+    color: #858585;
+    font-size: 12px;
+    user-select: none;
+}
+
+/* Right sidebar - Document outline */
+.document-outline {
+    width: 240px;
+    background-color: var(--theia-sideBar-background);
+    border-left: 1px solid var(--theia-contrastBorder);
+    display: flex;
+    flex-direction: column;
+}
+
+.document-outline-header {
+    padding: 5px 12px;
+    font-weight: bold;
+    font-size: 11px;
+    text-transform: uppercase;
+    background-color: var(--theia-activityBar-background);
+    color: #bbbbbb;
+    height: 22px;
+    border-bottom: 1px solid var(--theia-contrastBorder);
+}
+
+.document-outline-content {
+    flex: 1;
+    overflow-y: auto;
+    padding: 8px 0;
+}
+
+.outline-item {
+    padding: 2px 12px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    font-size: 13px;
+}
+
+.outline-item:hover {
+    background-color: var(--theia-list-hoverBackground);
+}
+
+.outline-item-icon {
+    margin-right: 5px;
+    width: 16px;
+    font-size: 14px;
+}
+
+/* Bottom panel - Metrics and analysis */
+.document-bottom-panel {
+    height: 200px;
+    border-top: 1px solid var(--theia-contrastBorder);
+    background-color: var(--theia-sideBar-background);
+    display: flex;
+    flex-direction: column;
+}
+
+.document-panel-tabs {
+    display: flex;
+    background-color: #2d2d2d;
+    border-bottom: 1px solid #1e1e1e;
+    height: 30px;
+}
+
+.document-panel-tab {
+    padding: 0 10px;
+    line-height: 30px;
+    font-size: 12px;
+    cursor: pointer;
+}
+
+.document-panel-tab.active {
+    background-color: var(--theia-sideBar-background);
+    border-top: 1px solid var(--theia-focusBorder);
+}
+
+.document-metrics {
+    flex: 1;
+    padding: 10px;
+    overflow: auto;
+    border-top: none;
+    height: auto;
+    background-color: var(--theia-sideBar-background);
+    color: var(--theia-sideBar-foreground);
+    font-size: 12px;
+}
+
+.document-metrics h3 {
+    margin: 0 0 8px;
+    font-size: 12px;
+    color: #bbbbbb;
+}
+
+.document-metrics p {
+    margin: 0 0 8px;
+    font-size: 12px;
+}
+
+.document-metrics label {
+    font-size: 12px;
+}
+
+.document-metrics select {
+    background-color: #3c3c3c;
+    color: #cccccc;
+    border: 1px solid #3c3c3c;
+    border-radius: 2px;
+    padding: 4px;
+    font-size: 12px;
+}
+
+.metrics-chart, .correlation-chart {
+    background-color: var(--theia-editor-background);
+    border: 1px solid #1e1e1e;
+    border-radius: 0;
+    margin-top: 8px;
+    overflow: hidden;
+}
+
+.document-metrics .domain,
+.document-metrics .tick line {
+    stroke: #555;
+}
+
+.document-metrics .tick text {
+    fill: #999;
+    font-size: 10px;
+}
+
+/* File icons */
+.icon-document {
+    color: #cccccc;
+}
+
+.icon-markdown {
+    color: #519aba;
+}
+
+.icon-javascript {
+    color: #cbcb41;
+}
+
+.icon-json {
+    color: #f1e05a;
+}
+
+.icon-text {
+    color: #c6c6c6;
+}
+
+.icon-pdf {
+    color: #db5860;
+}
+
+/* Loading and error states */
+.doc-loading,
+.doc-error {
+    padding: 15px;
+    font-style: italic;
+    color: #999;
+}
+
+.doc-error {
+    color: #f14c4c;
+}
+
+/* Light theme compatibility */
+.light-theme {
+    --theia-editor-background: #ffffff;
+    --theia-editor-foreground: #333333;
+    --theia-activityBar-background: #f3f3f3;
+    --theia-sideBar-background: #f3f3f3;
+    --theia-editor-lineHighlightBackground: #e5ebf1;
+    --theia-sideBar-foreground: #333333;
+    --theia-tree-indentGuidesStroke: rgba(0, 0, 0, 0.1);
+    --theia-focusBorder: #007acc;
+    --theia-contrastBorder: #ddd;
+    --theia-list-activeSelectionBackground: #e0e0e0;
+    --theia-list-hoverBackground: #e8e8e8;
+    
+    /* Markdown colors */
+    --md-header-color: #0070c9;
+    --md-emphasis-color: #a31515;
+    --md-link-color: #008080;
+    --md-blockquote-color: #666666;
+    --md-code-block-background: #f5f5f5;
+    --md-table-border-color: #cccccc;
+    --md-list-color: #7a3e00;
+    
+    /* Syntax highlighting colors */
+    --syntax-keyword-color: #0000ff;
+    --syntax-string-color: #a31515;
+    --syntax-number-color: #098658;
+    --syntax-comment-color: #008000;
+    --syntax-tag-color: #800000;
+    --syntax-attr-color: #ff0000;
+}
+
+.light-theme .document-search-input,
+.light-theme .document-metrics select {
+    background-color: #ffffff;
+    color: #333333;
+    border: 1px solid #ddd;
+}
+
+.light-theme .document-tab {
+    background-color: #ececec;
+    color: #333;
+}
+
+.light-theme .document-tab.active {
+    background-color: #ffffff;
+    color: #333;
+}
+
+.light-theme .metrics-chart, 
+.light-theme .correlation-chart {
+    background-color: #ffffff;
+    border-color: #ddd;
+}
+
+.light-theme .markdown-content .code-block-start,
+.light-theme .markdown-content .code-block-end {
+    color: #795e26;
+    background-color: #eeeeee;
+}
+
+.light-theme .markdown-content .code-language-badge {
+    background-color: #ddd;
+    color: #333;
+}
+
+/* Responsiveness */
+@media (max-width: 1024px) {
+    .document-explorer, .document-outline {
+        width: 200px;
+    }
+}
+
+@media (max-width: 768px) {
+    .document-outline {
+        display: none;
+    }
+}
+
+/* Markdown styling */
+.markdown-content .md-header {
+    color: var(--md-header-color);
+    font-weight: bold;
+}
+
+.markdown-content .md-h1 {
+    font-size: 1.5em;
+    margin-top: 0.5em;
+}
+
+.markdown-content .md-h2 {
+    font-size: 1.3em;
+    margin-top: 0.4em;
+}
+
+.markdown-content .md-h3 {
+    font-size: 1.1em;
+    margin-top: 0.3em;
+}
+
+.markdown-content .md-bold {
+    color: var(--md-emphasis-color);
+    font-weight: bold;
+}
+
+.markdown-content .md-italic {
+    color: var(--md-emphasis-color);
+    font-style: italic;
+}
+
+.markdown-content .md-link {
+    color: var(--md-link-color);
+    text-decoration: underline;
+    cursor: pointer;
+}
+
+.markdown-content .md-list {
+    color: var(--md-list-color);
+}
+
+.markdown-content .md-blockquote {
+    color: var(--md-blockquote-color);
+    font-style: italic;
+    border-left: 3px solid #3c3c3c;
+    padding-left: 10px;
+}
+
+.markdown-content .md-code-block {
+    color: #d7ba7d;
+}
+
+.markdown-content .md-table {
+    color: var(--theia-editor-foreground);
+}
+
+/* Code block styling */
+.markdown-content .code-line {
+    background-color: var(--md-code-block-background);
+    font-family: 'Menlo', 'Monaco', 'Courier New', monospace;
+}
+
+.markdown-content .code-block-start,
+.markdown-content .code-block-end {
+    color: #d7ba7d;
+    background-color: #2d2d2d;
+}
+
+.markdown-content .code-language-badge {
+    position: absolute;
+    right: 20px;
+    background-color: #333;
+    color: #ccc;
+    font-size: 10px;
+    padding: 1px 6px;
+    border-radius: 3px;
+}
+
+/* Syntax highlighting */
+.syntax-keyword {
+    color: var(--syntax-keyword-color);
+}
+
+.syntax-string {
+    color: var(--syntax-string-color);
+}
+
+.syntax-number {
+    color: var(--syntax-number-color);
+}
+
+.syntax-comment {
+    color: var(--syntax-comment-color);
+}
+
+.syntax-tag {
+    color: var(--syntax-tag-color);
+}
+
+.syntax-attr {
+    color: var(--syntax-attr-color);
+}
+
+.markdown-content .md-inline-code {
+    font-family: 'Menlo', 'Monaco', 'Courier New', monospace;
+    background-color: rgba(100, 100, 100, 0.2);
+    padding: 0 3px;
+    border-radius: 3px;
+    color: #d7ba7d;
+}
+
+.markdown-content .md-hr {
+    color: #666;
+    border-bottom: 1px solid #333;
+    display: block;
+    margin: 10px 0;
+}
+
+.light-theme .markdown-content .md-inline-code {
+    background-color: rgba(0, 0, 0, 0.05);
+    color: #795e26;
+}
+
+.light-theme .markdown-content .md-hr {
+    color: #999;
+    border-bottom-color: #ddd;
+}
+
+/* Document actions toolbar */
+.document-actions-toolbar {
+    position: absolute;
+    top: 40px;
+    right: 248px;
+    background-color: var(--theia-sideBar-background);
+    border: 1px solid var(--theia-contrastBorder);
+    border-radius: 3px;
+    display: flex;
+    z-index: 10;
+    padding: 2px;
+    opacity: 0.7;
+    transition: opacity 0.2s ease;
+}
+
+.document-actions-toolbar:hover {
+    opacity: 1;
+}
+
+.document-action-btn {
+    background-color: transparent;
+    border: none;
+    color: var(--theia-sideBar-foreground);
+    padding: 5px 10px;
+    cursor: pointer;
+    font-size: 12px;
+    border-radius: 2px;
+    display: flex;
+    align-items: center;
+}
+
+.document-action-btn:hover {
+    background-color: var(--theia-list-hoverBackground);
+}
+
+.document-action-btn i {
+    margin-right: 5px;
+}
+
+.light-theme .document-actions-toolbar {
+    background-color: #f3f3f3;
+    border-color: #ddd;
+}
+
+/* Responsive styles for document actions toolbar */
+@media (max-width: 1024px) {
+    .document-actions-toolbar {
+        right: 208px;
+    }
+}
+
+@media (max-width: 768px) {
+    .document-actions-toolbar {
+        right: 8px;
+    }
+}
+
+/* Visualization modal */
+.visualization-modal {
+    position: fixed;
+    z-index: 1000;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.visualization-modal-content {
+    background-color: var(--theia-editor-background);
+    color: var(--theia-editor-foreground);
+    border: 1px solid var(--theia-contrastBorder);
+    border-radius: 4px;
+    width: 600px;
+    max-width: 90%;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+}
+
+.visualization-modal-header {
+    padding: 15px;
+    border-bottom: 1px solid var(--theia-contrastBorder);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.visualization-modal-header h3 {
+    margin: 0;
+    font-size: 18px;
+    font-weight: normal;
+}
+
+.visualization-modal-close {
+    font-size: 24px;
+    cursor: pointer;
+    color: #888;
+}
+
+.visualization-modal-close:hover {
+    color: #fff;
+}
+
+.visualization-modal-body {
+    padding: 15px;
+}
+
+.visualization-form .form-group {
+    margin-bottom: 15px;
+}
+
+.visualization-form label {
+    display: block;
+    margin-bottom: 5px;
+    font-size: 13px;
+}
+
+.visualization-form .form-control {
+    width: 100%;
+    padding: 8px;
+    border: 1px solid var(--theia-contrastBorder);
+    background-color: #333;
+    color: var(--theia-editor-foreground);
+    border-radius: 3px;
+    font-size: 14px;
+}
+
+.visualization-form .form-actions {
+    margin-top: 20px;
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+}
+
+.visualization-form .btn {
+    padding: 8px 16px;
+    border: none;
+    border-radius: 3px;
+    cursor: pointer;
+    font-size: 14px;
+}
+
+.visualization-form .btn-primary {
+    background-color: var(--theia-focusBorder);
+    color: white;
+}
+
+.visualization-form .btn-primary:hover {
+    background-color: #0062a3;
+}
+
+.visualization-form .btn-secondary {
+    background-color: #555;
+    color: white;
+}
+
+.visualization-form .btn-secondary:hover {
+    background-color: #444;
+}
+
+/* Visualization panel */
+.visualization-panel {
+    padding: 10px;
+}
+
+.visualization-panel h3 {
+    margin-top: 0;
+    font-size: 16px;
+    margin-bottom: 10px;
+}
+
+.visualization-panel p {
+    margin-bottom: 15px;
+    font-size: 13px;
+}
+
+#create-visualization-btn {
+    padding: 6px 12px;
+    background-color: var(--theia-focusBorder);
+    color: white;
+    border: none;
+    border-radius: 3px;
+    cursor: pointer;
+    font-size: 13px;
+}
+
+#create-visualization-btn:hover {
+    background-color: #0062a3;
+}
+
+/* Chart styling */
+.bar-chart .bar:hover,
+.line-chart .data-point:hover {
+    cursor: pointer;
+}
+
+.chart-title {
+    font-size: 16px;
+    font-weight: normal;
+}
+
+.axis-label {
+    font-size: 12px;
+    fill: #999;
+}
+
+.x-axis path,
+.y-axis path,
+.x-axis line,
+.y-axis line {
+    stroke: #555;
+}
+
+.x-axis text,
+.y-axis text {
+    fill: #999;
+    font-size: 11px;
+}
+
+/* Light theme overrides for visualization */
+.light-theme .visualization-modal-content {
+    background-color: #ffffff;
+    color: #333333;
+    border-color: #ddd;
+}
+
+.light-theme .visualization-form .form-control {
+    background-color: #f5f5f5;
+    color: #333333;
+    border-color: #ddd;
+}
+
+.light-theme .x-axis path,
+.light-theme .y-axis path,
+.light-theme .x-axis line,
+.light-theme .y-axis line {
+    stroke: #ccc;
+}
+
+.light-theme .x-axis text,
+.light-theme .y-axis text {
+    fill: #666;
+}
+
+/* Responsive styles for visualization */
+@media (max-width: 768px) {
+    .visualization-modal-content {
+        width: 95%;
+    }
+    
+    .chart-title {
+        font-size: 14px;
+    }
+}
+
+/* Dark theme variables */
+.dark-theme {
+    --doc-bg-color: #1e1e1e;
+    --doc-text-color: #e0e0e0;
+    --doc-border-color: #444444;
+    
+    --doc-sidebar-bg: #252526;
+    --doc-toolbar-bg: #333333;
+    --doc-tab-bg: #2d2d2d;
+    --doc-tab-active-bg: #1e1e1e;
+    
+    --doc-hover-color: rgba(66, 133, 244, 0.2);
+    --doc-selection-color: rgba(66, 133, 244, 0.3);
+}
+
+/* Document Viewer Container */
+.document-viewer-container {
+    display: flex;
+    height: 100%;
+    width: 100%;
+    overflow: hidden;
+    background-color: var(--doc-bg-color);
+    color: var(--doc-text-color);
+    border-radius: 4px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+}
+
+/* Document Sidebar */
+.document-sidebar {
+    width: 250px;
+    border-right: 1px solid var(--doc-border-color);
+    display: flex;
+    flex-direction: column;
+    background-color: var(--doc-sidebar-bg);
+}
+
+.document-explorer {
+    flex: 1;
+    overflow-y: auto;
+    padding: 10px;
+}
+
+/* Document Tree */
+.file-tree {
+    font-size: 13px;
+    line-height: 1.5;
+}
+
+.file-tree ul {
+    list-style: none;
+    padding-left: 18px;
+    margin: 0;
+}
+
+.tree-root {
+    padding-left: 0 !important;
+}
+
+.tree-item {
+    margin: 2px 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.tree-item-content {
+    display: flex;
+    align-items: center;
+    padding: 4px 8px;
+    border-radius: 4px;
+    cursor: pointer;
+}
+
+.tree-item-content:hover {
+    background-color: var(--doc-hover-color);
+}
+
+.tree-item-name {
+    margin-left: 8px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.tree-toggle {
+    margin-right: 5px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 14px;
+    height: 14px;
+    cursor: pointer;
+}
+
+.tree-children {
+    display: none;
+}
+
+.tree-item.expanded > .tree-children {
+    display: block;
+}
+
+/* Document Content */
+.document-content {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+/* Document Tabs */
+.document-tabs {
+    display: flex;
+    background-color: var(--doc-tab-bg);
+    border-bottom: 1px solid var(--doc-border-color);
+    overflow-x: auto;
+    height: 36px;
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+}
+
+.document-tabs::-webkit-scrollbar {
+    display: none;
+}
+
+.document-tab {
+    padding: 8px 15px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+    border-right: 1px solid var(--doc-border-color);
+    min-width: 120px;
+    max-width: 200px;
+    font-size: 12px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    position: relative;
+    user-select: none;
+}
+
+.document-tab.active {
+    background-color: var(--doc-tab-active-bg);
+    border-bottom: 2px solid var(--doc-primary-color);
+}
+
+.document-tab:hover {
+    background-color: var(--doc-hover-color);
+}
+
+.close-doc-tab {
+    border: none;
+    background: transparent;
+    cursor: pointer;
+    padding: 0;
+    margin-left: auto;
+    width: 16px;
+    height: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    font-size: 10px;
+    opacity: 0.6;
+}
+
+.close-doc-tab:hover {
+    background-color: rgba(0, 0, 0, 0.1);
+    opacity: 1;
+}
+
+.tab-title {
+    flex: 1;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* Document Actions */
+.document-actions {
+    display: flex;
+    gap: 5px;
+    padding: 5px 10px;
+    border-bottom: 1px solid var(--doc-border-color);
+    background-color: var(--doc-toolbar-bg);
+}
+
+.document-action {
+    background: transparent;
+    border: none;
+    padding: 5px 8px;
+    cursor: pointer;
+    border-radius: 4px;
+    color: var(--doc-text-color);
+}
+
+.document-action:hover {
+    background-color: var(--doc-hover-color);
+}
+
+.document-action i {
+    font-size: 14px;
+}
+
+/* Document View */
+.document-view {
+    flex: 1;
+    overflow: auto;
+    padding: 20px;
+    background-color: var(--doc-bg-color);
+}
+
+/* Document Outline */
+.document-outline {
+    width: 200px;
+    border-left: 1px solid var(--doc-border-color);
+    overflow-y: auto;
+    padding: 10px;
+    background-color: var(--doc-sidebar-bg);
+    font-size: 12px;
+}
+
+.document-outline h3 {
+    margin-top: 0;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--doc-border-color);
+    font-size: 14px;
+}
+
+.outline-list {
+    list-style: none;
+    padding-left: 0;
+    margin: 0;
+}
+
+.outline-item {
+    padding: 4px 8px;
+    margin: 2px 0;
+    cursor: pointer;
+    border-radius: 3px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.outline-item:hover {
+    background-color: var(--doc-hover-color);
+}
+
+.outline-item.level-h1 {
+    font-weight: bold;
+}
+
+.outline-item.level-h2 {
+    padding-left: 15px;
+}
+
+.outline-item.level-h3 {
+    padding-left: 25px;
+    font-size: 11px;
+}
+
+.outline-item.level-h4, .outline-item.level-h5, .outline-item.level-h6 {
+    padding-left: 35px;
+    font-size: 11px;
+    color: rgba(var(--doc-text-color), 0.8);
+}
+
+/* Empty State */
+.empty-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    color: #9e9e9e;
+    text-align: center;
+    padding: 20px;
+}
+
+.empty-state i {
+    margin-bottom: 20px;
+    opacity: 0.5;
+}
+
+/* Markdown Content */
+.markdown-content {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, Cantarell, "Open Sans", "Helvetica Neue", sans-serif;
+    line-height: 1.6;
+    color: var(--doc-text-color);
+}
+
+.markdown-content h1, 
+.markdown-content h2, 
+.markdown-content h3, 
+.markdown-content h4, 
+.markdown-content h5, 
+.markdown-content h6 {
+    margin-top: 24px;
+    margin-bottom: 16px;
+    font-weight: 600;
+    line-height: 1.25;
+}
+
+.markdown-content h1 {
+    font-size: 2em;
+    border-bottom: 1px solid var(--doc-border-color);
+    padding-bottom: 0.3em;
+}
+
+.markdown-content h2 {
+    font-size: 1.5em;
+    border-bottom: 1px solid var(--doc-border-color);
+    padding-bottom: 0.3em;
+}
+
+.markdown-content h3 {
+    font-size: 1.25em;
+}
+
+.markdown-content h4 {
+    font-size: 1em;
+}
+
+.markdown-content p {
+    margin-top: 0;
+    margin-bottom: 16px;
+}
+
+.markdown-content a {
+    color: var(--doc-primary-color);
+    text-decoration: none;
+}
+
+.markdown-content a:hover {
+    text-decoration: underline;
+}
+
+.markdown-content ul, 
+.markdown-content ol {
+    padding-left: 2em;
+    margin-top: 0;
+    margin-bottom: 16px;
+}
+
+.markdown-content blockquote {
+    margin: 0 0 16px 0;
+    padding: 0 1em;
+    color: #6a737d;
+    border-left: 0.25em solid #dfe2e5;
+}
+
+.markdown-content pre {
+    margin-top: 0;
+    margin-bottom: 16px;
+    padding: 16px;
+    overflow: auto;
+    font-size: 85%;
+    line-height: 1.45;
+    background-color: #f6f8fa;
+    border-radius: 3px;
+}
+
+.markdown-content code {
+    padding: 0.2em 0.4em;
+    margin: 0;
+    font-size: 85%;
+    background-color: rgba(27, 31, 35, 0.05);
+    border-radius: 3px;
+    font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+}
+
+.markdown-content pre code {
+    padding: 0;
+    background-color: transparent;
+}
+
+.markdown-content table {
+    display: block;
+    width: 100%;
+    overflow: auto;
+    margin-top: 0;
+    margin-bottom: 16px;
+    border-spacing: 0;
+    border-collapse: collapse;
+}
+
+.markdown-content table th {
+    font-weight: 600;
+}
+
+.markdown-content table th,
+.markdown-content table td {
+    padding: 6px 13px;
+    border: 1px solid var(--doc-border-color);
+}
+
+.markdown-content table tr {
+    background-color: var(--doc-bg-color);
+    border-top: 1px solid var(--doc-border-color);
+}
+
+.markdown-content table tr:nth-child(2n) {
+    background-color: var(--doc-sidebar-bg);
+}
+
+.markdown-content img {
+    max-width: 100%;
+    box-sizing: border-box;
+}
+
+.markdown-content hr {
+    height: 0.25em;
+    padding: 0;
+    margin: 24px 0;
+    background-color: var(--doc-border-color);
+    border: 0;
+}
+
+/* Code Viewer */
+.code-viewer {
+    font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+    line-height: 1.5;
+    border-radius: 4px;
+    overflow: auto;
+}
+
+.code-viewer pre {
+    margin: 0;
+    padding: 16px;
+}
+
+.CodeMirror {
+    height: 100%;
+} 

@@ -1,409 +1,1793 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Hampton Roads Development</title>
-    
-    <!-- Tailwind CSS -->
-    <script src="https://cdn.tailwindcss.com"></script>
-    
-    <!-- Leaflet CSS -->
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" 
-          integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" 
-          crossorigin="" />
-    
-    <!-- Leaflet MarkerCluster CSS -->
-    <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css" />
-    <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css" />
-    
-    <!-- Gridstack CSS for dashboard layout -->
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/gridstack@9.2.5/dist/gridstack.min.css" />
-    
-    <!-- Font Awesome for icons -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
-    
-    <!-- Adminator CSS for dashboard components -->
-    <link rel="stylesheet" href="Adminator-admin-dashboard-master/dist/style.css">
-    
-    <!-- Calendar Heatmap CSS -->
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/cal-heatmap@4.2.4/dist/cal-heatmap.min.css">
-    
-    <!-- Custom CSS -->
-    <link rel="stylesheet" href="index.css">
-    
-    <link rel="manifest" href="manifest.webmanifest" />
-    
-    <meta name="theme-color" content="#000000">
-    <meta name="description" content="757Built - Hampton Roads Development Intelligence">
-    <link rel="icon" type="image/png" href="assets/icon-192.png">
-    <link rel="apple-touch-icon" href="assets/icon-192.png">
-    
-    <!-- Fira Code font for terminal aesthetic -->
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/firacode@6.2.0/distr/fira_code.css">
-    
-    <!-- Cyberpunk Dashboard core styles -->
-    <link rel="stylesheet" href="assets/dashboard.css">
-    
-    <!-- On-screen keyboard styles (touch devices only) -->
-    <link rel="stylesheet" href="src/assets/css/keyboard.css" media="(hover:none)">
-    
-    <!-- Module CSS files from eDEX UI -->
-    <link rel="stylesheet" href="src/assets/css/main.css">
-    <link rel="stylesheet" href="src/assets/css/mod_column.css">
-    <link rel="stylesheet" href="src/assets/css/mod_clock.css">
-    <link rel="stylesheet" href="src/assets/css/mod_toplist.css">
-    <link rel="stylesheet" href="src/assets/css/mod_cpuinfo.css">
-    <link rel="stylesheet" href="src/assets/css/mod_netstat.css">
-    <link rel="stylesheet" href="src/assets/css/mod_ramwatcher.css">
-    <link rel="stylesheet" href="src/assets/css/mod_hardwareInspector.css">
-    <link rel="stylesheet" href="src/assets/css/media_player.css">
-    
-    <style>
-        /* eDEX UI Grid Layout */
-        .wrapper {
-            display: grid;
-            grid-template-columns: repeat(8, 1fr);
-            grid-template-rows: repeat(6, 1fr);
-            grid-gap: 4px;
-            width: 100%;
-            height: 100%;
-            padding: 10px;
-        }
+<style>
+  :root {
+    --primary-color: #00ff00;
+    --background-color: #000000;
+    --border-color: #00aa00;
+    --panel-bg: rgba(0, 20, 0, 0.7);
+    --terminal-font: 'Courier New', monospace;
+    --text-color: #00ff00;
+    --accent-color: #ff5500;
+    --tile-header: #001500;
+    --tile-bg: rgba(0, 25, 0, 0.8);
+    --dropdown-bg: rgba(0, 15, 0, 0.9);
+    --hover-bg: rgba(0, 40, 0, 0.7);
+  }
+  
+  html, body {
+    margin: 0;
+    padding: 0;
+    height: 100vh;
+    width: 100vw;
+    overflow: hidden;
+    background-color: var(--background-color);
+    color: var(--text-color);
+    font-family: var(--terminal-font);
+  }
+  
+  #terminal-container {
+    display: grid;
+    grid-template-columns: 250px 1fr 250px;
+    grid-template-rows: 70px 1fr 60px;
+    height: 100vh;
+    width: 100vw;
+    gap: 10px;
+    padding: 10px;
+    box-sizing: border-box;
+    background-color: var(--background-color);
+  }
+  
+  .header {
+    grid-column: 1 / 4;
+    grid-row: 1 / 2;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border: 1px solid var(--border-color);
+    background-color: var(--panel-bg);
+    padding: 0 20px;
+    border-radius: 5px;
+  }
+  
+  .left-panel {
+    grid-column: 1 / 2;
+    grid-row: 2 / 3;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+  
+  .main-panel {
+    grid-column: 2 / 3;
+    grid-row: 2 / 3;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+  
+  .right-panel {
+    grid-column: 3 / 4;
+    grid-row: 2 / 3;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+  
+  .footer {
+    grid-column: 1 / 4;
+    grid-row: 3 / 4;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border: 1px solid var(--border-color);
+    background-color: var(--panel-bg);
+    padding: 0 20px;
+    border-radius: 5px;
+  }
+  
+  /* Dashboard Panel System */
+  .panel {
+    border: 1px solid var(--border-color);
+    background-color: var(--panel-bg);
+    border-radius: 5px;
+    overflow: hidden;
+    padding: 10px;
+    position: relative;
+  }
+  
+  .panel-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid var(--border-color);
+    padding-bottom: 5px;
+    margin-bottom: 10px;
+    cursor: move;
+  }
+  
+  .panel-title {
+    margin: 0;
+    font-size: 1rem;
+    color: var(--primary-color);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  
+  /* Dashboard Tile System */
+  .dashboard-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    grid-auto-rows: minmax(250px, auto);
+    gap: 15px;
+    width: 100%;
+    height: 100%;
+    overflow: auto;
+  }
+  
+  .tile {
+    background-color: var(--tile-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 5px;
+    overflow: hidden;
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    transition: transform 0.2s, box-shadow 0.2s;
+  }
+  
+  .tile-header {
+    padding: 8px 10px;
+    background-color: var(--tile-header);
+    border-bottom: 1px solid var(--border-color);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    cursor: move;
+    user-select: none;
+  }
+  
+  .tile-title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: var(--primary-color);
+    font-weight: 500;
+  }
+  
+  .tile-controls {
+    display: flex;
+    gap: 5px;
+  }
+  
+  .tile-control {
+    background: none;
+    border: none;
+    color: var(--text-color);
+    opacity: 0.7;
+    cursor: pointer;
+    border-radius: 3px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 20px;
+    height: 20px;
+    transition: all 0.2s;
+  }
+  
+  .tile-control:hover {
+    background-color: var(--hover-bg);
+    opacity: 1;
+    color: var(--primary-color);
+  }
+  
+  .tile-content {
+    flex: 1;
+    padding: 10px;
+    position: relative;
+    overflow: auto;
+  }
+  
+  .tile-footer {
+    padding: 6px 10px;
+    border-top: 1px solid var(--border-color);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-size: 0.8rem;
+    color: var(--text-color);
+    opacity: 0.7;
+  }
+  
+  .tile-actions {
+    display: flex;
+    gap: 5px;
+  }
+  
+  .tile-action {
+    background: none;
+    border: none;
+    color: var(--text-color);
+    cursor: pointer;
+    font-size: 0.9rem;
+    opacity: 0.7;
+    transition: all 0.2s;
+  }
+  
+  .tile-action:hover {
+    opacity: 1;
+    color: var(--primary-color);
+  }
+  
+  /* Resize handle */
+  .resize-handle {
+    position: absolute;
+    width: 10px;
+    height: 10px;
+    right: 0;
+    bottom: 0;
+    cursor: nwse-resize;
+    z-index: 10;
+  }
+  
+  .resize-handle::before {
+    content: "";
+    position: absolute;
+    right: 3px;
+    bottom: 3px;
+    width: 8px;
+    height: 8px;
+    border-right: 2px solid var(--border-color);
+    border-bottom: 2px solid var(--border-color);
+  }
+  
+  .resize-handle-n {
+    position: absolute;
+    height: 5px;
+    left: 0;
+    right: 0;
+    top: 0;
+    cursor: ns-resize;
+  }
+  
+  .resize-handle-e {
+    position: absolute;
+    width: 5px;
+    top: 0;
+    bottom: 0;
+    right: 0;
+    cursor: ew-resize;
+  }
+  
+  .resize-handle-s {
+    position: absolute;
+    height: 5px;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    cursor: ns-resize;
+  }
+  
+  .resize-handle-w {
+    position: absolute;
+    width: 5px;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    cursor: ew-resize;
+  }
+  
+  /* Improved dropdowns */
+  .dropdown-menu {
+    position: relative;
+    display: inline-block;
+  }
+  
+  .dropdown-toggle {
+    display: flex;
+    align-items: center;
+    color: var(--text-color);
+    background-color: transparent;
+    border: 1px solid var(--border-color);
+    padding: 5px 10px;
+    cursor: pointer;
+    font-family: var(--terminal-font);
+  }
+  
+  .dropdown-toggle::after {
+    content: "▼";
+    font-size: 10px;
+    margin-left: 8px;
+  }
+  
+  .dropdown-content {
+    display: none;
+    position: absolute;
+    top: 100%;
+    left: 0;
+    background-color: var(--dropdown-bg);
+    border: 1px solid var(--border-color);
+    min-width: 200px;
+    z-index: 100;
+    border-radius: 3px;
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+  }
+  
+  .dropdown-menu:hover .dropdown-content,
+  .dropdown-menu:focus-within .dropdown-content {
+    display: block;
+  }
+  
+  .dropdown-item {
+    display: flex;
+    padding: 8px 12px;
+    color: var(--text-color);
+    text-decoration: none;
+    font-family: var(--terminal-font);
+    align-items: center;
+    justify-content: space-between;
+  }
+  
+  .dropdown-item:hover {
+    background-color: var(--hover-bg);
+  }
+  
+  .dropdown-divider {
+    height: 1px;
+    background-color: var(--border-color);
+    margin: 5px 0;
+    opacity: 0.5;
+  }
+  
+  /* Terminal styling */
+  .terminal-container {
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.5);
+    border-radius: 3px;
+    overflow: hidden;
+    position: relative;
+  }
+  
+  .terminal-output {
+    font-family: var(--terminal-font);
+    color: var(--text-color);
+    background-color: transparent;
+    height: calc(100% - 30px);
+    overflow-y: auto;
+    padding: 5px;
+  }
+  
+  .terminal-line {
+    line-height: 1.5;
+    white-space: pre-wrap;
+    word-break: break-all;
+  }
+  
+  .terminal-input {
+    display: flex;
+    font-family: var(--terminal-font);
+    color: var(--text-color);
+    align-items: center;
+    border-top: 1px solid var(--border-color);
+    padding: 5px;
+  }
+  
+  .terminal-input .prompt {
+    margin-right: 8px;
+    color: var(--primary-color);
+  }
+  
+  .command-input {
+    flex: 1;
+    background: transparent;
+    border: none;
+    color: var(--text-color);
+    font-family: var(--terminal-font);
+    font-size: 1em;
+    outline: none;
+  }
+  
+  /* Scan lines effect */
+  .scan-lines {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(
+      to bottom,
+      rgba(255, 255, 255, 0.03) 50%,
+      rgba(0, 0, 0, 0.03) 50%
+    );
+    background-size: 100% 4px;
+    z-index: 2;
+    pointer-events: none;
+    opacity: 0.3;
+  }
+  
+  /* Modal system */
+  .modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.5);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+  }
+  
+  .modal.active {
+    display: flex;
+  }
+  
+  .modal-content {
+    background-color: var(--panel-bg);
+    border-radius: 5px;
+    border: 1px solid var(--border-color);
+    width: 700px;
+    max-width: 90%;
+    max-height: 90vh;
+    display: flex;
+    flex-direction: column;
+    animation: modal-in 0.3s ease-out;
+  }
+  
+  @keyframes modal-in {
+    from {
+      opacity: 0;
+      transform: translateY(-20px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+  
+  .modal-header {
+    padding: 10px 15px;
+    border-bottom: 1px solid var(--border-color);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  
+  .modal-body {
+    padding: 15px;
+    overflow-y: auto;
+    max-height: 70vh;
+  }
+  
+  .modal-footer {
+    padding: 10px 15px;
+    border-top: 1px solid var(--border-color);
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+  }
+  
+  /* Visualizations */
+  .visualization-container {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+  }
 
-        #mod_clockContainer {
-            grid-column: 1 / 2;
-            grid-row: 1 / 3;
-        }
+  /* More styles from existing code... */
+  #loader {
+    transition: all 0.5s ease-in-out;
+    opacity: 1;
+    visibility: visible;
+    position: fixed;
+    height: 100vh;
+    width: 100vw;
+    background: #000;
+    z-index: 90000;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    color: var(--primary-color);
+  }
 
-        #mod_toplist {
-            grid-column: 1 / 4;
-            grid-row: 3 / 7;
-        }
+  #loader.fadeOut {
+    opacity: 0;
+    visibility: hidden;
+  }
 
-        #mod_cpuinfo {
-            grid-column: 4 / 9;
-            grid-row: 4 / 7;
-        }
+  .boot-text {
+    font-family: var(--terminal-font);
+    margin: 20px 0;
+    max-width: 600px;
+    text-align: left;
+  }
 
-        #mod_netstat {
-            grid-column: 4 / 9;
-            grid-row: 1 / 4;
-        }
+  .boot-progress {
+    width: 400px;
+    height: 10px;
+    background-color: #111;
+    border: 1px solid var(--border-color);
+    margin-top: 20px;
+    position: relative;
+    overflow: hidden;
+  }
 
-        #mod_ramwatcher {
-            grid-column: 2 / 4;
-            grid-row: 1 / 3;
-        }
+  .boot-progress-bar {
+    position: absolute;
+    top: 0;
+    left: 0;
+    height: 100%;
+    width: 0%;
+    background-color: var(--primary-color);
+    transition: width 0.5s ease;
+  }
+  
+  /* Blinking cursor effect */
+  .blink {
+    animation: blink-animation 1s steps(2, start) infinite;
+  }
+  
+  @keyframes blink-animation {
+    to {
+      visibility: hidden;
+    }
+  }
+  
+  /* Marketplace tiles */
+  .marketplace-tiles {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 15px;
+  }
+  
+  .tile-card {
+    background-color: var(--tile-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 5px;
+    overflow: hidden;
+    transition: transform 0.2s, box-shadow 0.2s;
+  }
+  
+  .tile-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+  }
+  
+  .tile-card-header {
+    padding: 15px 10px;
+    border-bottom: 1px solid var(--border-color);
+    text-align: center;
+  }
+  
+  .tile-card-body {
+    padding: 10px;
+    font-size: 0.9rem;
+  }
+  
+  .tile-card-footer {
+    padding: 10px;
+    border-top: 1px solid var(--border-color);
+  }
+  
+  .add-tile-btn {
+    width: 100%;
+    background-color: var(--primary-color);
+    color: var(--background-color);
+    border: none;
+    padding: 5px;
+    border-radius: 3px;
+    cursor: pointer;
+    font-family: var(--terminal-font);
+    transition: all 0.2s;
+  }
+  
+  .add-tile-btn:hover {
+    background-color: var(--accent-color);
+  }
+  
+  /* Graph Library styles */
+  .data-source-section {
+    margin-bottom: 20px;
+    padding: 15px;
+    border: 1px solid var(--border-color);
+    border-radius: 5px;
+    background-color: rgba(0, 20, 0, 0.3);
+  }
+  
+  .data-source-section h3 {
+    margin-top: 0;
+    margin-bottom: 10px;
+    color: var(--primary-color);
+    font-size: 1rem;
+  }
+  
+  .data-source-options {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 10px;
+  }
+  
+  .data-source-options select {
+    flex: 1;
+    background-color: var(--panel-bg);
+    color: var(--text-color);
+    border: 1px solid var(--border-color);
+    padding: 5px 10px;
+    border-radius: 3px;
+    font-family: var(--terminal-font);
+  }
+  
+  .data-refresh-btn {
+    background-color: var(--panel-bg);
+    color: var(--text-color);
+    border: 1px solid var(--border-color);
+    padding: 5px 10px;
+    border-radius: 3px;
+    cursor: pointer;
+    font-family: var(--terminal-font);
+    transition: all 0.2s;
+  }
+  
+  .data-refresh-btn:hover {
+    background-color: var(--primary-color);
+    color: var(--background-color);
+  }
+  
+  .data-preview {
+    border: 1px solid var(--border-color);
+    border-radius: 3px;
+    overflow: hidden;
+  }
+  
+  .data-preview-header {
+    display: flex;
+    justify-content: space-between;
+    padding: 5px 10px;
+    background-color: var(--panel-bg);
+    border-bottom: 1px solid var(--border-color);
+  }
+  
+  .toggle-preview-btn {
+    background: none;
+    border: none;
+    color: var(--text-color);
+    cursor: pointer;
+    font-family: var(--terminal-font);
+    font-size: 0.8rem;
+  }
+  
+  .data-preview-content {
+    max-height: 150px;
+    overflow: auto;
+    padding: 10px;
+    background-color: rgba(0, 0, 0, 0.3);
+  }
+  
+  #data-preview-json {
+    margin: 0;
+    font-family: 'Courier New', monospace;
+    font-size: 0.8rem;
+    color: var(--text-color);
+  }
+  
+  .compatibility-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 5px;
+    margin-top: 8px;
+  }
+  
+  .compat-tag {
+    display: inline-block;
+    padding: 2px 6px;
+    background-color: rgba(0, 100, 0, 0.3);
+    border: 1px solid var(--primary-color);
+    border-radius: 3px;
+    font-size: 0.7rem;
+    color: var(--primary-color);
+    cursor: help;
+  }
+  
+  .marketplace-categories {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 5px;
+    margin-bottom: 15px;
+  }
+  
+  .category-btn {
+    background-color: var(--panel-bg);
+    color: var(--text-color);
+    border: 1px solid var(--border-color);
+    padding: 5px 10px;
+    border-radius: 3px;
+    cursor: pointer;
+    font-family: var(--terminal-font);
+    transition: all 0.2s;
+  }
+  
+  .category-btn.active, .category-btn:hover {
+    background-color: var(--primary-color);
+    color: var(--background-color);
+  }
+  
+  .modal-btn {
+    background-color: var(--panel-bg);
+    color: var(--text-color);
+    border: 1px solid var(--border-color);
+    padding: 8px 15px;
+    border-radius: 3px;
+    cursor: pointer;
+    font-family: var(--terminal-font);
+    transition: all 0.2s;
+  }
+  
+  .modal-btn:hover {
+    background-color: var(--primary-color);
+    color: var(--background-color);
+  }
+  
+  .data-mapping-btn {
+    background-color: rgba(0, 80, 0, 0.4);
+  }
+</style> 
 
-        #mod_hardwareInspector {
-            grid-column: 1 / 4;
-            grid-row: 5 / 7;
-            display: flex;
-        }
+<div class="menu-item" id="tools-menu">
+  TOOLS
+  <div class="dropdown">
+    <div class="dropdown-item" onclick="handleMenuAction('document-search')">
+      <div class="dropdown-item-icon">🔍</div>
+      <span class="dropdown-item-label">Document Search</span>
+    </div>
+    <div class="dropdown-item" onclick="handleMenuAction('data-analysis')">
+      <div class="dropdown-item-icon">📊</div>
+      <span class="dropdown-item-label">Data Analysis</span>
+    </div>
+    <div class="dropdown-divider"></div>
+    <div class="dropdown-item has-submenu">
+      <div class="dropdown-item-icon">📈</div>
+      <span class="dropdown-item-label">Visualizations</span>
+      <div class="submenu">
+        <div class="dropdown-item" onclick="handleMenuAction('create-chart')">
+          <span class="dropdown-item-label">Create Chart</span>
+        </div>
+        <div class="dropdown-item" onclick="handleMenuAction('create-map')">
+          <span class="dropdown-item-label">Create Map</span>
+        </div>
+        <div class="dropdown-item" onclick="handleMenuAction('create-network')">
+          <span class="dropdown-item-label">Create Network</span>
+        </div>
+      </div>
+    </div>
+    <div class="dropdown-divider"></div>
+    <div class="dropdown-item" onclick="handleMenuAction('graph-library')">
+      <div class="dropdown-item-icon">🧩</div>
+      <span class="dropdown-item-label">Graph Library</span>
+    </div>
+    <div class="dropdown-item" onclick="handleMenuAction('manage-tiles')">
+      <div class="dropdown-item-icon">🔄</div>
+      <span class="dropdown-item-label">Manage Panels</span>
+    </div>
+    <div class="dropdown-divider"></div>
+    <div class="dropdown-item" onclick="handleMenuAction('network-analysis')">
+      <div class="dropdown-item-icon">🌐</div>
+      <span class="dropdown-item-label">Network Analysis</span>
+    </div>
+    <div class="dropdown-item" onclick="handleMenuAction('entity-extraction')">
+      <div class="dropdown-item-icon">🏷️</div>
+      <span class="dropdown-item-label">Entity Extraction</span>
+    </div>
+  </div>
+</div> 
 
-        #keyboard {
-            grid-column: 1 / 9;
-            grid-row: 6 / 7;
-            display: none;
+<!-- Add dashboard management JavaScript functions -->
+<script>
+  // Dashboard Tile Management Functions
+  function initDashboardTiles() {
+    const tiles = document.querySelectorAll('.tile');
+    
+    tiles.forEach(tile => {
+      // Make tiles draggable
+      makeTileDraggable(tile);
+      
+      // Make tiles resizable
+      makeTileResizable(tile);
+      
+      // Init tile controls
+      initTileControls(tile);
+    });
+    
+    // Terminal input handling
+    const terminalInputs = document.querySelectorAll('.command-input');
+    terminalInputs.forEach(input => {
+      input.addEventListener('keydown', function(e) {
+        if (e.key === 'Enter') {
+          const command = this.value.trim();
+          if (command) {
+            const output = this.closest('.terminal-container').querySelector('.terminal-output');
+            processTerminalCommand(command, output);
+            this.value = '';
+          }
         }
-
-        #shortcut-dock {
-            grid-column: 1 / 2;
-            grid-row: 6 / 7;
+      });
+    });
+  }
+  
+  // Make a tile draggable
+  function makeTileDraggable(tile) {
+    const header = tile.querySelector('.tile-header');
+    let isDragging = false;
+    let offsetX, offsetY, startX, startY;
+    let originalPosition;
+    
+    header.addEventListener('mousedown', e => {
+      // Don't drag if clicking on controls
+      if (e.target.closest('.tile-control') || e.target.closest('.tile-actions')) {
+        return;
+      }
+      
+      isDragging = true;
+      
+      // Store original position
+      originalPosition = {
+        left: tile.offsetLeft,
+        top: tile.offsetTop,
+        width: tile.offsetWidth,
+        height: tile.offsetHeight
+      };
+      
+      // Calculate offsets
+      startX = e.clientX;
+      startY = e.clientY;
+      
+      // Add dragging class
+      tile.classList.add('dragging');
+      
+      e.preventDefault();
+    });
+    
+    document.addEventListener('mousemove', e => {
+      if (!isDragging) return;
+      
+      // Calculate new position
+      const dx = e.clientX - startX;
+      const dy = e.clientY - startY;
+      
+      // Move the tile
+      tile.style.transform = `translate(${dx}px, ${dy}px)`;
+    });
+    
+    document.addEventListener('mouseup', () => {
+      if (!isDragging) return;
+      
+      // Remove dragging class
+      tile.classList.remove('dragging');
+      tile.style.transform = '';
+      
+      isDragging = false;
+      
+      // Here we would normally update the grid position
+      console.log('Tile dragging ended, would update position in grid');
+    });
+  }
+  
+  // Make a tile resizable
+  function makeTileResizable(tile) {
+    const resizeHandle = tile.querySelector('.resize-handle');
+    if (!resizeHandle) return;
+    
+    let isResizing = false;
+    let startX, startY, startWidth, startHeight;
+    
+    resizeHandle.addEventListener('mousedown', e => {
+      isResizing = true;
+      
+      // Store initial size
+      startWidth = tile.offsetWidth;
+      startHeight = tile.offsetHeight;
+      
+      // Store start position
+      startX = e.clientX;
+      startY = e.clientY;
+      
+      // Add resizing class
+      tile.classList.add('resizing');
+      
+      e.preventDefault();
+      e.stopPropagation();
+    });
+    
+    document.addEventListener('mousemove', e => {
+      if (!isResizing) return;
+      
+      // Calculate new size
+      const newWidth = startWidth + (e.clientX - startX);
+      const newHeight = startHeight + (e.clientY - startY);
+      
+      // Apply new size (with minimum constraints)
+      if (newWidth > 200) {
+        tile.style.width = newWidth + 'px';
+      }
+      
+      if (newHeight > 150) {
+        tile.style.height = newHeight + 'px';
+      }
+    });
+    
+    document.addEventListener('mouseup', () => {
+      if (!isResizing) return;
+      
+      // Remove resizing class
+      tile.classList.remove('resizing');
+      isResizing = false;
+      
+      // Here we would normally update the grid layout
+      console.log('Tile resizing ended, would update grid layout');
+      
+      // Trigger resize events for visualizations
+      window.dispatchEvent(new Event('resize'));
+    });
+  }
+  
+  // Initialize tile controls (maximize, settings, close)
+  function initTileControls(tile) {
+    const controls = tile.querySelectorAll('.tile-control');
+    
+    controls.forEach(control => {
+      control.addEventListener('click', () => {
+        const action = control.getAttribute('data-action');
+        
+        switch(action) {
+          case 'maximize':
+            toggleMaximizeTile(tile);
+            break;
+          case 'settings':
+            showTileSettings(tile);
+            break;
+          case 'close':
+            removeTile(tile);
+            break;
         }
-
-        /* Show keyboard only on touch devices */
-        @media (hover: none) {
-            #keyboard {
-                display: block;
+      });
+    });
+    
+    // Footer actions
+    const actions = tile.querySelectorAll('.tile-action');
+    actions.forEach(action => {
+      action.addEventListener('click', () => {
+        const actionType = action.getAttribute('data-action');
+        
+        switch(actionType) {
+          case 'refresh':
+            refreshTile(tile);
+            break;
+          case 'export':
+            exportTileData(tile);
+            break;
+          case 'clear':
+            clearTileContent(tile);
+            break;
+          case 'copy':
+            copyTileContent(tile);
+            break;
+        }
+      });
+    });
+  }
+  
+  // Toggle maximize state of a tile
+  function toggleMaximizeTile(tile) {
+    tile.classList.toggle('maximized');
+    
+    if (tile.classList.contains('maximized')) {
+      // Store original position and size
+      tile.dataset.originalPosition = JSON.stringify({
+        gridColumn: tile.style.gridColumn,
+        gridRow: tile.style.gridRow,
+        width: tile.style.width,
+        height: tile.style.height
+      });
+      
+      // Maximize
+      tile.style.position = 'fixed';
+      tile.style.top = '70px';
+      tile.style.left = '10px';
+      tile.style.right = '10px';
+      tile.style.bottom = '70px';
+      tile.style.width = 'auto';
+      tile.style.height = 'auto';
+      tile.style.zIndex = '100';
+      
+      // Change icon
+      const icon = tile.querySelector('[data-action="maximize"] i');
+      if (icon) {
+        icon.className = 'fas fa-compress';
+      }
+    } else {
+      // Restore original position
+      if (tile.dataset.originalPosition) {
+        const origPos = JSON.parse(tile.dataset.originalPosition);
+        
+        // Restore position
+        tile.style.position = '';
+        tile.style.top = '';
+        tile.style.left = '';
+        tile.style.right = '';
+        tile.style.bottom = '';
+        tile.style.zIndex = '';
+        
+        // Restore grid position if it was set
+        if (origPos.gridColumn) tile.style.gridColumn = origPos.gridColumn;
+        if (origPos.gridRow) tile.style.gridRow = origPos.gridRow;
+        
+        // Restore size if it was set
+        if (origPos.width) tile.style.width = origPos.width;
+        if (origPos.height) tile.style.height = origPos.height;
+      }
+      
+      // Change icon
+      const icon = tile.querySelector('[data-action="maximize"] i');
+      if (icon) {
+        icon.className = 'fas fa-expand';
+      }
+    }
+    
+    // Trigger resize for visualizations
+    window.dispatchEvent(new Event('resize'));
+  }
+  
+  // Show settings for a tile
+  function showTileSettings(tile) {
+    const tileId = tile.getAttribute('data-tile-id');
+    console.log(`Would show settings for tile: ${tileId}`);
+    alert(`Settings dialog for ${tileId} would appear here.`);
+  }
+  
+  // Remove a tile from the dashboard
+  function removeTile(tile) {
+    // Animation for smooth removal
+    tile.style.opacity = '0';
+    tile.style.transform = 'scale(0.8)';
+    
+    setTimeout(() => {
+      tile.remove();
+      
+      // Re-layout the grid
+      // This would be more complex in a real implementation
+      console.log('Tile removed, would re-layout grid');
+    }, 300);
+  }
+  
+  // Refresh tile content
+  function refreshTile(tile) {
+    const tileId = tile.getAttribute('data-tile-id');
+    const content = tile.querySelector('.tile-content');
+    
+    // Show loading state
+    content.classList.add('loading');
+    content.style.opacity = '0.6';
+    
+    // Simulate loading (would be an actual data fetch)
+    setTimeout(() => {
+      content.classList.remove('loading');
+      content.style.opacity = '';
+      
+      // Update last refresh time in the status
+      const statusText = tile.querySelector('.status-text');
+      if (statusText) {
+        statusText.textContent = 'Updated: Just now';
+      }
+      
+      // Re-render visualizations if needed
+      const vizContainer = content.querySelector('.visualization-container');
+      if (vizContainer) {
+        switch(tileId) {
+          case 'mini-map':
+            // Would re-render map
+            console.log('Would refresh map visualization');
+            break;
+          case 'doc-types':
+            // Would re-render pie chart
+            console.log('Would refresh pie chart');
+            break;
+          case 'timeline':
+            // Would re-render timeline
+            console.log('Would refresh timeline');
+            break;
+          case 'mini-network':
+            // Would re-render network
+            console.log('Would refresh network graph');
+            break;
+        }
+      }
+      
+      console.log(`Refreshed tile: ${tileId}`);
+    }, 800);
+  }
+  
+  // Export data from a tile
+  function exportTileData(tile) {
+    const tileId = tile.getAttribute('data-tile-id');
+    console.log(`Would export data from tile: ${tileId}`);
+    alert(`Data from "${tileId}" would be exported here.`);
+  }
+  
+  // Clear content of a tile (mainly for terminal)
+  function clearTileContent(tile) {
+    const terminal = tile.querySelector('.terminal-output');
+    if (terminal) {
+      terminal.innerHTML = '';
+      terminal.innerHTML = '<div class="terminal-line">$ <span class="blink">_</span></div>';
+    }
+  }
+  
+  // Copy content from a tile
+  function copyTileContent(tile) {
+    const terminal = tile.querySelector('.terminal-output');
+    if (terminal) {
+      // Get all text content
+      const text = terminal.innerText;
+      
+      // Copy to clipboard
+      navigator.clipboard.writeText(text)
+        .then(() => {
+          console.log('Terminal content copied to clipboard');
+          // Show brief notification
+          const statusText = tile.querySelector('.status-text');
+          if (statusText) {
+            const originalText = statusText.textContent;
+            statusText.textContent = 'Copied to clipboard!';
+            setTimeout(() => {
+              statusText.textContent = originalText;
+            }, 2000);
+          }
+        })
+        .catch(err => {
+          console.error('Failed to copy: ', err);
+        });
+    }
+  }
+  
+  // Process terminal commands
+  function processTerminalCommand(command, outputElement) {
+    // Add command to output
+    outputElement.innerHTML += `<div class="terminal-line">$ ${command}</div>`;
+    
+    const lcCommand = command.toLowerCase();
+    
+    if (lcCommand === 'help') {
+      outputElement.innerHTML += `
+        <div class="terminal-line">Available commands:</div>
+        <div class="terminal-line">- help: Show available commands</div>
+        <div class="terminal-line">- status: Show system status</div>
+        <div class="terminal-line">- search [term]: Search documents</div>
+        <div class="terminal-line">- analyze [entity]: Analyze entity connections</div>
+        <div class="terminal-line">- graph [data]: Create visualization from data</div>
+        <div class="terminal-line">- clear: Clear terminal output</div>
+      `;
+    } else if (lcCommand === 'status') {
+      outputElement.innerHTML += `
+        <div class="terminal-line">System: ONLINE</div>
+        <div class="terminal-line">Documents: 2,574</div>
+        <div class="terminal-line">Processing: ACTIVE</div>
+        <div class="terminal-line">API: CONNECTED</div>
+        <div class="terminal-line">Last update: ${new Date().toLocaleString()}</div>
+      `;
+    } else if (lcCommand === 'clear') {
+      outputElement.innerHTML = '';
+    } else if (lcCommand.startsWith('search ')) {
+      const term = command.substring(7);
+      outputElement.innerHTML += `
+        <div class="terminal-line">Searching for: "${term}"...</div>
+        <div class="terminal-line">Found 3 matching documents:</div>
+        <div class="terminal-line">1. Hampton Roads Regional Development Plan</div>
+        <div class="terminal-line">2. Virginia Beach Oceanfront Revitalization</div>
+        <div class="terminal-line">3. Newport News Shipyard Expansion Proposal</div>
+      `;
+    } else if (lcCommand.startsWith('analyze ')) {
+      const entity = command.substring(8);
+      outputElement.innerHTML += `
+        <div class="terminal-line">Analyzing entity: "${entity}"...</div>
+        <div class="terminal-line">Connected to 5 other entities</div>
+        <div class="terminal-line">Appears in 12 documents</div>
+        <div class="terminal-line">Primary category: Organization</div>
+      `;
+    } else if (lcCommand.startsWith('graph ')) {
+      const dataType = command.substring(6);
+      outputElement.innerHTML += `
+        <div class="terminal-line">Creating visualization for: "${dataType}"...</div>
+        <div class="terminal-line">Generating graph from data source</div>
+        <div class="terminal-line">Opening in new visualization panel</div>
+      `;
+    } else {
+      outputElement.innerHTML += `<div class="terminal-line">Command not recognized: ${command}</div>`;
+      outputElement.innerHTML += `<div class="terminal-line">Type "help" for available commands</div>`;
+    }
+    
+    // Add prompt at the end
+    outputElement.innerHTML += `<div class="terminal-line">$ <span class="blink">_</span></div>`;
+    
+    // Scroll to bottom
+    outputElement.scrollTop = outputElement.scrollHeight;
+  }
+  
+  // Function to handle menu actions
+  function handleMenuAction(action) {
+    console.log(`Menu action: ${action}`);
+    
+    switch(action) {
+      case 'graph-library':
+        // Show graph library modal
+        document.getElementById('graph-library-modal').classList.add('active');
+        // Initialize library interactions
+        initGraphLibrary();
+        break;
+      case 'create-chart':
+      case 'create-map':
+      case 'create-network':
+        // Open graph library with pre-selected category
+        document.getElementById('graph-library-modal').classList.add('active');
+        // Select appropriate category
+        const category = action.replace('create-', '');
+        document.querySelectorAll('.category-btn').forEach(btn => {
+          btn.classList.remove('active');
+          if (btn.getAttribute('data-category') === category + 's') {
+            btn.classList.add('active');
+            filterGraphTemplates(category + 's');
+          }
+        });
+        // Initialize library interactions
+        initGraphLibrary();
+        break;
+      case 'manage-tiles':
+        // Show tile management interface
+        alert('Panel Management interface would open here');
+        break;
+      case 'document-search':
+      case 'data-analysis':
+      case 'network-analysis':
+      case 'entity-extraction':
+        alert(`${action.replace('-', ' ')} interface would open here`);
+        break;
+      default:
+        console.log(`Action not implemented: ${action}`);
+    }
+  }
+  
+  // Initialize Graph Library interactions
+  function initGraphLibrary() {
+    // Toggle data preview
+    const toggleBtn = document.querySelector('.toggle-preview-btn');
+    if (toggleBtn) {
+      toggleBtn.addEventListener('click', function() {
+        const preview = document.querySelector('.data-preview-content');
+        if (preview) {
+          if (preview.style.display === 'none') {
+            preview.style.display = 'block';
+            this.textContent = 'Hide';
+          } else {
+            preview.style.display = 'none';
+            this.textContent = 'Show/Hide';
+          }
+        }
+      });
+    }
+    
+    // Data source selector
+    const dataSourceSelector = document.getElementById('data-source-selector');
+    if (dataSourceSelector) {
+      dataSourceSelector.addEventListener('change', function() {
+        updateDataPreview(this.value);
+      });
+    }
+    
+    // Refresh data button
+    const refreshBtn = document.querySelector('.data-refresh-btn');
+    if (refreshBtn) {
+      refreshBtn.addEventListener('click', function() {
+        const source = document.getElementById('data-source-selector').value;
+        updateDataPreview(source, true);
+      });
+    }
+    
+    // Category filters
+    document.querySelectorAll('.category-btn').forEach(btn => {
+      btn.addEventListener('click', function() {
+        // Remove active class from all
+        document.querySelectorAll('.category-btn').forEach(b => {
+          b.classList.remove('active');
+        });
+        // Add active to clicked
+        this.classList.add('active');
+        // Filter templates
+        filterGraphTemplates(this.getAttribute('data-category'));
+      });
+    });
+    
+    // Template selection
+    document.querySelectorAll('.add-tile-btn').forEach(btn => {
+      btn.addEventListener('click', function() {
+        const tileType = this.closest('.tile-card').getAttribute('data-tile-type');
+        const dataSource = document.getElementById('data-source-selector').value;
+        createVisualization(tileType, dataSource);
+      });
+    });
+    
+    // Data mapping button
+    const dataMappingBtn = document.querySelector('.data-mapping-btn');
+    if (dataMappingBtn) {
+      dataMappingBtn.addEventListener('click', function() {
+        showDataMappingInterface();
+      });
+    }
+  }
+  
+  // Filter visualization templates
+  function filterGraphTemplates(category) {
+    const templates = document.querySelectorAll('.tile-card');
+    
+    if (category === 'all') {
+      templates.forEach(template => {
+        template.style.display = 'block';
+      });
+      return;
+    }
+    
+    templates.forEach(template => {
+      const type = template.getAttribute('data-tile-type');
+      
+      // Map category to template types
+      const categoryMap = {
+        'maps': ['map', 'globe', 'heatmap'],
+        'charts': ['barchart', 'timeline', 'treemap'],
+        'networks': ['network', 'sankey'],
+        'advanced': ['sankey', 'heatmap', 'treemap']
+      };
+      
+      if (categoryMap[category] && categoryMap[category].includes(type)) {
+        template.style.display = 'block';
+      } else {
+        template.style.display = 'none';
+      }
+    });
+  }
+  
+  // Update data preview based on selected source
+  function updateDataPreview(source, isRefresh = false) {
+    const previewElement = document.getElementById('data-preview-json');
+    if (!previewElement) return;
+    
+    // Show loading
+    previewElement.textContent = 'Loading data...';
+    
+    // Simulate data loading delay
+    setTimeout(() => {
+      let sampleData;
+      
+      switch(source) {
+        case 'document-database':
+          sampleData = {
+            "documents": [
+              {"id": "d1", "title": "Hampton Roads Plan", "type": "PDF", "entities": ["e1", "e2"]},
+              {"id": "d2", "title": "Virginia Beach Revitalization", "type": "DOCX", "entities": ["e2", "e3"]},
+              {"id": "d3", "title": "Norfolk Naval Documentation", "type": "PDF", "entities": ["e3", "e4"]}
+            ],
+            "metadata": {
+              "count": 3,
+              "types": ["PDF", "DOCX"],
+              "lastUpdated": new Date().toISOString()
             }
-        }
+          };
+          break;
+        case 'entity-network':
+          sampleData = {
+            "entities": [
+              {"id": "e1", "name": "VA Tech", "type": "EDU", "connections": 5},
+              {"id": "e2", "name": "ODU", "type": "EDU", "connections": 4},
+              {"id": "e3", "name": "Norfolk Naval", "type": "MIL", "connections": 6},
+              {"id": "e4", "name": "Hampton Roads", "type": "GOV", "connections": 3}
+            ],
+            "relationships": [
+              {"source": "e1", "target": "e2", "strength": 0.8, "documents": ["d1"]},
+              {"source": "e1", "target": "e3", "strength": 0.5, "documents": []},
+              {"source": "e2", "target": "e3", "strength": 0.7, "documents": ["d2"]},
+              {"source": "e3", "target": "e4", "strength": 0.9, "documents": ["d3"]}
+            ]
+          };
+          break;
+        case 'geographic-data':
+          sampleData = {
+            "locations": [
+              {"name": "Norfolk", "coordinates": [-76.2859, 36.8508], "documents": 358},
+              {"name": "Virginia Beach", "coordinates": [-75.9780, 36.8529], "documents": 427},
+              {"name": "Hampton", "coordinates": [-76.3452, 37.0299], "documents": 189},
+              {"name": "Newport News", "coordinates": [-76.4343, 37.0871], "documents": 256}
+            ],
+            "regions": [
+              {"name": "Hampton Roads", "type": "Metropolitan", "documents": 1230},
+              {"name": "Virginia", "type": "State", "documents": 1850}
+            ]
+          };
+          break;
+        case 'timeline-events':
+          sampleData = {
+            "events": [
+              {"id": "ev1", "date": "2023-01-15", "title": "Plan Approval", "documents": ["d1"]},
+              {"id": "ev2", "date": "2023-03-22", "title": "Funding Allocation", "documents": ["d2"]},
+              {"id": "ev3", "date": "2023-06-10", "title": "Construction Start", "documents": ["d3"]},
+              {"id": "ev4", "date": "2023-12-05", "title": "Phase 1 Completion", "documents": []}
+            ],
+            "timeline": {
+              "start": "2023-01-01",
+              "end": "2024-01-01",
+              "milestones": 4
+            }
+          };
+          break;
+        case 'custom-json':
+          sampleData = { 
+            "data": "Custom JSON data would be entered here",
+            "format": "free-form",
+            "instructions": "Enter valid JSON with your custom visualization data"
+          };
+          break;
+        case 'api-endpoint':
+          sampleData = {
+            "endpoint": "https://api.example.com/data",
+            "method": "GET",
+            "headers": {
+              "Authorization": "Bearer [TOKEN]"
+            },
+            "status": "Not Connected"
+          };
+          break;
+      }
+      
+      // Update preview with formatted JSON
+      previewElement.textContent = JSON.stringify(sampleData, null, 2);
+      
+      // If refresh, show notification
+      if (isRefresh) {
+        const notification = document.createElement('div');
+        notification.className = 'refresh-notification';
+        notification.textContent = 'Data refreshed';
+        notification.style.position = 'absolute';
+        notification.style.top = '10px';
+        notification.style.right = '10px';
+        notification.style.backgroundColor = 'var(--primary-color)';
+        notification.style.color = 'var(--background-color)';
+        notification.style.padding = '5px 10px';
+        notification.style.borderRadius = '3px';
+        notification.style.zIndex = '2000';
+        
+        document.body.appendChild(notification);
+        
+        setTimeout(() => {
+          notification.style.opacity = '0';
+          setTimeout(() => {
+            document.body.removeChild(notification);
+          }, 500);
+        }, 2000);
+      }
+      
+      // Update compatibility indicators
+      updateCompatibilityHighlights(source);
+    }, 600);
+  }
+  
+  // Highlight compatible visualizations based on data source
+  function updateCompatibilityHighlights(source) {
+    // Map data sources to compatible visualization types
+    const compatibilityMap = {
+      'document-database': ['globe', 'network', 'timeline', 'treemap'],
+      'entity-network': ['network', 'map', 'sankey'],
+      'geographic-data': ['globe', 'map', 'heatmap'],
+      'timeline-events': ['timeline'],
+      'custom-json': ['barchart', 'network', 'timeline', 'treemap', 'sankey', 'heatmap', 'globe', 'map'],
+      'api-endpoint': ['barchart', 'network', 'timeline', 'treemap', 'sankey', 'heatmap', 'globe', 'map']
+    };
+    
+    // Get compatible types for the selected source
+    const compatibleTypes = compatibilityMap[source] || [];
+    
+    // Highlight compatible visualizations
+    document.querySelectorAll('.tile-card').forEach(card => {
+      const type = card.getAttribute('data-tile-type');
+      
+      if (compatibleTypes.includes(type)) {
+        card.style.borderColor = 'var(--primary-color)';
+        card.style.boxShadow = '0 0 10px rgba(0, 255, 0, 0.2)';
+      } else {
+        card.style.borderColor = 'var(--border-color)';
+        card.style.boxShadow = 'none';
+      }
+    });
+  }
+  
+  // Create visualization from template and data source
+  function createVisualization(templateType, dataSource) {
+    console.log(`Creating ${templateType} visualization with ${dataSource} data`);
+    
+    // Check compatibility
+    const compatibilityMap = {
+      'document-database': ['globe', 'network', 'timeline', 'treemap'],
+      'entity-network': ['network', 'map', 'sankey'],
+      'geographic-data': ['globe', 'map', 'heatmap'],
+      'timeline-events': ['timeline'],
+      'custom-json': ['barchart', 'network', 'timeline', 'treemap', 'sankey', 'heatmap', 'globe', 'map'],
+      'api-endpoint': ['barchart', 'network', 'timeline', 'treemap', 'sankey', 'heatmap', 'globe', 'map']
+    };
+    
+    const isCompatible = (compatibilityMap[dataSource] || []).includes(templateType);
+    
+    if (!isCompatible) {
+      alert(`The selected visualization (${templateType}) is not compatible with the data source (${dataSource}).\n\nPlease select a compatible combination.`);
+      return;
+    }
+    
+    // Close the library modal
+    document.getElementById('graph-library-modal').classList.remove('active');
+    
+    // Navigate to appropriate tab based on visualization type
+    const tabMap = {
+      'globe': 'globe-tab',
+      'map': 'map-tab',
+      'network': 'network-tab',
+      'barchart': 'analysis-tab',
+      'timeline': 'analysis-tab',
+      'treemap': 'treemap-tab',
+      'heatmap': 'analysis-tab',
+      'sankey': 'network-tab'
+    };
+    
+    // Activate the corresponding tab
+    if (tabMap[templateType] && typeof activateTab === 'function') {
+      activateTab(tabMap[templateType]);
+    } else {
+      console.error('Could not find appropriate tab for visualization type:', templateType);
+    }
+    
+    // Alert to simulate visualization creation
+    alert(`Creating new ${templateType} visualization with ${dataSource} data.\n\nIn a full implementation, this would render the visualization in the selected panel.`);
+  }
+  
+  // Show data mapping interface
+  function showDataMappingInterface() {
+    const source = document.getElementById('data-source-selector').value;
+    alert(`Data mapping interface would open here for source: ${source}\n\nThis would allow you to map specific data fields to visual properties of the selected visualization.`);
+  }
+  
+  // Initialize after page load
+  window.addEventListener('load', function() {
+    initDashboardTiles();
+    
+    // Create any initial visualizations
+    // This would be more complex in a real implementation
+    
+    // Make sure terminal has focus when clicked
+    document.querySelectorAll('.terminal-container').forEach(container => {
+      container.addEventListener('click', function() {
+        const input = this.querySelector('.command-input');
+        if (input) input.focus();
+      });
+    });
+    
+    // Close modal when clicking close button
+    document.querySelectorAll('.close-modal').forEach(button => {
+      button.addEventListener('click', function() {
+        const modal = this.closest('.modal');
+        if (modal) modal.classList.remove('active');
+      });
+    });
+  });
+</script>
 
-        /* Cyberpunk Theme Overrides */
-        .cyberdash {
-            background-color: var(--dark-bg);
-            background-image: 
-                radial-gradient(circle at 50% 50%, rgba(0, 255, 255, 0.05) 0%, transparent 70%),
-                linear-gradient(0deg, rgba(0, 0, 30, 1) 0%, rgba(10, 10, 40, 1) 100%);
-            font-family: 'Fira Code', monospace;
-        }
-
-        .loading-indicator {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            height: 100%;
-        }
-
-        .spinner {
-            width: 40px;
-            height: 40px;
-            border: 4px solid rgba(0, 255, 255, 0.3);
-            border-radius: 50%;
-            border-top-color: var(--neon-blue);
-            animation: spin 1s linear infinite;
-            margin-bottom: 10px;
-        }
-
-        @keyframes spin {
-            to { transform: rotate(360deg); }
-        }
-        
-        /* App mode transitions */
-        .mode-transition {
-            transition: all 0.3s ease-in-out;
-        }
-        
-        /* Toggle button styling */
-        .mode-toggle {
-            position: fixed;
-            top: 20px;
-            right: 20px;
-            z-index: 1000;
-            padding: 12px 20px;
-            border-radius: 8px;
-            background-color: #2b3b80;
-            color: white;
-            border: none;
-            font-weight: 600;
-            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-        
-        /* Dashboard grid styling */
-        .grid-stack {
-            background: #f5f7fa;
-        }
-        
-        .grid-stack-item-content {
-            background: white;
-            border-radius: 8px;
-            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
-            overflow: hidden;
-        }
-        
-        /* Widget header styling */
-        .widget-header {
-            padding: 12px 16px;
-            background: #eef2f7;
-            border-bottom: 1px solid #dce4ec;
-            font-weight: 600;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-        
-        /* Map container */
-        #map-container {
-            position: relative;
-        }
-        
-        #map {
-            width: 100%;
-            height: 100%;
-        }
-        
-        /* Globe container */
-        #globe {
-            position: absolute;
-            inset: 0;
-            pointer-events: none;
-        }
-        
-        /* Dashboard container */
-        #dashboard {
-            position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background: #f5f7fa;
-            z-index: 10;
-            padding-top: 60px;
-            overflow: auto;
-        }
-        
-        /* Map is hidden when in dashboard mode */
-        .dashboard-mode #map-container {
-            display: none;
-        }
-        
-        /* Dashboard is hidden when in map mode */
-        .map-mode #dashboard {
-            display: none;
-        }
-        
-        /* Node markers styling */
-        .map-marker {
-            width: 30px !important;
-            height: 30px !important;
-            position: relative;
-            background: transparent !important;
-        }
-        
-        .marker-content {
-            width: 100%;
-            height: 100%;
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.3);
-            color: white;
-        }
-        
-        /* Node popup styling */
-        .node-popup {
-            padding: 10px;
-        }
-        
-        .node-popup h3 {
-            margin: 0 0 10px 0;
-            color: #2b3b80;
-            font-size: 16px;
-            font-weight: 600;
-        }
-        
-        .node-meta {
-            margin-bottom: 10px;
-            font-size: 14px;
-        }
-        
-        .node-actions {
-            margin-top: 10px;
-        }
-        
-        /* Mini-map styling */
-        #mini-map {
-            width: 100%;
-            height: 100%;
-            min-height: 300px;
-        }
-        
-        /* Calendar heatmap styling */
-        #calendar-widget {
-            min-height: 300px;
-        }
-    </style>
-</head>
-<body data-theme="dark" class="cyberdash">
-    <!-- Rotate device prompt -->
-    <div id="rotatePrompt" style="display:none;position:fixed;inset:0;z-index:1000;background:#000a;color:#fff;align-items:center;justify-content:center;font-size:2rem;text-align:center;">
-        <div>
-            <i class="fas fa-sync fa-spin" style="font-size:3rem;margin-bottom:1rem;"></i>
-            <p>Please rotate your device to landscape mode for optimal experience</p>
-        </div>
+<!-- Graph Library Modal (Renamed from Tile Marketplace) -->
+<div class="modal" id="graph-library-modal">
+  <div class="modal-content">
+    <div class="modal-header">
+      <h2><i class="fas fa-project-diagram"></i> Graph Library</h2>
+      <button class="close-modal"><i class="fas fa-times"></i></button>
     </div>
-
-    <!-- Main grid layout -->
-    <div class="wrapper">
-        <!-- Clock & system stats -->
-        <div class="mod_column" id="mod_clockContainer">
-            <h1>757<span>BUILT</span></h1>
-            <div id="mod_clock"></div>
-            <div id="systemStats">
-                <div class="stat" aria-live="polite"><span class="label">PROJECTS</span><span class="value" id="projectCount">--</span></div>
-                <div class="stat" aria-live="polite"><span class="label">ENTITIES</span><span class="value" id="entityCount">--</span></div>
-                <div class="stat" aria-live="polite"><span class="label">ACTIVE</span><span class="value" id="activeCount">--</span></div>
+    <div class="modal-body">
+      <div class="marketplace-search">
+        <input type="text" placeholder="Search visualizations...">
+        <button><i class="fas fa-search"></i></button>
+      </div>
+      
+      <!-- Add data source selection section -->
+      <div class="data-source-section">
+        <h3>Data Source</h3>
+        <div class="data-source-options">
+          <select id="data-source-selector">
+            <option value="document-database">Document Database</option>
+            <option value="entity-network">Entity Network</option>
+            <option value="geographic-data">Geographic Data</option>
+            <option value="timeline-events">Timeline Events</option>
+            <option value="custom-json">Custom JSON</option>
+            <option value="api-endpoint">API Endpoint</option>
+          </select>
+          <button class="data-refresh-btn"><i class="fas fa-sync-alt"></i> Refresh</button>
+        </div>
+        <div class="data-preview">
+          <div class="data-preview-header">
+            <span>Data Preview</span>
+            <button class="toggle-preview-btn">Show/Hide</button>
+          </div>
+          <div class="data-preview-content" style="display: none;">
+            <pre id="data-preview-json">{
+  "entities": [
+    {"id": "e1", "name": "VA Tech", "type": "EDU", "connections": 5},
+    {"id": "e2", "name": "ODU", "type": "EDU", "connections": 4},
+    {"id": "e3", "name": "Norfolk Naval", "type": "MIL", "connections": 6}
+  ],
+  "relationships": [
+    {"source": "e1", "target": "e2", "strength": 0.8},
+    {"source": "e1", "target": "e3", "strength": 0.5},
+    {"source": "e2", "target": "e3", "strength": 0.7}
+  ]
+}</pre>
+          </div>
+        </div>
+      </div>
+      
+      <div class="marketplace-categories">
+        <button class="category-btn active" data-category="all">All Visualizations</button>
+        <button class="category-btn" data-category="maps">Maps</button>
+        <button class="category-btn" data-category="charts">Charts</button>
+        <button class="category-btn" data-category="networks">Networks</button>
+        <button class="category-btn" data-category="advanced">Advanced</button>
+      </div>
+      
+      <div class="marketplace-tiles">
+        <!-- Visualization Templates -->
+        <div class="tile-card" data-tile-type="globe">
+          <div class="tile-card-header">
+            <i class="fas fa-globe"></i>
+            <h3>3D Globe Visualization</h3>
+          </div>
+          <div class="tile-card-body">
+            <p>Interactive 3D globe for geospatial data with dynamic data mapping and customizable layers.</p>
+            <div class="compatibility-tags">
+              <span class="compat-tag" title="Compatible with Geographic Data">Geo</span>
+              <span class="compat-tag" title="Compatible with Document Database">Docs</span>
             </div>
+          </div>
+          <div class="tile-card-footer">
+            <button class="add-tile-btn"><i class="fas fa-plus"></i> Use Template</button>
+          </div>
         </div>
-
-        <!-- Project Table -->
-        <div id="mod_toplist" class="mod_toplist">
-            <p class="mod_toplist_title">PROJECT TERMINAL</p>
-            <table id="mod_toplist_table">
-                <thead><tr><th>PROJECT</th><th>LOCALITY</th><th>STATUS</th><th>FUNDING</th></tr></thead>
-                <tbody id="project-table-body"><tr><td colspan="4" class="loading">Loading project data...</td></tr></tbody>
-            </table>
-        </div>
-
-        <!-- Timeline -->
-        <div id="mod_cpuinfo">
-            <div class="mod_cpuinfo_title">DEVELOPMENT TIMELINE</div>
-            <div id="timeline-chart"><div class="loading-indicator"><div class="spinner"></div><span>Loading timeline data...</span></div></div>
-        </div>
-
-        <!-- Network Graph -->
-        <div id="mod_netstat">
-            <div class="mod_netstat_title">NETWORK GRAPH</div>
-            <div id="network-graph"><div class="loading-indicator"><div class="spinner"></div><span>Loading relationship data...</span></div></div>
-        </div>
-
-        <!-- Funding Allocation -->
-        <div id="mod_ramwatcher">
-            <div class="mod_ramwatcher_title">FUNDING ALLOCATION</div>
-            <div id="funding-gauges"></div>
-            <div class="mod_ramwatcher_bars">
-                <div class="mod_ramwatcher_bar_container"><p>Federal</p><div class="mod_ramwatcher_bar"><div id="federal-alloc" style="width: 45%"></div></div><p>45%</p></div>
-                <div class="mod_ramwatcher_bar_container"><p>State</p><div class="mod_ramwatcher_bar"><div id="state-alloc" style="width: 28%"></div></div><p>28%</p></div>
-                <div class="mod_ramwatcher_bar_container"><p>Private</p><div class="mod_ramwatcher_bar"><div id="private-alloc" style="width: 27%"></div></div><p>27%</p></div>
+        
+        <div class="tile-card" data-tile-type="network">
+          <div class="tile-card-header">
+            <i class="fas fa-project-diagram"></i>
+            <h3>Force-Directed Graph</h3>
+          </div>
+          <div class="tile-card-body">
+            <p>Dynamic network visualization with interactive node exploration and relationship filtering.</p>
+            <div class="compatibility-tags">
+              <span class="compat-tag" title="Compatible with Entity Network">Entities</span>
+              <span class="compat-tag" title="Compatible with Document Database">Docs</span>
             </div>
+          </div>
+          <div class="tile-card-footer">
+            <button class="add-tile-btn"><i class="fas fa-plus"></i> Use Template</button>
+          </div>
         </div>
-
-        <!-- Document Library -->
-        <div id="mod_hardwareInspector">
-            <div id="mod_hardwareInspector_inner">
-                <div id="mod_hardwareInspector_title">DOCUMENT LIBRARY</div>
-                <div id="document-library">
-                    <ul class="document-list" aria-label="Document categories">
-                        <li tabindex="0"><i class="fas fa-project-diagram"></i> Projects</li>
-                        <li tabindex="0"><i class="fas fa-flask"></i> Research</li>
-                        <li tabindex="0"><i class="fas fa-file-contract"></i> Patents</li>
-                        <li tabindex="0"><i class="fas fa-users"></i> Organizations</li>
-                        <li tabindex="0"><i class="fas fa-dollar-sign"></i> Funding</li>
-                    </ul>
-                </div>
+        
+        <div class="tile-card" data-tile-type="map">
+          <div class="tile-card-header">
+            <i class="fas fa-map"></i>
+            <h3>Interactive Map</h3>
+          </div>
+          <div class="tile-card-body">
+            <p>Custom 2D map with data-driven layers and interactive regional aggregation tools.</p>
+            <div class="compatibility-tags">
+              <span class="compat-tag" title="Compatible with Geographic Data">Geo</span>
+              <span class="compat-tag" title="Compatible with Entity Network">Entities</span>
             </div>
+          </div>
+          <div class="tile-card-footer">
+            <button class="add-tile-btn"><i class="fas fa-plus"></i> Use Template</button>
+          </div>
         </div>
-
-        <!-- On-screen Keyboard -->
-        <div id="keyboard"></div>
-
-        <!-- Shortcut Dock -->
-        <div id="shortcut-dock">
-            <div id="mod_dock_title">SHORTCUTS</div>
-            <div class="shortcut-icons">
-                <button aria-label="Search projects" class="shortcut-icon"><i class="fas fa-search"></i></button>
+        
+        <div class="tile-card" data-tile-type="barchart">
+          <div class="tile-card-header">
+            <i class="fas fa-chart-bar"></i>
+            <h3>Dynamic Bar Chart</h3>
+          </div>
+          <div class="tile-card-body">
+            <p>Interactive bar chart with realtime data sorting, filtering and animated transitions between views.</p>
+            <div class="compatibility-tags">
+              <span class="compat-tag" title="Compatible with any numerical data">Universal</span>
             </div>
+          </div>
+          <div class="tile-card-footer">
+            <button class="add-tile-btn"><i class="fas fa-plus"></i> Use Template</button>
+          </div>
         </div>
+        
+        <div class="tile-card" data-tile-type="timeline">
+          <div class="tile-card-header">
+            <i class="fas fa-stream"></i>
+            <h3>Interactive Timeline</h3>
+          </div>
+          <div class="tile-card-body">
+            <p>Temporal data visualization with zoomable timeline, event highlighting and filtering capabilities.</p>
+            <div class="compatibility-tags">
+              <span class="compat-tag" title="Compatible with Timeline Events">Timeline</span>
+              <span class="compat-tag" title="Compatible with Document Database">Docs</span>
+            </div>
+          </div>
+          <div class="tile-card-footer">
+            <button class="add-tile-btn"><i class="fas fa-plus"></i> Use Template</button>
+          </div>
+        </div>
+        
+        <div class="tile-card" data-tile-type="treemap">
+          <div class="tile-card-header">
+            <i class="fas fa-th-large"></i>
+            <h3>Hierarchical Treemap</h3>
+          </div>
+          <div class="tile-card-body">
+            <p>Nested rectangular visualization of hierarchical data with interactive drill-down capabilities.</p>
+            <div class="compatibility-tags">
+              <span class="compat-tag" title="Compatible with hierarchical data">Hierarchies</span>
+              <span class="compat-tag" title="Compatible with Document Database">Docs</span>
+            </div>
+          </div>
+          <div class="tile-card-footer">
+            <button class="add-tile-btn"><i class="fas fa-plus"></i> Use Template</button>
+          </div>
+        </div>
+        
+        <div class="tile-card" data-tile-type="heatmap">
+          <div class="tile-card-header">
+            <i class="fas fa-fire"></i>
+            <h3>Data Heatmap</h3>
+          </div>
+          <div class="tile-card-body">
+            <p>Density visualization for geographic or matrix data with customizable color scales and thresholds.</p>
+            <div class="compatibility-tags">
+              <span class="compat-tag" title="Compatible with Geographic Data">Geo</span>
+              <span class="compat-tag" title="Compatible with Matrix Data">Matrix</span>
+            </div>
+          </div>
+          <div class="tile-card-footer">
+            <button class="add-tile-btn"><i class="fas fa-plus"></i> Use Template</button>
+          </div>
+        </div>
+        
+        <div class="tile-card" data-tile-type="sankey">
+          <div class="tile-card-header">
+            <i class="fas fa-random"></i>
+            <h3>Sankey Diagram</h3>
+          </div>
+          <div class="tile-card-body">
+            <p>Flow visualization for mapping transfers and relationships between entities within complex systems.</p>
+            <div class="compatibility-tags">
+              <span class="compat-tag" title="Compatible with Entity Network">Entities</span>
+              <span class="compat-tag" title="Compatible with flow data">Flows</span>
+            </div>
+          </div>
+          <div class="tile-card-footer">
+            <button class="add-tile-btn"><i class="fas fa-plus"></i> Use Template</button>
+          </div>
+        </div>
+      </div>
     </div>
-
-    <!-- Media Player (hidden initially) -->
-    <div id="mediaPlayer" style="display:none">
-        <div id="mediaPlayer_header"><span>MEDIA PLAYER</span><button id="closeMediaPlayer" aria-label="Close player">&times;</button></div>
-        <div id="mediaPlayer_body">
-            <div id="media_info"><span id="media_title">--</span></div>
-            <div id="media_controls">
-                <button class="media_prev" aria-label="Previous"><i class="fas fa-step-backward"></i></button>
-                <button class="media_play_pause" aria-label="Play/Pause"><i class="fas fa-play"></i></button>
-                <button class="media_next" aria-label="Next"><i class="fas fa-step-forward"></i></button>
-            </div>
-        </div>
+    <div class="modal-footer">
+      <button class="modal-btn" data-action="create-custom">Create Custom Visualization</button>
+      <button class="modal-btn data-mapping-btn">Data Mapping</button>
+      <button class="modal-btn cancel-btn">Close</button>
     </div>
-
-    <!-- Service Worker & orientation check -->
-    <script>
-        if ('serviceWorker' in navigator) { navigator.serviceWorker.register('/sw.js'); }
-        function checkOrientation(){document.getElementById('rotatePrompt').style.display = window.matchMedia('(orientation: portrait)').matches ? 'flex' : 'none';}
-        addEventListener('orientationchange',checkOrientation); addEventListener('load',checkOrientation);
-    </script>
-
-    <!-- Core libraries -->
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-    <script src="https://unpkg.com/globe.gl@2.34.11/dist/globe.gl.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/d3@7"></script>
-
-    <!-- Component classes -->
-    <script src="src/classes/clock.class.js"></script>
-    <script src="src/classes/mediaPlayer.class.js"></script>
-    <script src="src/classes/keyboard.class.js"></script>
-    <script src="src/classes/locationGlobe.class.js"></script>
-
-    <!-- Dashboard controller -->
-    <script type="module" src="src/cyberdash.js"></script>
+  </div>
+</div>
 </body>
-</html>
+</html> 

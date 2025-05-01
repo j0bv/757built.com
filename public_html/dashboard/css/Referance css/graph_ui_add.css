@@ -1,0 +1,206 @@
+/* Additional styling for 757built-ui interface */
+
+/* Keyboard keys styling */
+.keyboard_row {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: center;
+    flex-wrap: nowrap;
+    margin: 0.46vh 0vh;
+    height: 4vh;
+    width: 100%;
+}
+
+.keyboard_key {
+    height: 3.5vh;
+    margin: 0vh 0.27vh;
+    padding: 0vh 0.37vh;
+    border: 0.18vh solid rgba(var(--color_r), var(--color_g), var(--color_b), 0.5);
+    border-radius: 0.18vh;
+    box-sizing: border-box;
+    color: rgb(var(--color_r), var(--color_g), var(--color_b));
+    background-color: rgba(0, 0, 0, 0.4);
+    font-size: 0.9vh;
+    font-family: var(--font_main_mono);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-grow: 1;
+}
+
+.keyboard_key:hover {
+    background-color: rgba(var(--color_r), var(--color_g), var(--color_b), 0.2);
+}
+
+/* Different sized keys */
+#keyboard_key_space {
+    flex-grow: 6;
+}
+
+#keyboard_key_backspace, #keyboard_key_tab, #keyboard_key_enter, #keyboard_key_shift_left, #keyboard_key_shift_right, #keyboard_key_capslock {
+    flex-grow: 2;
+}
+
+/* LED indicators */
+#keyboard_leds {
+    display: flex;
+    justify-content: flex-start;
+    width: 100%;
+    padding: 0.5vh;
+}
+
+.led {
+    width: 1vh;
+    height: 1vh;
+    border-radius: 50%;
+    margin-right: 0.8vh;
+    background-color: rgba(var(--color_r), var(--color_g), var(--color_b), 0.3);
+}
+
+/* Module styling for side panel elements */
+#mod_sysinfo {
+    height: 25vh;
+    overflow: hidden;
+}
+
+#mod_hardwareInspector {
+    height: 42vh;
+    overflow: hidden;
+}
+
+#mod_netstat {
+    height: 21vh;
+    overflow: hidden;
+}
+
+#mod_conninfo {
+    height: 22vh;
+    overflow: hidden;
+}
+
+#mod_globe {
+    height: 32vh;
+    overflow: hidden;
+}
+
+/* Fix font size in data panels */
+.interface-item, .stat-item, .type-item {
+    font-size: 0.95vh;
+    line-height: 1.2;
+    margin-bottom: 0.3vh;
+}
+
+/* Node types panel */
+#node_types {
+    padding: 0.5vh;
+    font-family: var(--font_main_mono);
+    font-size: 0.95vh;
+    max-height: 20vh;
+    overflow-y: auto;
+}
+
+/* Node details */
+#node_details {
+    padding: 0.5vh;
+    font-family: var(--font_main_mono);
+    font-size: 0.95vh;
+    max-height: 36vh;
+    overflow-y: auto;
+}
+
+/* Graph stats panel */
+#graph_overview {
+    padding: 0.5vh;
+    font-family: var(--font_main_mono);
+    font-size: 0.95vh;
+    max-height: 18vh;
+    overflow-y: auto;
+}
+
+/* Interface data panel */
+#interface_data {
+    padding: 0.5vh;
+    font-family: var(--font_main_mono);
+    font-size: 0.95vh;
+    max-height: 17vh;
+    overflow-y: auto;
+}
+
+/* Network stats styling */
+.network-status {
+    text-transform: uppercase;
+}
+
+.online {
+    color: #36ff86;
+}
+
+/* Main Terminal ASCII styling */
+.terminal-ascii {
+    font-family: var(--font_main_mono);
+    font-size: 0.9vh;
+    line-height: 1.2;
+    white-space: pre;
+    color: rgb(var(--color_r), var(--color_g), var(--color_b));
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    opacity: 0.3;
+    pointer-events: none;
+}
+
+/* File system header */
+#fs_header h3 {
+    font-size: 1.1vh;
+    text-transform: uppercase;
+    font-family: var(--font_main_mono);
+    margin: 0;
+    padding-bottom: 0.5vh;
+}
+
+/* Special coloring for node types */
+.node-type {
+    margin-right: 10px;
+}
+
+.node-type.document {
+    color: var(--graph-node-color-document);
+}
+
+.node-type.person {
+    color: var(--graph-node-color-person);
+}
+
+.node-type.locality {
+    color: var(--graph-node-color-locality);
+}
+
+.node-type.building {
+    color: var(--graph-node-color-building);
+}
+
+.node-type.project {
+    color: var(--graph-node-color-project);
+}
+
+.node-type.research_paper {
+    color: var(--graph-node-color-research-paper);
+}
+
+.node-type.patent {
+    color: var(--graph-node-color-patent);
+}
+
+.node-type.funding {
+    color: var(--graph-node-color-funding);
+}
+
+.node-type.dataset {
+    color: var(--graph-node-color-dataset);
+}
+
+.node-type.region {
+    color: var(--graph-node-color-region);
+}

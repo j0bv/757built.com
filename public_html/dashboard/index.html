@@ -1,0 +1,743 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>757Built Knowledge Graph Dashboard</title>
+    <link rel="stylesheet" href="css/dashboard.css">
+    <link rel="stylesheet" href="css/graph-library.css">
+    <link rel="stylesheet" href="css/grid-system.css">
+    <link rel="stylesheet" href="css/terminal.css">
+    <link rel="stylesheet" href="css/document.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <!-- Document Viewer Libraries -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.7.0/styles/atom-one-dark.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.3/codemirror.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/viewerjs/1.11.3/viewer.min.css">
+    <style>
+        /* Additional animations */
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+        
+        .dashboard-grid {
+            min-height: 100%;
+            transition: background 0.3s ease;
+        }
+        
+        .has-maximized-tile .dashboard-content {
+            overflow: hidden;
+        }
+        
+        /* Document viewer specific styles */
+        .document-viewer-container {
+            display: flex;
+            height: 100%;
+            width: 100%;
+            overflow: hidden;
+            background-color: var(--surface-color);
+            border-radius: 4px;
+        }
+        
+        .document-sidebar {
+            width: 250px;
+            border-right: 1px solid var(--border-color);
+            display: flex;
+            flex-direction: column;
+            background-color: var(--sidebar-bg);
+        }
+        
+        .document-explorer {
+            flex: 1;
+            overflow-y: auto;
+            padding: 10px;
+        }
+        
+        .document-content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+        
+        .document-tabs {
+            display: flex;
+            background-color: var(--tab-bg);
+            border-bottom: 1px solid var(--border-color);
+            overflow-x: auto;
+            height: 36px;
+        }
+        
+        .document-tab {
+            padding: 8px 15px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            cursor: pointer;
+            border-right: 1px solid var(--border-color);
+            min-width: 120px;
+            max-width: 200px;
+            font-size: 12px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        
+        .document-tab.active {
+            background-color: var(--tab-active-bg);
+            border-bottom: 2px solid var(--primary-color);
+        }
+        
+        .document-view {
+            flex: 1;
+            overflow: auto;
+            padding: 20px;
+            background-color: var(--content-bg);
+        }
+        
+        .document-outline {
+            width: 200px;
+            border-left: 1px solid var(--border-color);
+            overflow-y: auto;
+            padding: 10px;
+            background-color: var(--sidebar-bg);
+        }
+        
+        .viewer-container {
+            width: 100%;
+            height: 100%;
+            overflow: auto;
+        }
+        
+        /* PDF viewer */
+        #pdf-viewer {
+            width: 100%;
+            height: 100%;
+            overflow: auto;
+        }
+        
+        /* Code viewer */
+        .code-viewer {
+            width: 100%;
+            height: 100%;
+            overflow: auto;
+        }
+        
+        .document-actions {
+            display: flex;
+            gap: 5px;
+            padding: 5px 10px;
+            border-bottom: 1px solid var(--border-color);
+            background-color: var(--toolbar-bg);
+        }
+        
+        .document-action {
+            background: transparent;
+            border: none;
+            padding: 5px 8px;
+            cursor: pointer;
+            border-radius: 4px;
+            color: var(--text-color);
+        }
+        
+        .document-action:hover {
+            background-color: var(--hover-color);
+        }
+    </style>
+</head>
+<body>
+    <div class="app-container">
+        <!-- Main Header -->
+        <header class="main-header">
+            <div class="logo">
+                <i class="fas fa-project-diagram"></i>
+                <span>757Built Dashboard</span>
+            </div>
+            <nav class="main-menu">
+                <ul>
+                    <li class="dropdown">
+                        <a href="#"><i class="fas fa-file"></i> File</a>
+                        <div class="dropdown-content">
+                            <a href="#" data-action="new-dashboard"><i class="fas fa-plus"></i> New Dashboard <span class="shortcut">Ctrl+N</span></a>
+                            <a href="#" data-action="open-dashboard"><i class="fas fa-folder-open"></i> Open... <span class="shortcut">Ctrl+O</span></a>
+                            <a href="#" data-action="save-dashboard"><i class="fas fa-save"></i> Save <span class="shortcut">Ctrl+S</span></a>
+                            <a href="#" data-action="save-as"><i class="fas fa-save"></i> Save As... <span class="shortcut">Ctrl+Shift+S</span></a>
+                            <div class="divider"></div>
+                            <a href="#" data-action="export-data"><i class="fas fa-file-export"></i> Export Data</a>
+                            <a href="#" data-action="import-data"><i class="fas fa-file-import"></i> Import Data</a>
+                            <div class="divider"></div>
+                            <a href="#" data-action="exit"><i class="fas fa-sign-out-alt"></i> Exit</a>
+                        </div>
+                    </li>
+                    <li class="dropdown">
+                        <a href="#"><i class="fas fa-edit"></i> Edit</a>
+                        <div class="dropdown-content">
+                            <a href="#" data-action="undo"><i class="fas fa-undo"></i> Undo <span class="shortcut">Ctrl+Z</span></a>
+                            <a href="#" data-action="redo"><i class="fas fa-redo"></i> Redo <span class="shortcut">Ctrl+Y</span></a>
+                            <div class="divider"></div>
+                            <a href="#" data-action="copy-tile"><i class="fas fa-copy"></i> Copy Tile <span class="shortcut">Ctrl+C</span></a>
+                            <a href="#" data-action="paste-tile"><i class="fas fa-paste"></i> Paste Tile <span class="shortcut">Ctrl+V</span></a>
+                            <a href="#" data-action="delete-tile"><i class="fas fa-trash"></i> Delete Tile <span class="shortcut">Delete</span></a>
+                        </div>
+                    </li>
+                    <li class="dropdown">
+                        <a href="#"><i class="fas fa-chart-line"></i> View</a>
+                        <div class="dropdown-content">
+                            <a href="#" data-action="fullscreen"><i class="fas fa-expand"></i> Fullscreen <span class="shortcut">F11</span></a>
+                            <a href="#" data-action="zoom-in"><i class="fas fa-search-plus"></i> Zoom In <span class="shortcut">Ctrl++</span></a>
+                            <a href="#" data-action="zoom-out"><i class="fas fa-search-minus"></i> Zoom Out <span class="shortcut">Ctrl+-</span></a>
+                            <a href="#" data-action="reset-zoom"><i class="fas fa-compress"></i> Reset Zoom <span class="shortcut">Ctrl+0</span></a>
+                            <div class="divider"></div>
+                            <a href="#" data-action="toggle-theme" class="theme-toggle"><i class="fas fa-moon"></i> Dark Theme</a>
+                        </div>
+                    </li>
+                    <li class="dropdown">
+                        <a href="#"><i class="fas fa-puzzle-piece"></i> Tiles</a>
+                        <div class="dropdown-content">
+                            <a href="#" data-action="add-globe"><i class="fas fa-globe"></i> Add 3D Globe</a>
+                            <a href="#" data-action="add-map"><i class="fas fa-map"></i> Add 2D Map</a>
+                            <a href="#" data-action="add-network"><i class="fas fa-project-diagram"></i> Add Network Graph</a>
+                            <a href="#" data-action="add-barchart"><i class="fas fa-chart-bar"></i> Add Bar Chart</a>
+                            <a href="#" data-action="add-linechart"><i class="fas fa-chart-line"></i> Add Line Chart</a>
+                            <a href="#" data-action="add-piechart"><i class="fas fa-chart-pie"></i> Add Pie Chart</a>
+                            <a href="#" data-action="add-timeline"><i class="fas fa-stream"></i> Add Timeline</a>
+                            <a href="#" data-action="add-terminal"><i class="fas fa-terminal"></i> Add Terminal</a>
+                            <a href="#" data-action="add-table"><i class="fas fa-table"></i> Add Data Table</a>
+                            <div class="divider"></div>
+                            <a href="#" data-action="tile-marketplace"><i class="fas fa-store"></i> Graph Library</a>
+                        </div>
+                    </li>
+                    <li class="dropdown">
+                        <a href="#"><i class="fas fa-sliders-h"></i> Settings</a>
+                        <div class="dropdown-content">
+                            <a href="#" data-action="preferences"><i class="fas fa-cog"></i> Preferences</a>
+                            <a href="#" data-action="layout-settings"><i class="fas fa-th-large"></i> Layout Settings</a>
+                            <a href="#" data-action="theme-settings" class="theme-settings">
+                                <i class="fas fa-palette"></i> Theme
+                                <div class="sub-dropdown">
+                                    <a href="#" data-theme="default">Default</a>
+                                    <a href="#" data-theme="terminal">Terminal</a>
+                                    <a href="#" data-theme="hologram">Hologram</a>
+                                    <a href="#" data-theme="dark">Dark</a>
+                                    <a href="#" data-theme="light">Light</a>
+                                </div>
+                            </a>
+                            <a href="#" data-action="show-grid"><i class="fas fa-border-all"></i> Toggle Grid Lines</a>
+                            <a href="#" data-action="api-settings"><i class="fas fa-plug"></i> API Settings</a>
+                        </div>
+                    </li>
+                    <li class="dropdown">
+                        <a href="#"><i class="fas fa-file-alt"></i> Documents</a>
+                        <div class="dropdown-content">
+                            <a href="#" data-action="open-documents"><i class="fas fa-folder-open"></i> Document Explorer</a>
+                        </div>
+                    </li>
+                    <li class="dropdown">
+                        <a href="#"><i class="fas fa-question-circle"></i> Help</a>
+                        <div class="dropdown-content">
+                            <a href="#" data-action="documentation"><i class="fas fa-book"></i> Documentation</a>
+                            <a href="#" data-action="keyboard-shortcuts"><i class="fas fa-keyboard"></i> Keyboard Shortcuts</a>
+                            <a href="#" data-action="about"><i class="fas fa-info-circle"></i> About</a>
+                        </div>
+                    </li>
+                </ul>
+            </nav>
+            <div class="user-controls">
+                <div class="search-bar">
+                    <input type="text" placeholder="Search...">
+                    <i class="fas fa-search"></i>
+                </div>
+                <div class="user-menu dropdown">
+                    <a href="#"><i class="fas fa-user-circle"></i></a>
+                    <div class="dropdown-content">
+                        <a href="#"><i class="fas fa-user"></i> Profile</a>
+                        <a href="#"><i class="fas fa-cog"></i> Account Settings</a>
+                        <div class="divider"></div>
+                        <a href="#"><i class="fas fa-sign-out-alt"></i> Logout</a>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <!-- Tabs Bar -->
+        <div class="tabs-container">
+            <div class="tabs">
+                <div class="tab active" data-tab="main-dashboard">
+                    <i class="fas fa-th-large"></i>
+                    <span>Main Dashboard</span>
+                    <button class="close-tab"><i class="fas fa-times"></i></button>
+                </div>
+                <div class="tab" data-tab="network-view">
+                    <i class="fas fa-project-diagram"></i>
+                    <span>Network View</span>
+                    <button class="close-tab"><i class="fas fa-times"></i></button>
+                </div>
+                <div class="tab" data-tab="globe-view">
+                    <i class="fas fa-globe"></i>
+                    <span>Globe View</span>
+                    <button class="close-tab"><i class="fas fa-times"></i></button>
+                </div>
+                <div class="tab" data-tab="document-view">
+                    <i class="fas fa-file-alt"></i>
+                    <span>Document Explorer</span>
+                    <button class="close-tab"><i class="fas fa-times"></i></button>
+                </div>
+                <div class="new-tab">
+                    <i class="fas fa-plus"></i>
+                </div>
+            </div>
+        </div>
+
+        <!-- Main Content Area -->
+        <main class="dashboard-content">
+            <div class="tab-content active" id="main-dashboard">
+                <div class="dashboard-grid">
+                    <!-- Globe Visualization Tile -->
+                    <div class="tile" data-tile-id="globe1" data-grid-position="0,0,4,6">
+                        <div class="tile-header">
+                            <div class="tile-title">
+                                <i class="fas fa-globe"></i>
+                                <span>Global Distribution</span>
+                            </div>
+                            <div class="tile-controls">
+                                <button class="tile-control" data-action="maximize"><i class="fas fa-expand"></i></button>
+                                <button class="tile-control" data-action="settings"><i class="fas fa-cog"></i></button>
+                                <button class="tile-control" data-action="close"><i class="fas fa-times"></i></button>
+                            </div>
+                        </div>
+                        <div class="tile-content">
+                            <div class="visualization-container" id="globe-visualization"></div>
+                        </div>
+                        <div class="tile-footer">
+                            <div class="tile-status">
+                                <span class="status-text">Displaying 157 nodes</span>
+                            </div>
+                            <div class="tile-actions">
+                                <button class="tile-action" data-action="refresh"><i class="fas fa-sync-alt"></i></button>
+                                <button class="tile-action" data-action="export"><i class="fas fa-download"></i></button>
+                            </div>
+                        </div>
+                        <div class="resize-handle"></div>
+                    </div>
+
+                    <!-- Network Graph Tile -->
+                    <div class="tile" data-tile-id="network1" data-grid-position="0,6,4,12">
+                        <div class="tile-header">
+                            <div class="tile-title">
+                                <i class="fas fa-project-diagram"></i>
+                                <span>Knowledge Graph</span>
+                            </div>
+                            <div class="tile-controls">
+                                <button class="tile-control" data-action="maximize"><i class="fas fa-expand"></i></button>
+                                <button class="tile-control" data-action="settings"><i class="fas fa-cog"></i></button>
+                                <button class="tile-control" data-action="close"><i class="fas fa-times"></i></button>
+                            </div>
+                        </div>
+                        <div class="tile-content">
+                            <div class="visualization-container" id="network-visualization"></div>
+                        </div>
+                        <div class="tile-footer">
+                            <div class="tile-status">
+                                <span class="status-text">Showing 87 connections</span>
+                            </div>
+                            <div class="tile-actions">
+                                <button class="tile-action" data-action="refresh"><i class="fas fa-sync-alt"></i></button>
+                                <button class="tile-action" data-action="export"><i class="fas fa-download"></i></button>
+                            </div>
+                        </div>
+                        <div class="resize-handle"></div>
+                    </div>
+
+                    <!-- Bar Chart Tile -->
+                    <div class="tile" data-tile-id="barchart1" data-grid-position="4,0,8,4">
+                        <div class="tile-header">
+                            <div class="tile-title">
+                                <i class="fas fa-chart-bar"></i>
+                                <span>Entity Distribution</span>
+                            </div>
+                            <div class="tile-controls">
+                                <button class="tile-control" data-action="maximize"><i class="fas fa-expand"></i></button>
+                                <button class="tile-control" data-action="settings"><i class="fas fa-cog"></i></button>
+                                <button class="tile-control" data-action="close"><i class="fas fa-times"></i></button>
+                            </div>
+                        </div>
+                        <div class="tile-content">
+                            <div class="visualization-container" id="barchart-visualization"></div>
+                        </div>
+                        <div class="tile-footer">
+                            <div class="tile-status">
+                                <span class="status-text">8 categories</span>
+                            </div>
+                            <div class="tile-actions">
+                                <button class="tile-action" data-action="refresh"><i class="fas fa-sync-alt"></i></button>
+                                <button class="tile-action" data-action="export"><i class="fas fa-download"></i></button>
+                            </div>
+                        </div>
+                        <div class="resize-handle"></div>
+                    </div>
+
+                    <!-- Pie Chart Tile -->
+                    <div class="tile" data-tile-id="piechart1" data-grid-position="4,4,8,8">
+                        <div class="tile-header">
+                            <div class="tile-title">
+                                <i class="fas fa-chart-pie"></i>
+                                <span>Category Distribution</span>
+                            </div>
+                            <div class="tile-controls">
+                                <button class="tile-control" data-action="maximize"><i class="fas fa-expand"></i></button>
+                                <button class="tile-control" data-action="settings"><i class="fas fa-cog"></i></button>
+                                <button class="tile-control" data-action="close"><i class="fas fa-times"></i></button>
+                            </div>
+                        </div>
+                        <div class="tile-content">
+                            <div class="visualization-container" id="piechart1-visualization"></div>
+                        </div>
+                        <div class="tile-footer">
+                            <div class="tile-status">
+                                <span class="status-text">5 categories</span>
+                            </div>
+                            <div class="tile-actions">
+                                <button class="tile-action" data-action="refresh"><i class="fas fa-sync-alt"></i></button>
+                                <button class="tile-action" data-action="export"><i class="fas fa-download"></i></button>
+                            </div>
+                        </div>
+                        <div class="resize-handle"></div>
+                    </div>
+
+                    <!-- Terminal Tile -->
+                    <div class="tile" data-tile-id="terminal1" data-grid-position="8,0,12,8">
+                        <div class="tile-header">
+                            <div class="tile-title">
+                                <i class="fas fa-terminal"></i>
+                                <span>Command Terminal</span>
+                            </div>
+                            <div class="tile-controls">
+                                <button class="tile-control" data-action="maximize"><i class="fas fa-expand"></i></button>
+                                <button class="tile-control" data-action="settings"><i class="fas fa-cog"></i></button>
+                                <button class="tile-control" data-action="close"><i class="fas fa-times"></i></button>
+                            </div>
+                        </div>
+                        <div class="tile-content">
+                            <div class="terminal-container" id="terminal"></div>
+                        </div>
+                        <div class="tile-footer">
+                            <div class="tile-status">
+                                <span class="status-text">Ready</span>
+                            </div>
+                            <div class="tile-actions">
+                                <button class="tile-action" data-action="clear"><i class="fas fa-eraser"></i></button>
+                                <button class="tile-action" data-action="copy"><i class="fas fa-copy"></i></button>
+                            </div>
+                        </div>
+                        <div class="resize-handle"></div>
+                    </div>
+
+                    <!-- Line Chart Tile -->
+                    <div class="tile" data-tile-id="linechart1" data-grid-position="4,8,12,12">
+                        <div class="tile-header">
+                            <div class="tile-title">
+                                <i class="fas fa-chart-line"></i>
+                                <span>Time Series Data</span>
+                            </div>
+                            <div class="tile-controls">
+                                <button class="tile-control" data-action="maximize"><i class="fas fa-expand"></i></button>
+                                <button class="tile-control" data-action="settings"><i class="fas fa-cog"></i></button>
+                                <button class="tile-control" data-action="close"><i class="fas fa-times"></i></button>
+                            </div>
+                        </div>
+                        <div class="tile-content">
+                            <div class="visualization-container" id="linechart1-visualization"></div>
+                        </div>
+                        <div class="tile-footer">
+                            <div class="tile-status">
+                                <span class="status-text">30 data points</span>
+                            </div>
+                            <div class="tile-actions">
+                                <button class="tile-action" data-action="refresh"><i class="fas fa-sync-alt"></i></button>
+                                <button class="tile-action" data-action="export"><i class="fas fa-download"></i></button>
+                            </div>
+                        </div>
+                        <div class="resize-handle"></div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="tab-content" id="network-view">
+                <!-- Full Network View Content -->
+                <div class="full-visualization-container" id="full-network-view"></div>
+            </div>
+
+            <div class="tab-content" id="globe-view">
+                <!-- Full Globe View Content -->
+                <div class="full-visualization-container" id="full-globe-view"></div>
+            </div>
+
+            <div class="tab-content" id="document-view">
+                <!-- Document Viewer -->
+                <div class="document-viewer-container">
+                    <!-- Left Sidebar with File Explorer -->
+                    <div class="document-sidebar">
+                        <div class="document-actions">
+                            <button class="document-action" title="New File"><i class="fas fa-plus"></i></button>
+                            <button class="document-action" title="Upload File"><i class="fas fa-upload"></i></button>
+                            <button class="document-action" title="New Folder"><i class="fas fa-folder-plus"></i></button>
+                            <button class="document-action" title="Refresh"><i class="fas fa-sync-alt"></i></button>
+                        </div>
+                        <div class="document-explorer" id="document-explorer">
+                            <!-- Document tree will be dynamically populated -->
+                        </div>
+                    </div>
+                    
+                    <!-- Main Document Area -->
+                    <div class="document-content">
+                        <!-- Document Tabs -->
+                        <div class="document-tabs" id="document-tabs">
+                            <!-- Tabs will be added dynamically -->
+                        </div>
+                        
+                        <!-- Document Actions Toolbar -->
+                        <div class="document-actions">
+                            <button class="document-action" title="Print"><i class="fas fa-print"></i></button>
+                            <button class="document-action" title="Download"><i class="fas fa-download"></i></button>
+                            <button class="document-action" title="Share"><i class="fas fa-share-alt"></i></button>
+                            <button class="document-action" title="Search"><i class="fas fa-search"></i></button>
+                            <button class="document-action" title="Visualize"><i class="fas fa-chart-bar"></i></button>
+                            <button class="document-action" title="Compare"><i class="fas fa-columns"></i></button>
+                        </div>
+                        
+                        <!-- Document Content View -->
+                        <div class="document-view" id="document-view-content">
+                            <!-- Document content will be displayed here -->
+                            <div class="empty-state">
+                                <i class="fas fa-file-alt fa-3x"></i>
+                                <p>Select a document to view</p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Right Sidebar with Document Outline -->
+                    <div class="document-outline" id="document-outline">
+                        <!-- Document outline will be dynamically populated -->
+                    </div>
+                </div>
+            </div>
+        </main>
+
+        <!-- Status Bar -->
+        <footer class="status-bar">
+            <div class="status-left">
+                <span class="status-item"><i class="fas fa-database"></i> Connected</span>
+                <span class="status-item"><i class="fas fa-project-diagram"></i> 423 Nodes</span>
+                <span class="status-item"><i class="fas fa-link"></i> 618 Edges</span>
+            </div>
+            <div class="status-center">
+                <span class="status-item">Last updated: <span id="last-updated">2023-05-25 14:32</span></span>
+            </div>
+            <div class="status-right">
+                <span class="status-item"><i class="fas fa-signal"></i> API Status: Online</span>
+                <span class="status-item theme-indicator"><i class="fas fa-moon"></i> Dark</span>
+            </div>
+        </footer>
+
+        <!-- Tile Marketplace Modal -->
+        <div class="modal" id="tile-marketplace-modal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h2><i class="fas fa-chart-line"></i> Graph Library</h2>
+                    <button class="close-modal"><i class="fas fa-times"></i></button>
+                </div>
+                <div class="modal-body">
+                    <div class="marketplace-search">
+                        <input type="text" placeholder="Search visualizations..." id="graph-search">
+                        <button><i class="fas fa-search"></i></button>
+                    </div>
+                    <div class="marketplace-categories">
+                        <button class="category-btn active" data-category="all">All</button>
+                        <button class="category-btn" data-category="maps">Maps</button>
+                        <button class="category-btn" data-category="charts">Charts</button>
+                        <button class="category-btn" data-category="tables">Tables</button>
+                        <button class="category-btn" data-category="tools">Tools</button>
+                    </div>
+                    <div class="marketplace-tiles">
+                        <!-- Tile Cards -->
+                        <div class="tile-card" data-tile-type="globe">
+                            <div class="tile-card-header">
+                                <i class="fas fa-globe"></i>
+                                <h3>3D Globe</h3>
+                            </div>
+                            <div class="tile-card-body">
+                                <p>Interactive 3D globe visualization for geospatial data.</p>
+                            </div>
+                            <div class="tile-card-footer">
+                                <button class="add-tile-btn"><i class="fas fa-plus"></i> Add</button>
+                            </div>
+                        </div>
+                        <div class="tile-card" data-tile-type="network">
+                            <div class="tile-card-header">
+                                <i class="fas fa-project-diagram"></i>
+                                <h3>Network Graph</h3>
+                            </div>
+                            <div class="tile-card-body">
+                                <p>Force-directed graph visualization for relationships.</p>
+                            </div>
+                            <div class="tile-card-footer">
+                                <button class="add-tile-btn"><i class="fas fa-plus"></i> Add</button>
+                            </div>
+                        </div>
+                        <div class="tile-card" data-tile-type="map">
+                            <div class="tile-card-header">
+                                <i class="fas fa-map"></i>
+                                <h3>2D Map</h3>
+                            </div>
+                            <div class="tile-card-body">
+                                <p>Interactive 2D map with layers and markers.</p>
+                            </div>
+                            <div class="tile-card-footer">
+                                <button class="add-tile-btn"><i class="fas fa-plus"></i> Add</button>
+                            </div>
+                        </div>
+                        <div class="tile-card" data-tile-type="barchart">
+                            <div class="tile-card-header">
+                                <i class="fas fa-chart-bar"></i>
+                                <h3>Bar Chart</h3>
+                            </div>
+                            <div class="tile-card-body">
+                                <p>Compare categorical data with interactive bar charts.</p>
+                            </div>
+                            <div class="tile-card-footer">
+                                <button class="add-tile-btn"><i class="fas fa-plus"></i> Add</button>
+                            </div>
+                        </div>
+                        <div class="tile-card" data-tile-type="linechart">
+                            <div class="tile-card-header">
+                                <i class="fas fa-chart-line"></i>
+                                <h3>Line Chart</h3>
+                            </div>
+                            <div class="tile-card-body">
+                                <p>Visualize trends and time series data with interactive line charts.</p>
+                            </div>
+                            <div class="tile-card-footer">
+                                <button class="add-tile-btn"><i class="fas fa-plus"></i> Add</button>
+                            </div>
+                        </div>
+                        <div class="tile-card" data-tile-type="piechart">
+                            <div class="tile-card-header">
+                                <i class="fas fa-chart-pie"></i>
+                                <h3>Pie Chart</h3>
+                            </div>
+                            <div class="tile-card-body">
+                                <p>Show proportions and percentages with interactive pie charts.</p>
+                            </div>
+                            <div class="tile-card-footer">
+                                <button class="add-tile-btn"><i class="fas fa-plus"></i> Add</button>
+                            </div>
+                        </div>
+                        <div class="tile-card" data-tile-type="timeline">
+                            <div class="tile-card-header">
+                                <i class="fas fa-stream"></i>
+                                <h3>Timeline</h3>
+                            </div>
+                            <div class="tile-card-body">
+                                <p>Chronological data visualization with interactive timeline.</p>
+                            </div>
+                            <div class="tile-card-footer">
+                                <button class="add-tile-btn"><i class="fas fa-plus"></i> Add</button>
+                            </div>
+                        </div>
+                        <div class="tile-card" data-tile-type="terminal">
+                            <div class="tile-card-header">
+                                <i class="fas fa-terminal"></i>
+                                <h3>Terminal</h3>
+                            </div>
+                            <div class="tile-card-body">
+                                <p>Command-line interface for direct data interaction.</p>
+                            </div>
+                            <div class="tile-card-footer">
+                                <button class="add-tile-btn"><i class="fas fa-plus"></i> Add</button>
+                            </div>
+                        </div>
+                        <div class="tile-card" data-tile-type="datatable">
+                            <div class="tile-card-header">
+                                <i class="fas fa-table"></i>
+                                <h3>Data Table</h3>
+                            </div>
+                            <div class="tile-card-body">
+                                <p>Interactive table with sorting and filtering capabilities.</p>
+                            </div>
+                            <div class="tile-card-footer">
+                                <button class="add-tile-btn"><i class="fas fa-plus"></i> Add</button>
+                            </div>
+                        </div>
+                        <div class="tile-card" data-tile-type="heatmap">
+                            <div class="tile-card-header">
+                                <i class="fas fa-fire"></i>
+                                <h3>Heat Map</h3>
+                            </div>
+                            <div class="tile-card-body">
+                                <p>Density visualization for geographic data concentration.</p>
+                            </div>
+                            <div class="tile-card-footer">
+                                <button class="add-tile-btn"><i class="fas fa-plus"></i> Add</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button class="modal-btn create-graph-btn">Create Graph</button>
+                    <button class="modal-btn cancel-btn">Cancel</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Document Preview Modal -->
+        <div class="modal" id="document-preview-modal">
+            <div class="modal-content" style="width: 90%; height: 90%;">
+                <div class="modal-header">
+                    <h2><i class="fas fa-file-alt"></i> <span id="preview-document-title">Document Preview</span></h2>
+                    <button class="close-modal"><i class="fas fa-times"></i></button>
+                </div>
+                <div class="modal-body" style="height: calc(100% - 120px); padding: 0;">
+                    <div class="viewer-container" id="document-preview-container">
+                        <!-- Document preview will be displayed here -->
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button class="modal-btn" id="open-in-viewer-btn">Open in Document Viewer</button>
+                    <button class="modal-btn" id="download-document-btn">Download</button>
+                    <button class="modal-btn cancel-btn">Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <script src="https://d3js.org/d3-geo.v2.min.js"></script>
+    <script src="https://d3js.org/d3-geo-projection.v3.min.js"></script>
+    <script src="https://unpkg.com/topojson-client@3"></script>
+    
+    <!-- Document Viewer Libraries -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.7.0/highlight.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/markdown-it/13.0.1/markdown-it.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.3/codemirror.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.3/mode/javascript/javascript.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.3/mode/xml/xml.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.3/mode/markdown/markdown.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/viewerjs/1.11.3/viewer.min.js"></script>
+    
+    <!-- App Scripts -->
+    <script src="js/dashboard.js"></script>
+    <script src="js/grid-system.js"></script>
+    <script src="js/tiles/globe.js"></script>
+    <script src="js/tiles/network.js"></script>
+    <script src="js/tiles/barchart.js"></script>
+    <script src="js/tiles/linechart.js"></script>
+    <script src="js/tiles/piechart.js"></script>
+    <script src="js/tiles/terminal.js"></script>
+    <script src="js/data-visualizer.js"></script>
+    <script src="js/document-viewer.js"></script>
+    <script src="js/document-explorer.js"></script>
+</body>
+</html> 

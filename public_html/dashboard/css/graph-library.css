@@ -1,0 +1,365 @@
+/* Graph Library Styles */
+
+/* Library Tabs */
+.library-tabs {
+    display: flex;
+    margin-bottom: 15px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.library-tab {
+    padding: 8px 15px;
+    background: transparent;
+    border: none;
+    color: var(--text-muted);
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    transition: all 0.2s ease;
+}
+
+.library-tab:hover {
+    color: var(--text-color);
+}
+
+.library-tab.active {
+    color: var(--accent-color);
+    border-bottom: 2px solid var(--accent-color);
+}
+
+.library-tab-content {
+    display: none;
+}
+
+.library-tab-content.active {
+    display: block;
+}
+
+/* Compatibility Tags */
+.tile-compatibility {
+    position: absolute;
+    top: 5px;
+    right: 5px;
+    display: flex;
+    gap: 3px;
+}
+
+.compat-tag {
+    background-color: rgba(0, 0, 0, 0.3);
+    color: var(--accent-color);
+    padding: 2px 5px;
+    font-size: 0.6rem;
+    border-radius: 3px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+/* Data Source List */
+.datasource-list {
+    max-height: 200px;
+    overflow-y: auto;
+    margin-bottom: 15px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: var(--border-radius);
+}
+
+.datasource-item {
+    display: flex;
+    align-items: center;
+    padding: 10px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+}
+
+.datasource-item:last-child {
+    border-bottom: none;
+}
+
+.datasource-item:hover {
+    background-color: rgba(255, 255, 255, 0.05);
+}
+
+.datasource-item.active {
+    background-color: rgba(var(--accent-color-rgb), 0.2);
+}
+
+.datasource-icon {
+    font-size: 1.5rem;
+    color: var(--accent-color);
+    margin-right: 10px;
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    background-color: rgba(255, 255, 255, 0.05);
+}
+
+.datasource-details {
+    flex: 1;
+}
+
+.datasource-details h3 {
+    margin: 0 0 5px 0;
+    font-size: 0.9rem;
+}
+
+.datasource-details p {
+    margin: 0 0 5px 0;
+    font-size: 0.8rem;
+    color: var(--text-muted);
+}
+
+.datasource-meta {
+    display: flex;
+    gap: 10px;
+    font-size: 0.7rem;
+    color: var(--text-muted);
+}
+
+/* Data Preview */
+.datasource-preview {
+    background-color: rgba(0, 0, 0, 0.2);
+    border-radius: var(--border-radius);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    overflow: hidden;
+}
+
+.datasource-preview-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px;
+    background-color: rgba(0, 0, 0, 0.2);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.datasource-preview-header h3 {
+    margin: 0;
+    font-size: 0.9rem;
+}
+
+.datasource-actions {
+    display: flex;
+    gap: 5px;
+}
+
+.datasource-actions button {
+    background-color: rgba(255, 255, 255, 0.1);
+    border: none;
+    border-radius: var(--border-radius);
+    color: var(--text-color);
+    font-size: 0.8rem;
+    padding: 5px 8px;
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+}
+
+.datasource-actions button:hover {
+    background-color: rgba(255, 255, 255, 0.2);
+}
+
+.datasource-preview-content {
+    padding: 10px;
+    overflow-x: auto;
+}
+
+.preview-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.8rem;
+}
+
+.preview-table th, 
+.preview-table td {
+    padding: 6px 10px;
+    text-align: left;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.preview-table th {
+    background-color: rgba(0, 0, 0, 0.2);
+    color: var(--accent-color);
+    font-weight: 600;
+}
+
+.preview-table tr:hover td {
+    background-color: rgba(255, 255, 255, 0.05);
+}
+
+/* Compatible Visualizations */
+.datasource-compatible {
+    padding: 10px;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.datasource-compatible h4 {
+    margin: 0 0 8px 0;
+    font-size: 0.8rem;
+    color: var(--text-muted);
+}
+
+.compatible-viz {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 5px;
+}
+
+.compat-viz {
+    background-color: rgba(255, 255, 255, 0.1);
+    color: var(--text-color);
+    padding: 4px 8px;
+    font-size: 0.7rem;
+    border-radius: 3px;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.compat-viz i {
+    color: var(--accent-color);
+}
+
+/* Settings Tab */
+.settings-section {
+    background-color: rgba(0, 0, 0, 0.2);
+    border-radius: var(--border-radius);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    padding: 15px;
+    margin-bottom: 15px;
+}
+
+.settings-section h3 {
+    margin: 0 0 15px 0;
+    font-size: 0.9rem;
+    color: var(--accent-color);
+}
+
+.settings-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 10px;
+    font-size: 0.8rem;
+}
+
+.settings-select {
+    background-color: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: var(--border-radius);
+    color: var(--text-color);
+    padding: 5px 10px;
+    width: 150px;
+}
+
+.settings-range {
+    width: 120px;
+    margin: 0 10px;
+}
+
+.range-value {
+    width: 50px;
+    text-align: right;
+}
+
+/* Toggle Switch */
+.switch {
+    position: relative;
+    display: inline-block;
+    width: 40px;
+    height: 20px;
+}
+
+.switch input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+
+.slider {
+    position: absolute;
+    cursor: pointer;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(255, 255, 255, 0.1);
+    transition: .4s;
+}
+
+.slider:before {
+    position: absolute;
+    content: "";
+    height: 16px;
+    width: 16px;
+    left: 3px;
+    bottom: 2px;
+    background-color: white;
+    transition: .4s;
+}
+
+input:checked + .slider {
+    background-color: var(--accent-color);
+}
+
+input:checked + .slider:before {
+    transform: translateX(18px);
+}
+
+.slider.round {
+    border-radius: 34px;
+}
+
+.slider.round:before {
+    border-radius: 50%;
+}
+
+/* Add Preview Button */
+.preview-tile-btn {
+    background: none;
+    border: none;
+    color: var(--text-muted);
+    cursor: pointer;
+    font-size: 0.9rem;
+    transition: color 0.2s ease;
+    padding: 5px;
+}
+
+.preview-tile-btn:hover {
+    color: var(--accent-color);
+}
+
+/* Create Graph Button */
+.create-graph-btn {
+    background-color: var(--accent-color);
+    color: white;
+}
+
+.create-graph-btn:hover {
+    background-color: var(--accent-hover);
+}
+
+/* Responsive Adjustments */
+@media (max-width: 768px) {
+    .datasource-preview-header {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+    
+    .datasource-actions {
+        margin-top: 8px;
+    }
+    
+    .settings-row {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+    
+    .settings-row > *:not(:first-child) {
+        margin-top: 5px;
+    }
+    
+    .settings-select {
+        width: 100%;
+    }
+} 

@@ -3,18 +3,226 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
-    <title>Dashboard</title>
+    <title>Document Data Dashboard</title>
+
+    <!-- Use CDN versions for essential libraries -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@4.6.0/dist/css/bootstrap.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/themify-icons@1.0.0/css/themify-icons.css">
+    
+    <!-- Try to include local CSS -->
+    <link rel="stylesheet" href="assets/styles/vendor/themify-icons.css">
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <script src="https://d3js.org/d3-geo.v2.min.js"></script>
+    <script src="https://d3js.org/d3-scale-chromatic.v1.min.js"></script>
+    
+    <!-- Leaflet JS -->
+    <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
+
+    <script>
+      // Theme manifest for style switching
+      const themeManifest = {
+        "green-terminal": {
+          name: "Green Terminal",
+          primaryColor: "#00ff00",
+          backgroundColor: "#000000",
+          borderColor: "#00aa00",
+          panelBg: "rgba(0, 20, 0, 0.7)",
+          terminalFont: "'Courier New', monospace",
+          textColor: "#00ff00",
+          accentColor: "#ff5500"
+        },
+        "blue-hologram": {
+          name: "Blue Hologram",
+          primaryColor: "#00e5ff",
+          backgroundColor: "#001025",
+          borderColor: "#0077cc",
+          panelBg: "rgba(0, 16, 37, 0.7)",
+          terminalFont: "'Courier New', monospace",
+          textColor: "#00e5ff",
+          accentColor: "#ff4081"
+        },
+        "amber-retro": {
+          name: "Amber Retro",
+          primaryColor: "#ffb300",
+          backgroundColor: "#1a1000",
+          borderColor: "#cc7000",
+          panelBg: "rgba(26, 16, 0, 0.7)",
+          terminalFont: "'VT323', monospace",
+          textColor: "#ffb300",
+          accentColor: "#ff5722"
+        },
+        "red-alert": {
+          name: "Red Alert",
+          primaryColor: "#ff1744",
+          backgroundColor: "#1a0000",
+          borderColor: "#b30000",
+          panelBg: "rgba(26, 0, 0, 0.7)",
+          terminalFont: "'Courier New', monospace",
+          textColor: "#ff1744",
+          accentColor: "#00e676"
+        },
+        "white-minimal": {
+          name: "White Minimal",
+          primaryColor: "#ffffff",
+          backgroundColor: "#121212",
+          borderColor: "#333333",
+          panelBg: "rgba(18, 18, 18, 0.9)",
+          terminalFont: "'Roboto Mono', monospace",
+          textColor: "#ffffff",
+          accentColor: "#64ffda"
+        }
+      };
+      
+      // Function to apply a theme
+      function applyTheme(themeName) {
+        const theme = themeManifest[themeName];
+        if (!theme) return;
+        
+        const root = document.documentElement;
+        root.style.setProperty('--primary-color', theme.primaryColor);
+        root.style.setProperty('--background-color', theme.backgroundColor);
+        root.style.setProperty('--border-color', theme.borderColor);
+        root.style.setProperty('--panel-bg', theme.panelBg);
+        root.style.setProperty('--terminal-font', theme.terminalFont);
+        root.style.setProperty('--text-color', theme.textColor);
+        root.style.setProperty('--accent-color', theme.accentColor);
+        
+        // Save the current theme to localStorage
+        localStorage.setItem('preferred-theme', themeName);
+      }
+      
+      // Apply saved theme or default on load
+      document.addEventListener('DOMContentLoaded', function() {
+        const savedTheme = localStorage.getItem('preferred-theme');
+        if (savedTheme && themeManifest[savedTheme]) {
+          applyTheme(savedTheme);
+        } else {
+          applyTheme('green-terminal'); // Default theme
+        }
+      });
+    </script>
 
     <style>
+      :root {
+        --primary-color: #00ff00;
+        --background-color: #000000;
+        --border-color: #00aa00;
+        --panel-bg: rgba(0, 20, 0, 0.7);
+        --terminal-font: 'Courier New', monospace;
+        --text-color: #00ff00;
+        --accent-color: #ff5500;
+      }
+      
+      html, body {
+        margin: 0;
+        padding: 0;
+        height: 100vh;
+        width: 100vw;
+        overflow: hidden;
+        background-color: var(--background-color);
+        color: var(--text-color);
+        font-family: var(--terminal-font);
+      }
+      
+      #terminal-container {
+        display: grid;
+        grid-template-columns: 250px 1fr 250px;
+        grid-template-rows: 70px 1fr 60px;
+        height: 100vh;
+        width: 100vw;
+        gap: 10px;
+        padding: 10px;
+        box-sizing: border-box;
+        background-color: var(--background-color);
+      }
+      
+      .header {
+        grid-column: 1 / 4;
+        grid-row: 1 / 2;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        border: 1px solid var(--border-color);
+        background-color: var(--panel-bg);
+        padding: 0 20px;
+        border-radius: 5px;
+      }
+      
+      .left-panel {
+        grid-column: 1 / 2;
+        grid-row: 2 / 3;
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+      }
+      
+      .main-panel {
+        grid-column: 2 / 3;
+        grid-row: 2 / 3;
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+      }
+      
+      .right-panel {
+        grid-column: 3 / 4;
+        grid-row: 2 / 3;
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+      }
+      
+      .footer {
+        grid-column: 1 / 4;
+        grid-row: 3 / 4;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        border: 1px solid var(--border-color);
+        background-color: var(--panel-bg);
+        padding: 0 20px;
+        border-radius: 5px;
+      }
+      
+      .panel {
+        border: 1px solid var(--border-color);
+        background-color: var(--panel-bg);
+        border-radius: 5px;
+        overflow: hidden;
+        padding: 10px;
+        position: relative;
+      }
+      
+      .panel-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        border-bottom: 1px solid var(--border-color);
+        padding-bottom: 5px;
+        margin-bottom: 10px;
+      }
+      
+      .panel-title {
+        margin: 0;
+        font-size: 1rem;
+        color: var(--primary-color);
+      }
+      
       #loader {
-        transition: all 0.3s ease-in-out;
+        transition: all 0.5s ease-in-out;
         opacity: 1;
         visibility: visible;
         position: fixed;
         height: 100vh;
-        width: 100%;
-        background: #fff;
+        width: 100vw;
+        background: #000;
         z-index: 90000;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        color: var(--primary-color);
       }
 
       #loader.fadeOut {
@@ -22,39 +230,884 @@
         visibility: hidden;
       }
 
-      .spinner {
+      .boot-text {
+        font-family: var(--terminal-font);
+        margin: 20px 0;
+        max-width: 600px;
+        text-align: left;
+      }
+
+      .boot-progress {
+        width: 400px;
+        height: 10px;
+        background-color: #111;
+        border: 1px solid var(--border-color);
+        margin-top: 20px;
+        position: relative;
+        overflow: hidden;
+      }
+
+      .boot-progress-bar {
+        position: absolute;
+        top: 0;
+        left: 0;
+        height: 100%;
+        width: 0%;
+        background-color: var(--primary-color);
+        transition: width 0.5s ease;
+      }
+      
+      .boot-radius {
+        border-radius: 4px;
+        overflow: hidden;
+      }
+      
+      #leaflet-map {
+        width: 100%;
+        height: 400px;
+        border-radius: 4px;
+        z-index: 1;
+      }
+      
+      #d3-chart {
+        width: 100%;
+        height: 400px;
+        background-color: #f5f5f5;
+        border-radius: 4px;
+      }
+      
+      #timeline-chart {
+        width: 100%;
+        height: 300px;
+        background-color: #f5f5f5;
+        border-radius: 4px;
+      }
+      
+      .geo-path {
+        fill: #ccc;
+        stroke: #fff;
+        stroke-width: 0.5px;
+      }
+
+      /* Additional styles for dashboard elements */
+      .bd {
+        border: 1px solid rgba(0,0,0,.125);
+        border-radius: 4px;
+        margin-bottom: 20px;
+      }
+      
+      .bgc-white {
+        background-color: white;
+      }
+      
+      .p-20 {
+        padding: 20px;
+      }
+      
+      .masonry-item {
+        margin-bottom: 20px;
+      }
+      
+      .badge {
+        display: inline-block;
+        padding: 0.25em 0.4em;
+        font-size: 75%;
+        font-weight: 700;
+        line-height: 1;
+        text-align: center;
+        white-space: nowrap;
+        vertical-align: baseline;
+        border-radius: 0.25rem;
+      }
+
+      .badge-pill {
+        padding-right: 0.6em;
+        padding-left: 0.6em;
+        border-radius: 10rem;
+      }
+
+      /* Utility classes for dashboard */
+      .c-blue-500 { color: #2196F3; }
+      .c-red-500 { color: #f44336; }
+      .c-green-500 { color: #4CAF50; }
+      .c-purple-500 { color: #9C27B0; }
+      .c-orange-500 { color: #FF9800; }
+      
+      .bgc-blue-50 { background-color: #E3F2FD; }
+      .bgc-red-50 { background-color: #FFEBEE; }
+      .bgc-green-50 { background-color: #E8F5E9; }
+      .bgc-purple-50 { background-color: #F3E5F5; }
+      .bgc-orange-50 { background-color: #FFF3E0; }
+      
+      .c-blue-700 { color: #1976D2; }
+      .c-red-700 { color: #D32F2F; }
+      .c-green-700 { color: #388E3C; }
+      .c-purple-700 { color: #7B1FA2; }
+      .c-orange-700 { color: #F57C00; }
+
+      /* Dropdown menu styles */
+      .dropdown-menu {
+        position: relative;
+        display: inline-block;
+        margin-right: 15px;
+      }
+      
+      .dropdown-toggle {
+        display: flex;
+        align-items: center;
+        color: var(--text-color);
+        background-color: transparent;
+        border: 1px solid var(--border-color);
+        padding: 5px 10px;
+        cursor: pointer;
+        font-family: var(--terminal-font);
+      }
+      
+      .dropdown-toggle::after {
+        content: "▼";
+        font-size: 10px;
+        margin-left: 8px;
+      }
+      
+      .dropdown-content {
+        display: none;
+        position: absolute;
+        top: 100%;
+        left: 0;
+        background-color: var(--panel-bg);
+        border: 1px solid var(--border-color);
+        min-width: 180px;
+        z-index: 10;
+      }
+      
+      .dropdown-menu:hover .dropdown-content,
+      .dropdown-menu:focus-within .dropdown-content {
+        display: block;
+      }
+      
+      .dropdown-item {
+        display: block;
+        padding: 8px 12px;
+        color: var(--text-color);
+        text-decoration: none;
+        font-family: var(--terminal-font);
+      }
+      
+      .dropdown-item:hover {
+        background-color: rgba(255, 255, 255, 0.1);
+      }
+      
+      /* Theme selector styles */
+      .theme-selector {
+        display: flex;
+        align-items: center;
+        margin-right: 20px;
+      }
+      
+      .theme-selector label {
+        margin-right: 8px;
+        color: var(--text-color);
+      }
+      
+      .theme-selector select {
+        background-color: var(--panel-bg);
+        color: var(--text-color);
+        border: 1px solid var(--border-color);
+        padding: 3px 8px;
+        font-family: var(--terminal-font);
+        font-size: 0.9em;
+      }
+      
+      /* Navigation menu */
+      .navigation {
+        display: flex;
+        padding: 0 10px;
+        margin-bottom: 10px;
+        border-bottom: 1px solid var(--border-color);
+      }
+      
+      /* Tab system for panels */
+      .tab-container {
+        width: 100%;
+        height: 100%;
+      }
+      
+      .tab-navigation {
+        display: flex;
+        border-bottom: 1px solid var(--border-color);
+      }
+      
+      .tab-button {
+        padding: 8px 15px;
+        background-color: transparent;
+        color: var(--text-color);
+        border: none;
+        border-right: 1px solid var(--border-color);
+        font-family: var(--terminal-font);
+        cursor: pointer;
+      }
+      
+      .tab-button.active {
+        background-color: rgba(255, 255, 255, 0.1);
+        color: var(--primary-color);
+      }
+      
+      .tab-content {
+        display: none;
+        padding: 15px 0;
+        height: calc(100% - 37px);
+      }
+      
+      .tab-content.active {
+        display: block;
+      }
+
+      /* Blinking cursor effect */
+      .blink {
+        animation: blink-animation 1s steps(2, start) infinite;
+      }
+      
+      @keyframes blink-animation {
+        to {
+          visibility: hidden;
+        }
+      }
+      
+      /* Terminal styles enhancement */
+      .terminal-output {
+        font-family: var(--terminal-font);
+        color: var(--text-color);
+        background-color: transparent;
+        height: 300px;
+        overflow-y: auto;
+        padding: 5px;
+        margin-bottom: 10px;
+      }
+      
+      .terminal-line {
+        line-height: 1.5;
+        white-space: pre-wrap;
+        word-break: break-all;
+      }
+      
+      .terminal-input {
+        display: flex;
+        font-family: var(--terminal-font);
+        color: var(--text-color);
+        align-items: center;
+        margin-top: 5px;
+      }
+      
+      .terminal-input .prompt {
+        margin-right: 8px;
+        color: var(--primary-color);
+      }
+      
+      .command-input {
+        flex: 1;
+        background: transparent;
+        border: none;
+        color: var(--text-color);
+        font-family: var(--terminal-font);
+        font-size: 1em;
+        outline: none;
+      }
+      
+      /* Network graph styles */
+      #network-container {
+        width: 100%;
+        height: 400px;
+        background-color: rgba(0,0,0,0.2);
+        border-radius: 4px;
+      }
+      
+      /* Scan lines effect for terminal feel */
+      .scan-lines {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: linear-gradient(
+          to bottom,
+          rgba(255, 255, 255, 0.03) 50%,
+          rgba(0, 0, 0, 0.03) 50%
+        );
+        background-size: 100% 4px;
+        z-index: 2;
+        pointer-events: none;
+        opacity: 0.3;
+      }
+      
+      /* CRT effect */
+      .crt-effect {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        border-radius: 4px;
+        box-shadow: inset 0 0 30px rgba(0, 255, 0, 0.15);
+        pointer-events: none;
+      }
+      
+      /* Tile system styles */
+      .tile-container {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+        grid-auto-rows: minmax(250px, auto);
+        gap: 15px;
+        padding: 15px;
+        width: 100%;
+        height: 100%;
+      }
+      
+      .tile {
+        background-color: var(--panel-bg);
+        border: 1px solid var(--border-color);
+        border-radius: 4px;
+        overflow: hidden;
+        position: relative;
+        display: flex;
+        flex-direction: column;
+      }
+      
+      .tile-header {
+        padding: 10px;
+        border-bottom: 1px solid var(--border-color);
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+      }
+      
+      .tile-title {
+        color: var(--primary-color);
+        margin: 0;
+        font-size: 0.9rem;
+      }
+      
+      .tile-actions {
+        display: flex;
+        gap: 5px;
+      }
+      
+      .tile-action {
+        background: none;
+        border: none;
+        color: var(--text-color);
+        cursor: pointer;
+        font-size: 12px;
+        padding: 2px 5px;
+      }
+      
+      .tile-action:hover {
+        color: var(--primary-color);
+      }
+      
+      .tile-content {
+        flex: 1;
+        padding: 10px;
+        position: relative;
+        overflow: auto;
+      }
+      
+      /* Resizable tiles */
+      .tile.double-width {
+        grid-column: span 2;
+      }
+      
+      .tile.double-height {
+        grid-row: span 2;
+      }
+      
+      /* Drag handle for rearranging tiles */
+      .drag-handle {
+        cursor: move;
+        margin-right: 5px;
+      }
+      
+      /* Enhanced Menu Bar & Dropdown Styles */
+      .menu-bar {
+        display: flex;
+        background-color: var(--panel-bg);
+        border-bottom: 1px solid var(--border-color);
+        height: 30px;
+        width: 100%;
+        z-index: 100;
+        user-select: none;
+      }
+      
+      .menu-item {
+        position: relative;
+        display: flex;
+        align-items: center;
+        padding: 0 12px;
+        height: 100%;
+        color: var(--text-color);
+        font-family: var(--terminal-font);
+        font-size: 13px;
+        cursor: pointer;
+        transition: background-color 0.2s;
+      }
+      
+      .menu-item:hover {
+        background-color: rgba(255, 255, 255, 0.1);
+      }
+      
+      .menu-item.active {
+        background-color: rgba(255, 255, 255, 0.15);
+      }
+      
+      .dropdown {
+        position: absolute;
+        top: 100%;
+        left: 0;
+        min-width: 220px;
+        background-color: var(--panel-bg);
+        border: 1px solid var(--border-color);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+        z-index: 1000;
+        display: none;
+        animation: fadeIn 0.1s ease-out;
+      }
+      
+      .menu-item:hover > .dropdown,
+      .menu-item.active > .dropdown {
+        display: block;
+      }
+      
+      .dropdown-item {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 8px 12px;
+        font-size: 13px;
+        color: var(--text-color);
+        cursor: pointer;
+        transition: background-color 0.1s;
+        position: relative;
+      }
+      
+      .dropdown-item:hover {
+        background-color: rgba(255, 255, 255, 0.1);
+      }
+      
+      .dropdown-item-icon {
+        width: 16px;
+        height: 16px;
+        margin-right: 8px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+      
+      .dropdown-item-label {
+        flex: 1;
+      }
+      
+      .dropdown-item-shortcut {
+        margin-left: 16px;
+        opacity: 0.6;
+        font-size: 12px;
+      }
+      
+      .dropdown-item-submenu-icon {
+        margin-left: 8px;
+      }
+      
+      .dropdown-divider {
+        height: 1px;
+        background-color: var(--border-color);
+        margin: 5px 0;
+      }
+      
+      .dropdown-section-title {
+        padding: 6px 12px;
+        font-size: 11px;
+        opacity: 0.7;
+        text-transform: uppercase;
+      }
+      
+      /* Nested Submenus */
+      .dropdown-item.has-submenu {
+        position: relative;
+      }
+      
+      .dropdown-item.has-submenu:after {
+        content: "▶";
+        font-size: 9px;
+        position: absolute;
+        right: 10px;
+        opacity: 0.7;
+      }
+      
+      .submenu {
+        position: absolute;
+        top: 0;
+        left: 100%;
+        min-width: 180px;
+        background-color: var(--panel-bg);
+        border: 1px solid var(--border-color);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+        display: none;
+        z-index: 1001;
+      }
+      
+      .dropdown-item.has-submenu:hover > .submenu {
+        display: block;
+      }
+      
+      /* Status Indicators */
+      .dropdown-item.checked:before {
+        content: "✓";
+        position: absolute;
+        left: 10px;
+        opacity: 0.9;
+      }
+      
+      .dropdown-item.checked {
+        padding-left: 28px;
+      }
+      
+      /* Animation */
+      @keyframes fadeIn {
+        from { opacity: 0; transform: translateY(-5px); }
+        to { opacity: 1; transform: translateY(0); }
+      }
+      
+      /* Context Menu */
+      .context-menu {
+        position: fixed;
+        z-index: 1000;
+        background-color: var(--panel-bg);
+        border: 1px solid var(--border-color);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+        min-width: 180px;
+        display: none;
+      }
+      
+      /* Hoverable dropdown */
+      .dropdown-menu {
+        position: relative;
+      }
+      
+      /* Remove existing simple dropdown styles that conflict */
+      .dropdown-toggle::after {
+        display: none;
+      }
+      
+      .dropdown-toggle {
+        all: unset;
+        cursor: pointer;
+      }
+      
+      .dropdown-content {
+        display: none;
+      }
+      
+      /* Add additional CSS for resizable, draggable tiles after the existing tile styles */
+      /* Enhanced Tile System */
+      .dashboard-container {
+        display: grid;
+        grid-template-columns: repeat(12, 1fr);
+        grid-auto-rows: minmax(100px, auto);
+        gap: 10px;
+        padding: 10px;
+        width: 100%;
+        height: calc(100vh - 150px);
+        overflow: auto;
+      }
+      
+      .dashboard-tile {
+        background-color: var(--panel-bg);
+        border: 1px solid var(--border-color);
+        border-radius: 4px;
+        overflow: hidden;
+        position: relative;
+        display: flex;
+        flex-direction: column;
+        transition: transform 0.2s, box-shadow 0.2s;
+        min-height: 150px;
+      }
+      
+      .dashboard-tile.dragging {
+        z-index: 1000;
+        opacity: 0.8;
+        transform: scale(1.02);
+        box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+      }
+      
+      .dashboard-tile-header {
+        padding: 8px 10px;
+        border-bottom: 1px solid var(--border-color);
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        cursor: move;
+        user-select: none;
+      }
+      
+      .dashboard-tile-title {
+        color: var(--primary-color);
+        margin: 0;
+        font-size: 0.9rem;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+      
+      .dashboard-tile-actions {
+        display: flex;
+        gap: 5px;
+      }
+      
+      .dashboard-tile-action {
+        background: none;
+        border: none;
+        color: var(--text-color);
+        cursor: pointer;
+        font-size: 12px;
+        padding: 2px 5px;
+        opacity: 0.7;
+      }
+      
+      .dashboard-tile-action:hover {
+        color: var(--primary-color);
+        opacity: 1;
+      }
+      
+      .dashboard-tile-content {
+        flex: 1;
+        padding: 10px;
+        position: relative;
+        overflow: auto;
+      }
+      
+      /* Resize handles */
+      .resize-handle {
+        position: absolute;
+        width: 10px;
+        height: 10px;
+        background-color: var(--primary-color);
+        opacity: 0;
+        transition: opacity 0.2s;
+      }
+      
+      .dashboard-tile:hover .resize-handle {
+        opacity: 0.7;
+      }
+      
+      .resize-handle:hover {
+        opacity: 1;
+      }
+      
+      .resize-handle.e {
+        top: calc(50% - 5px);
+        right: 0;
+        cursor: e-resize;
+      }
+      
+      .resize-handle.s {
+        bottom: 0;
+        left: calc(50% - 5px);
+        cursor: s-resize;
+      }
+      
+      .resize-handle.se {
+        bottom: 0;
+        right: 0;
+        cursor: se-resize;
+      }
+      
+      /* Tile sizes */
+      .dashboard-tile.size-1x1 {
+        grid-column: span 3;
+        grid-row: span 1;
+      }
+      
+      .dashboard-tile.size-1x2 {
+        grid-column: span 3;
+        grid-row: span 2;
+      }
+      
+      .dashboard-tile.size-2x1 {
+        grid-column: span 6;
+        grid-row: span 1;
+      }
+      
+      .dashboard-tile.size-2x2 {
+        grid-column: span 6;
+        grid-row: span 2;
+      }
+      
+      .dashboard-tile.size-3x1 {
+        grid-column: span 9;
+        grid-row: span 1;
+      }
+      
+      .dashboard-tile.size-3x2 {
+        grid-column: span 9;
+        grid-row: span 2;
+      }
+      
+      .dashboard-tile.size-4x1 {
+        grid-column: span 12;
+        grid-row: span 1;
+      }
+      
+      .dashboard-tile.size-4x2 {
+        grid-column: span 12;
+        grid-row: span 2;
+      }
+      
+      /* Tile types */
+      .dashboard-tile.is-geo {
+        background-color: rgba(0, 100, 100, 0.1);
+      }
+      
+      .dashboard-tile.is-graph {
+        background-color: rgba(100, 0, 100, 0.1);
+      }
+      
+      .dashboard-tile.is-chart {
+        background-color: rgba(100, 100, 0, 0.1);
+      }
+      
+      .dashboard-tile.is-stats {
+        background-color: rgba(0, 100, 0, 0.1);
+      }
+      
+      .dashboard-tile.is-table {
+        background-color: rgba(0, 0, 100, 0.1);
+      }
+      
+      /* Tile marketplace/picker */
+      .tile-picker {
+        position: absolute;
+        top: 60px;
+        right: 20px;
+        width: 320px;
+        background-color: var(--panel-bg);
+        border: 1px solid var(--border-color);
+        border-radius: 4px;
+        z-index: 1000;
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+        display: none;
+      }
+      
+      .tile-picker.active {
+        display: block;
+      }
+      
+      .tile-picker-header {
+        padding: 10px 15px;
+        border-bottom: 1px solid var(--border-color);
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+      }
+      
+      .tile-picker-title {
+        margin: 0;
+        color: var(--primary-color);
+      }
+      
+      .tile-picker-close {
+        background: none;
+        border: none;
+        color: var(--text-color);
+        cursor: pointer;
+        font-size: 16px;
+      }
+      
+      .tile-picker-categories {
+        display: flex;
+        border-bottom: 1px solid var(--border-color);
+      }
+      
+      .tile-picker-category {
+        padding: 8px 15px;
+        cursor: pointer;
+        color: var(--text-color);
+        border-bottom: 2px solid transparent;
+      }
+      
+      .tile-picker-category.active {
+        color: var(--primary-color);
+        border-bottom: 2px solid var(--primary-color);
+      }
+      
+      .tile-picker-items {
+        padding: 15px;
+        max-height: 400px;
+        overflow-y: auto;
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 10px;
+      }
+      
+      .tile-picker-item {
+        border: 1px solid var(--border-color);
+        border-radius: 4px;
+        padding: 10px;
+        cursor: pointer;
+        transition: transform 0.2s;
+      }
+      
+      .tile-picker-item:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+      }
+      
+      .tile-picker-item-icon {
         width: 40px;
         height: 40px;
+        margin: 0 auto 8px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: var(--primary-color);
+        font-size: 20px;
+      }
+      
+      .tile-picker-item-title {
+        text-align: center;
+        font-size: 12px;
+        margin: 0;
+      }
+      
+      /* Loading indicator for tiles */
+      .loading-indicator {
         position: absolute;
-        top: calc(50% - 20px);
-        left: calc(50% - 20px);
-        background-color: #333;
-        border-radius: 100%;
-        -webkit-animation: sk-scaleout 1.0s infinite ease-in-out;
-        animation: sk-scaleout 1.0s infinite ease-in-out;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background-color: rgba(0, 0, 0, 0.7);
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        z-index: 10;
+        color: var(--primary-color);
       }
-
-      @-webkit-keyframes sk-scaleout {
-        0% { -webkit-transform: scale(0) }
-        100% {
-          -webkit-transform: scale(1.0);
-          opacity: 0;
-        }
+      
+      .loading-spinner {
+        width: 40px;
+        height: 40px;
+        border: 3px solid transparent;
+        border-top-color: var(--primary-color);
+        border-radius: 50%;
+        animation: spin 1s linear infinite;
       }
-
-      @keyframes sk-scaleout {
-        0% {
-          -webkit-transform: scale(0);
-          transform: scale(0);
-        } 100% {
-          -webkit-transform: scale(1.0);
-          transform: scale(1.0);
-          opacity: 0;
-        }
+      
+      @keyframes spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
       }
     </style>
   </head>
-  <body class="app">
+  <body>
     <!-- @TOC -->
     <!-- =================================================== -->
     <!--
@@ -69,223 +1122,857 @@
               > $App Screen Content
     -->
 
-    <!-- @Page Loader -->
-    <!-- =================================================== -->
+    <!-- Boot Screen Loader -->
     <div id='loader'>
-      <div class="spinner"></div>
+      <h1>757BUILT TERMINAL</h1>
+      <div class="boot-text">
+        <p>> Initializing System<span class="blink">_</span></p>
+        <p>> Loading Document Processing Engine...</p>
+        <p>> Connecting to IPFS Network...</p>
+        <p>> Initializing Graph Neural Network...</p>
+        <p>> Loading Phi-3 Quantized Model...</p>
+        <p>> Mounting Visualization Components...</p>
+      </div>
+      <div class="boot-progress">
+        <div class="boot-progress-bar" id="boot-progress-bar"></div>
+      </div>
     </div>
 
     <script>
+      // Boot sequence animation
       window.addEventListener('load', function load() {
         const loader = document.getElementById('loader');
-        setTimeout(function() {
-          loader.classList.add('fadeOut');
-        }, 300);
+        const progressBar = document.getElementById('boot-progress-bar');
+        let progress = 0;
+        
+        const interval = setInterval(() => {
+          progress += 5;
+          progressBar.style.width = progress + '%';
+          
+          if (progress >= 100) {
+            clearInterval(interval);
+            setTimeout(() => {
+              loader.classList.add('fadeOut');
+              // Initialize all visualizations after boot
+              initializeAllVisualizations();
+            }, 500);
+          }
+        }, 150);
+        
+        // Update clock
+        updateClock();
+        
+        // Set up tile resizing and drag-and-drop for dashboard tiles
+        document.querySelectorAll('.tile-expand').forEach(button => {
+          button.addEventListener('click', function() {
+            const tile = this.closest('.tile');
+            tile.classList.toggle('double-width');
+            tile.classList.toggle('double-height');
+          });
+        });
       });
     </script>
 
-    <!-- @App Content -->
-    <!-- =================================================== -->
-    <div>
-      <!-- #Left Sidebar ==================== -->
-      <div class="sidebar">
-        <div class="sidebar-inner">
-          <!-- ### $Sidebar Header ### -->
-          <div class="sidebar-logo">
-            <div class="peers ai-c fxw-nw">
-              <div class="peer peer-greed">
-                <a class="sidebar-link td-n" href="index.html">
-                  <div class="peers ai-c fxw-nw">
-                    <div class="peer">
-                      <div class="logo">
-                        <img src="assets/static/images/logo.png" alt="">
-                      </div>
-                    </div>
-                    <div class="peer peer-greed">
-                      <h5 class="lh-1 mB-0 logo-text">Adminator</h5>
-                    </div>
-                  </div>
-                </a>
+    <!-- Main Terminal Container -->
+    <div id="terminal-container">
+      <!-- Header -->
+      <header class="header">
+        <div class="header-left">
+          <h2>757BUILT TERMINAL v1.0</h2>
+        </div>
+        <div class="header-center">
+          <span id="current-time">--:--:--</span>
+        </div>
+        <div class="header-right">
+          <div class="theme-selector">
+            <label for="theme-select">THEME:</label>
+            <select id="theme-select" onchange="applyTheme(this.value)">
+              <option value="green-terminal">Green Terminal</option>
+              <option value="blue-hologram">Blue Hologram</option>
+              <option value="amber-retro">Amber Retro</option>
+              <option value="red-alert">Red Alert</option>
+              <option value="white-minimal">White Minimal</option>
+            </select>
+          </div>
+          <span>STATUS: <span id="system-status">ONLINE</span></span>
+        </div>
+      </header>
+      
+      <!-- Professional Menu Bar (similar to VS Code/Theia) -->
+      <div class="menu-bar">
+        <!-- File Menu -->
+        <div class="menu-item" id="file-menu">
+          FILE
+          <div class="dropdown">
+            <div class="dropdown-item" onclick="handleMenuAction('new-query')">
+              <div class="dropdown-item-icon">📄</div>
+              <span class="dropdown-item-label">New Query</span>
+              <span class="dropdown-item-shortcut">Ctrl+N</span>
+            </div>
+            <div class="dropdown-item" onclick="handleMenuAction('open')">
+              <div class="dropdown-item-icon">📂</div>
+              <span class="dropdown-item-label">Open Document</span>
+              <span class="dropdown-item-shortcut">Ctrl+O</span>
+            </div>
+            <div class="dropdown-divider"></div>
+            <div class="dropdown-item" onclick="handleMenuAction('save')">
+              <div class="dropdown-item-icon">💾</div>
+              <span class="dropdown-item-label">Save</span>
+              <span class="dropdown-item-shortcut">Ctrl+S</span>
+            </div>
+            <div class="dropdown-item" onclick="handleMenuAction('save-as')">
+              <div class="dropdown-item-icon">💾</div>
+              <span class="dropdown-item-label">Save As...</span>
+              <span class="dropdown-item-shortcut">Ctrl+Shift+S</span>
+            </div>
+            <div class="dropdown-divider"></div>
+            <div class="dropdown-item has-submenu">
+              <div class="dropdown-item-icon">📤</div>
+              <span class="dropdown-item-label">Export</span>
+              <div class="submenu">
+                <div class="dropdown-item" onclick="handleMenuAction('export-pdf')">
+                  <span class="dropdown-item-label">PDF</span>
+                </div>
+                <div class="dropdown-item" onclick="handleMenuAction('export-csv')">
+                  <span class="dropdown-item-label">CSV</span>
+                </div>
+                <div class="dropdown-item" onclick="handleMenuAction('export-json')">
+                  <span class="dropdown-item-label">JSON</span>
+                </div>
+                <div class="dropdown-item" onclick="handleMenuAction('export-png')">
+                  <span class="dropdown-item-label">PNG</span>
+                </div>
               </div>
-              <div class="peer">
-                <div class="mobile-toggle sidebar-toggle">
-                  <a href="" class="td-n">
-                    <i class="ti-arrow-circle-left"></i>
-                  </a>
+            </div>
+            <div class="dropdown-divider"></div>
+            <div class="dropdown-item" onclick="handleMenuAction('settings')">
+              <div class="dropdown-item-icon">⚙️</div>
+              <span class="dropdown-item-label">Settings</span>
+              <span class="dropdown-item-shortcut">Ctrl+,</span>
+            </div>
+            <div class="dropdown-divider"></div>
+            <div class="dropdown-item" onclick="handleMenuAction('exit')">
+              <div class="dropdown-item-icon">🚪</div>
+              <span class="dropdown-item-label">Exit</span>
+              <span class="dropdown-item-shortcut">Alt+F4</span>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Edit Menu -->
+        <div class="menu-item" id="edit-menu">
+          EDIT
+          <div class="dropdown">
+            <div class="dropdown-item" onclick="handleMenuAction('undo')">
+              <span class="dropdown-item-label">Undo</span>
+              <span class="dropdown-item-shortcut">Ctrl+Z</span>
+            </div>
+            <div class="dropdown-item" onclick="handleMenuAction('redo')">
+              <span class="dropdown-item-label">Redo</span>
+              <span class="dropdown-item-shortcut">Ctrl+Y</span>
+            </div>
+            <div class="dropdown-divider"></div>
+            <div class="dropdown-item" onclick="handleMenuAction('cut')">
+              <span class="dropdown-item-label">Cut</span>
+              <span class="dropdown-item-shortcut">Ctrl+X</span>
+            </div>
+            <div class="dropdown-item" onclick="handleMenuAction('copy')">
+              <span class="dropdown-item-label">Copy</span>
+              <span class="dropdown-item-shortcut">Ctrl+C</span>
+            </div>
+            <div class="dropdown-item" onclick="handleMenuAction('paste')">
+              <span class="dropdown-item-label">Paste</span>
+              <span class="dropdown-item-shortcut">Ctrl+V</span>
+            </div>
+            <div class="dropdown-divider"></div>
+            <div class="dropdown-item" onclick="handleMenuAction('find')">
+              <span class="dropdown-item-label">Find</span>
+              <span class="dropdown-item-shortcut">Ctrl+F</span>
+            </div>
+            <div class="dropdown-item" onclick="handleMenuAction('replace')">
+              <span class="dropdown-item-label">Replace</span>
+              <span class="dropdown-item-shortcut">Ctrl+H</span>
+            </div>
+          </div>
+        </div>
+        
+        <!-- View Menu -->
+        <div class="menu-item" id="view-menu">
+          VIEW
+          <div class="dropdown">
+            <div class="dropdown-section-title">DASHBOARDS</div>
+            <div class="dropdown-item checked" onclick="switchView('dashboard')">
+              <span class="dropdown-item-label">Main Dashboard</span>
+            </div>
+            <div class="dropdown-item" onclick="switchView('analytics-dashboard')">
+              <span class="dropdown-item-label">Analytics Dashboard</span>
+            </div>
+            <div class="dropdown-item" onclick="switchView('document-dashboard')">
+              <span class="dropdown-item-label">Document Dashboard</span>
+            </div>
+            <div class="dropdown-divider"></div>
+            <div class="dropdown-section-title">VISUALIZATIONS</div>
+            <div class="dropdown-item" onclick="switchView('globe-tab')">
+              <span class="dropdown-item-label">3D Globe</span>
+            </div>
+            <div class="dropdown-item" onclick="switchView('map-tab')">
+              <span class="dropdown-item-label">2D Map</span>
+            </div>
+            <div class="dropdown-item" onclick="switchView('network-tab')">
+              <span class="dropdown-item-label">Network Graph</span>
+            </div>
+            <div class="dropdown-item" onclick="switchView('treemap-tab')">
+              <span class="dropdown-item-label">Treemap</span>
+            </div>
+            <div class="dropdown-divider"></div>
+            <div class="dropdown-section-title">PANELS</div>
+            <div class="dropdown-item checked" onclick="togglePanel('left-panel')">
+              <span class="dropdown-item-label">Left Panel</span>
+              <span class="dropdown-item-shortcut">Alt+1</span>
+            </div>
+            <div class="dropdown-item checked" onclick="togglePanel('terminal')">
+              <span class="dropdown-item-label">Terminal</span>
+              <span class="dropdown-item-shortcut">Alt+2</span>
+            </div>
+            <div class="dropdown-item" onclick="togglePanel('output')">
+              <span class="dropdown-item-label">Output</span>
+              <span class="dropdown-item-shortcut">Alt+3</span>
+            </div>
+            <div class="dropdown-divider"></div>
+            <div class="dropdown-item" onclick="handleMenuAction('full-screen')">
+              <span class="dropdown-item-label">Full Screen</span>
+              <span class="dropdown-item-shortcut">F11</span>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Tools Menu -->
+        <div class="menu-item" id="tools-menu">
+          TOOLS
+          <div class="dropdown">
+            <div class="dropdown-item" onclick="handleMenuAction('document-search')">
+              <div class="dropdown-item-icon">🔍</div>
+              <span class="dropdown-item-label">Document Search</span>
+            </div>
+            <div class="dropdown-item" onclick="handleMenuAction('data-analysis')">
+              <div class="dropdown-item-icon">📊</div>
+              <span class="dropdown-item-label">Data Analysis</span>
+            </div>
+            <div class="dropdown-divider"></div>
+            <div class="dropdown-item has-submenu">
+              <div class="dropdown-item-icon">📈</div>
+              <span class="dropdown-item-label">Visualizations</span>
+              <div class="submenu">
+                <div class="dropdown-item" onclick="handleMenuAction('create-chart')">
+                  <span class="dropdown-item-label">Create Chart</span>
+                </div>
+                <div class="dropdown-item" onclick="handleMenuAction('create-map')">
+                  <span class="dropdown-item-label">Create Map</span>
+                </div>
+                <div class="dropdown-item" onclick="handleMenuAction('create-network')">
+                  <span class="dropdown-item-label">Create Network</span>
+                </div>
+              </div>
+            </div>
+            <div class="dropdown-item has-submenu">
+              <div class="dropdown-item-icon">🔄</div>
+              <span class="dropdown-item-label">Data Tools</span>
+              <div class="submenu">
+                <div class="dropdown-item" onclick="handleMenuAction('data-import')">
+                  <span class="dropdown-item-label">Import Data</span>
+                </div>
+                <div class="dropdown-item" onclick="handleMenuAction('data-clean')">
+                  <span class="dropdown-item-label">Clean Data</span>
+                </div>
+                <div class="dropdown-item" onclick="handleMenuAction('data-transform')">
+                  <span class="dropdown-item-label">Transform Data</span>
+                </div>
+              </div>
+            </div>
+            <div class="dropdown-divider"></div>
+            <div class="dropdown-item" onclick="handleMenuAction('network-analysis')">
+              <div class="dropdown-item-icon">🌐</div>
+              <span class="dropdown-item-label">Network Analysis</span>
+            </div>
+            <div class="dropdown-item" onclick="handleMenuAction('entity-extraction')">
+              <div class="dropdown-item-icon">🏷️</div>
+              <span class="dropdown-item-label">Entity Extraction</span>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Data Menu -->
+        <div class="menu-item" id="data-menu">
+          DATA
+          <div class="dropdown">
+            <div class="dropdown-section-title">FILTERS</div>
+            <div class="dropdown-item" onclick="handleMenuAction('filter-location')">
+              <span class="dropdown-item-label">By Location</span>
+            </div>
+            <div class="dropdown-item" onclick="handleMenuAction('filter-type')">
+              <span class="dropdown-item-label">By Document Type</span>
+            </div>
+            <div class="dropdown-item" onclick="handleMenuAction('filter-date')">
+              <span class="dropdown-item-label">By Date Range</span>
+            </div>
+            <div class="dropdown-item" onclick="handleMenuAction('filter-entity')">
+              <span class="dropdown-item-label">By Entity</span>
+            </div>
+            <div class="dropdown-item" onclick="handleMenuAction('filter-funding')">
+              <span class="dropdown-item-label">By Funding Source</span>
+            </div>
+            <div class="dropdown-divider"></div>
+            <div class="dropdown-section-title">REFRESH</div>
+            <div class="dropdown-item" onclick="handleMenuAction('refresh-data')">
+              <span class="dropdown-item-label">Refresh Data</span>
+              <span class="dropdown-item-shortcut">F5</span>
+            </div>
+            <div class="dropdown-divider"></div>
+            <div class="dropdown-item has-submenu">
+              <span class="dropdown-item-label">Time Period</span>
+              <div class="submenu">
+                <div class="dropdown-item checked" onclick="handleMenuAction('time-all')">
+                  <span class="dropdown-item-label">All Time</span>
+                </div>
+                <div class="dropdown-item" onclick="handleMenuAction('time-year')">
+                  <span class="dropdown-item-label">Last Year</span>
+                </div>
+                <div class="dropdown-item" onclick="handleMenuAction('time-month')">
+                  <span class="dropdown-item-label">Last Month</span>
+                </div>
+                <div class="dropdown-item" onclick="handleMenuAction('time-week')">
+                  <span class="dropdown-item-label">Last Week</span>
+                </div>
+                <div class="dropdown-item" onclick="handleMenuAction('time-custom')">
+                  <span class="dropdown-item-label">Custom Range...</span>
                 </div>
               </div>
             </div>
           </div>
-
-          <!-- ### $Sidebar Menu ### -->
-          <ul class="sidebar-menu scrollable pos-r">
-            <li class="nav-item mT-30 actived">
-              <a class="sidebar-link" href="index.html">
-                <span class="icon-holder">
-                  <i class="c-blue-500 ti-home"></i>
-                </span>
-                <span class="title">Dashboard</span>
-              </a>
-            </li>
-            <li class="nav-item">
-              <a class='sidebar-link' href="email.html">
-                <span class="icon-holder">
-                  <i class="c-brown-500 ti-email"></i>
-                </span>
-                <span class="title">Email</span>
-              </a>
-            </li>
-            <li class="nav-item">
-              <a class='sidebar-link' href="compose.html">
-                <span class="icon-holder">
-                  <i class="c-blue-500 ti-share"></i>
-                </span>
-                <span class="title">Compose</span>
-              </a>
-            </li>
-            <li class="nav-item">
-              <a class='sidebar-link' href="calendar.html">
-                <span class="icon-holder">
-                  <i class="c-deep-orange-500 ti-calendar"></i>
-                </span>
-                <span class="title">Calendar</span>
-              </a>
-            </li>
-            <li class="nav-item">
-              <a class='sidebar-link' href="chat.html">
-                <span class="icon-holder">
-                  <i class="c-deep-purple-500 ti-comment-alt"></i>
-                </span>
-                <span class="title">Chat</span>
-              </a>
-            </li>
-            <li class="nav-item">
-              <a class='sidebar-link' href="charts.html">
-                <span class="icon-holder">
-                  <i class="c-indigo-500 ti-bar-chart"></i>
-                </span>
-                <span class="title">Charts</span>
-              </a>
-            </li>
-            <li class="nav-item">
-              <a class='sidebar-link' href="forms.html">
-                <span class="icon-holder">
-                  <i class="c-light-blue-500 ti-pencil"></i>
-                </span>
-                <span class="title">Forms</span>
-              </a>
-            </li>
-            <li class="nav-item dropdown">
-              <a class="sidebar-link" href="ui.html">
-                <span class="icon-holder">
-                    <i class="c-pink-500 ti-palette"></i>
-                  </span>
-                <span class="title">UI Elements</span>
-              </a>
-            </li>
-            <li class="nav-item dropdown">
-              <a class="dropdown-toggle" href="javascript:void(0);">
-                <span class="icon-holder">
-                  <i class="c-orange-500 ti-layout-list-thumb"></i>
-                </span>
-                <span class="title">Tables</span>
-                <span class="arrow">
-                  <i class="ti-angle-right"></i>
-                </span>
-              </a>
-              <ul class="dropdown-menu">
-                <li>
-                  <a class='sidebar-link' href="basic-table.html">Basic Table</a>
-                </li>
-                <li>
-                  <a class='sidebar-link' href="datatable.html">Data Table</a>
-                </li>
-              </ul>
-            </li>
-            <li class="nav-item dropdown">
-              <a class="dropdown-toggle" href="javascript:void(0);">
-                <span class="icon-holder">
-                    <i class="c-purple-500 ti-map"></i>
-                  </span>
-                <span class="title">Maps</span>
-                <span class="arrow">
-                    <i class="ti-angle-right"></i>
-                  </span>
-              </a>
-              <ul class="dropdown-menu">
-                <li>
-                  <a href="google-maps.html">Google Map</a>
-                </li>
-                <li>
-                  <a href="vector-maps.html">Vector Map</a>
-                </li>
-              </ul>
-            </li>
-            <li class="nav-item dropdown">
-              <a class="dropdown-toggle" href="javascript:void(0);">
-                <span class="icon-holder">
-                    <i class="c-red-500 ti-files"></i>
-                  </span>
-                <span class="title">Pages</span>
-                <span class="arrow">
-                    <i class="ti-angle-right"></i>
-                  </span>
-              </a>
-              <ul class="dropdown-menu">
-                <li>
-                  <a class='sidebar-link' href="blank.html">Blank</a>
-                </li>                 
-                <li>
-                  <a class='sidebar-link' href="404.html">404</a>
-                </li>
-                <li>
-                  <a class='sidebar-link' href="500.html">500</a>
-                </li>
-                <li>
-                  <a class='sidebar-link' href="signin.html">Sign In</a>
-                </li>
-                <li>
-                  <a class='sidebar-link' href="signup.html">Sign Up</a>
-                </li>
-              </ul>
-            </li>
-            <li class="nav-item dropdown">
-              <a class="dropdown-toggle" href="javascript:void(0);">
-                <span class="icon-holder">
-                  <i class="c-teal-500 ti-view-list-alt"></i>
-                </span>
-                <span class="title">Multiple Levels</span>
-                <span class="arrow">
-                  <i class="ti-angle-right"></i>
-                </span>
-              </a>
-              <ul class="dropdown-menu">
-                <li class="nav-item dropdown">
-                  <a href="javascript:void(0);">
-                    <span>Menu Item</span>
-                  </a>
-                </li>
-                <li class="nav-item dropdown">
-                  <a href="javascript:void(0);">
-                    <span>Menu Item</span>
-                    <span class="arrow">
-                      <i class="ti-angle-right"></i>
-                    </span>
-                  </a>
-                  <ul class="dropdown-menu">
-                    <li>
-                      <a href="javascript:void(0);">Menu Item</a>
-                    </li>
-                    <li>
-                      <a href="javascript:void(0);">Menu Item</a>
-                    </li>
-                  </ul>
-                </li>
-              </ul>
-            </li>
-          </ul>
+        </div>
+        
+        <!-- Windows Menu -->
+        <div class="menu-item" id="windows-menu">
+          WINDOWS
+          <div class="dropdown">
+            <div class="dropdown-item" onclick="handleMenuAction('new-window')">
+              <span class="dropdown-item-label">New Window</span>
+            </div>
+            <div class="dropdown-divider"></div>
+            <div class="dropdown-item checked" onclick="handleMenuAction('show-terminal')">
+              <span class="dropdown-item-label">Terminal</span>
+            </div>
+            <div class="dropdown-item checked" onclick="handleMenuAction('show-sidebar')">
+              <span class="dropdown-item-label">Sidebar</span>
+            </div>
+            <div class="dropdown-item" onclick="handleMenuAction('show-status-bar')">
+              <span class="dropdown-item-label">Status Bar</span>
+            </div>
+            <div class="dropdown-divider"></div>
+            <div class="dropdown-item" onclick="handleMenuAction('split-horizontal')">
+              <span class="dropdown-item-label">Split Horizontal</span>
+            </div>
+            <div class="dropdown-item" onclick="handleMenuAction('split-vertical')">
+              <span class="dropdown-item-label">Split Vertical</span>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Help Menu -->
+        <div class="menu-item" id="help-menu">
+          HELP
+          <div class="dropdown">
+            <div class="dropdown-item" onclick="handleMenuAction('welcome')">
+              <span class="dropdown-item-label">Welcome</span>
+            </div>
+            <div class="dropdown-item" onclick="handleMenuAction('docs')">
+              <span class="dropdown-item-label">Documentation</span>
+            </div>
+            <div class="dropdown-item" onclick="handleMenuAction('command-ref')">
+              <span class="dropdown-item-label">Command Reference</span>
+            </div>
+            <div class="dropdown-divider"></div>
+            <div class="dropdown-item" onclick="handleMenuAction('keyboard-shortcuts')">
+              <span class="dropdown-item-label">Keyboard Shortcuts</span>
+              <span class="dropdown-item-shortcut">Ctrl+K Ctrl+S</span>
+            </div>
+            <div class="dropdown-divider"></div>
+            <div class="dropdown-item" onclick="handleMenuAction('check-updates')">
+              <span class="dropdown-item-label">Check for Updates</span>
+            </div>
+            <div class="dropdown-item" onclick="handleMenuAction('about')">
+              <span class="dropdown-item-label">About</span>
+            </div>
+          </div>
         </div>
       </div>
+      
+      <!-- Old Navigation Menu (remove this) -->
+      <!-- <div class="navigation">
+        <div class="dropdown-menu">
+          <button class="dropdown-toggle">FILE</button>
+          <div class="dropdown-content">
+            <a href="#" class="dropdown-item">New Query</a>
+            <a href="#" class="dropdown-item">Open Document</a>
+            <a href="#" class="dropdown-item">Save Results</a>
+            <a href="#" class="dropdown-item">Export Data</a>
+            <a href="#" class="dropdown-item">Settings</a>
+          </div>
+        </div>
+        
+        <div class="dropdown-menu">
+          <button class="dropdown-toggle">VIEW</button>
+          <div class="dropdown-content">
+            <a href="#" class="dropdown-item" onclick="switchView('map')">Geographic Map</a>
+            <a href="#" class="dropdown-item" onclick="switchView('network')">Network Graph</a>
+            <a href="#" class="dropdown-item" onclick="switchView('timeline')">Timeline</a>
+            <a href="#" class="dropdown-item" onclick="switchView('terminal')">Terminal</a>
+            <a href="#" class="dropdown-item" onclick="switchView('dashboard')">Dashboard</a>
+          </div>
+        </div>
+        
+        <div class="dropdown-menu">
+          <button class="dropdown-toggle">TOOLS</button>
+          <div class="dropdown-content">
+            <a href="#" class="dropdown-item">Document Search</a>
+            <a href="#" class="dropdown-item">Data Analysis</a>
+            <a href="#" class="dropdown-item">Graph Generator</a>
+            <a href="#" class="dropdown-item">Network Analysis</a>
+            <a href="#" class="dropdown-item">Entity Extraction</a>
+          </div>
+        </div>
+        
+        <div class="dropdown-menu">
+          <button class="dropdown-toggle">FILTERS</button>
+          <div class="dropdown-content">
+            <a href="#" class="dropdown-item">By Location</a>
+            <a href="#" class="dropdown-item">By Document Type</a>
+            <a href="#" class="dropdown-item">By Date Range</a>
+            <a href="#" class="dropdown-item">By Entity</a>
+            <a href="#" class="dropdown-item">By Funding Source</a>
+          </div>
+        </div>
+        
+        <div class="dropdown-menu">
+          <button class="dropdown-toggle">HELP</button>
+          <div class="dropdown-content">
+            <a href="#" class="dropdown-item">Command Reference</a>
+            <a href="#" class="dropdown-item">User Guide</a>
+            <a href="#" class="dropdown-item">API Documentation</a>
+            <a href="#" class="dropdown-item">About</a>
+          </div>
+        </div>
+      </div> -->
+
+      <!-- Left Panel -->
+      <div class="left-panel">
+        <!-- System Clock Module -->
+        <div class="panel system-info">
+          <div class="panel-header">
+            <h3 class="panel-title">SYSTEM</h3>
+            <span class="panel-status">●</span>
+          </div>
+          <div class="panel-content">
+            <div id="clock">
+              <div class="time">00:00:00</div>
+              <div class="date">2025-05-01</div>
+            </div>
+            <div class="system-metrics">
+              <div class="metric">
+                <span class="metric-label">PHI-3 MODEL:</span>
+                <span class="metric-value">ONLINE</span>
+              </div>
+              <div class="metric">
+                <span class="metric-label">IPFS NODE:</span>
+                <span class="metric-value">CONNECTED</span>
+              </div>
+              <div class="metric">
+                <span class="metric-label">API STATUS:</span>
+                <span class="metric-value">OPERATIONAL</span>
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Document Stats Module -->
+        <div class="panel document-stats">
+          <div class="panel-header">
+            <h3 class="panel-title">DOCUMENT STATS</h3>
+            <span class="panel-status">●</span>
+          </div>
+          <div class="panel-content">
+            <div class="stat-item">
+              <span class="stat-label">TOTAL DOCUMENTS:</span>
+              <span class="stat-value counter">2,574</span>
+            </div>
+            <div class="stat-item">
+              <span class="stat-label">PROCESSED:</span>
+              <span class="stat-value">2,359</span>
+              <div class="progress-bar">
+                <div class="progress" style="width: 92%"></div>
+              </div>
+            </div>
+            <div class="stat-item">
+              <span class="stat-label">INDEXED:</span>
+              <span class="stat-value">2,312</span>
+              <div class="progress-bar">
+                <div class="progress" style="width: 90%"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Funding Allocation Module -->
+        <div class="panel funding-monitor">
+          <div class="panel-header">
+            <h3 class="panel-title">FUNDING ALLOCATION</h3>
+            <span class="panel-status">●</span>
+          </div>
+          <div class="panel-content">
+            <div class="funding-item">
+              <span class="funding-source">FEDERAL</span>
+              <span class="funding-amount">$56.2M</span>
+              <div class="progress-bar">
+                <div class="progress" style="width: 65%"></div>
+              </div>
+            </div>
+            <div class="funding-item">
+              <span class="funding-source">STATE</span>
+              <span class="funding-amount">$21.8M</span>
+              <div class="progress-bar">
+                <div class="progress" style="width: 25%"></div>
+              </div>
+            </div>
+            <div class="funding-item">
+              <span class="funding-source">PRIVATE</span>
+              <span class="funding-amount">$8.7M</span>
+              <div class="progress-bar">
+                <div class="progress" style="width: 10%"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Key Entities Module -->
+        <div class="panel entity-list">
+          <div class="panel-header">
+            <h3 class="panel-title">KEY ENTITIES</h3>
+            <span class="panel-status">●</span>
+          </div>
+          <div class="panel-content">
+            <div class="entity-table-container">
+              <table class="data-table">
+                <thead>
+                  <tr>
+                    <th>NAME</th>
+                    <th>TYPE</th>
+                    <th>DOCS</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td>VA Tech</td>
+                    <td>EDU</td>
+                    <td>187</td>
+                  </tr>
+                  <tr>
+                    <td>ODU</td>
+                    <td>EDU</td>
+                    <td>152</td>
+                  </tr>
+                  <tr>
+                    <td>Norfolk Naval</td>
+                    <td>MIL</td>
+                    <td>139</td>
+                  </tr>
+                  <tr>
+                    <td>Hampton Roads</td>
+                    <td>GOV</td>
+                    <td>98</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Main Panel -->
+      <div class="main-panel">
+        <div class="tab-container">
+          <div class="tab-navigation">
+            <button class="tab-button active" onclick="activateTab('globe-tab')">3D GLOBE</button>
+            <button class="tab-button" onclick="activateTab('map-tab')">2D MAP</button>
+            <button class="tab-button" onclick="activateTab('terminal-tab')">TERMINAL</button>
+            <button class="tab-button" onclick="activateTab('analysis-tab')">ANALYSIS</button>
+            <button class="tab-button" onclick="activateTab('treemap-tab')">TREEMAP</button>
+            <button class="tab-button" onclick="activateTab('network-tab')">NETWORK</button>
+            <button class="tab-button" onclick="activateTab('dashboard-tab')">DASHBOARD</button>
+          </div>
+          
+          <!-- 3D Globe Tab -->
+          <div id="globe-tab" class="tab-content active">
+            <div class="panel map-visualization">
+              <div class="panel-header">
+                <h3 class="panel-title">DOCUMENT GEOGRAPHIC DISTRIBUTION</h3>
+                <span class="panel-status">⚡</span>
+              </div>
+              <div class="panel-content">
+                <div id="globe-container"></div>
+              </div>
+            </div>
+          </div>
+          
+          <!-- 2D Map Tab -->
+          <div id="map-tab" class="tab-content">
+            <div class="panel leaflet-visualization">
+              <div class="panel-header">
+                <h3 class="panel-title">DOCUMENT ORIGINS</h3>
+                <span class="panel-status">⚡</span>
+              </div>
+              <div class="panel-content">
+                <div id="leaflet-map"></div>
+              </div>
+            </div>
+          </div>
+          
+          <!-- Terminal Tab -->
+          <div id="terminal-tab" class="tab-content">
+            <div class="panel document-viewer">
+              <div class="panel-header">
+                <h3 class="panel-title">DOCUMENT TERMINAL</h3>
+                <span class="panel-status">⚡</span>
+              </div>
+              <div class="panel-content" style="position: relative;">
+                <div class="scan-lines"></div>
+                <div class="crt-effect"></div>
+                <div class="terminal-output">
+                  <div class="terminal-line">$ phi-3 query --region="Hampton Roads" --type="development" --limit=5</div>
+                  <div class="terminal-line">Searching for development documents in Hampton Roads region...</div>
+                  <div class="terminal-line">Found 257 matching documents. Displaying top 5:</div>
+                  <div class="terminal-line">1. [PDF] Hampton Roads Regional Development Plan 2023-2025</div>
+                  <div class="terminal-line">   Location: Norfolk | Funding: $12.4M | Stakeholders: 5</div>
+                  <div class="terminal-line">   IPFS: Qm8a7K6qRS2MoxK5Lp2TK4xD2GrQJ7ker8EmN63X8</div>
+                  <div class="terminal-line">2. [DOCX] Newport News Shipyard Expansion Proposal</div>
+                  <div class="terminal-line">   Location: Newport News | Funding: $45.2M | Stakeholders: 3</div>
+                  <div class="terminal-line">   IPFS: Qm9eTvF4w1QpAYx3G4JgNDpB5VZ1c8n6YzmRJ9L2</div>
+                  <div class="terminal-line">3. [PDF] Virginia Beach Oceanfront Revitalization</div>
+                  <div class="terminal-line">   Location: Virginia Beach | Funding: $8.7M | Stakeholders: 7</div>
+                  <div class="terminal-line">   IPFS: QmXt42LwJeR3DvGs7MvY1C6SoEC9wEcnHRqSvZJ72</div>
+                  <div class="terminal-line">4. [XLSX] Chesapeake Economic Development Budget</div>
+                  <div class="terminal-line">   Location: Chesapeake | Funding: $3.2M | Stakeholders: 4</div>
+                  <div class="terminal-line">   IPFS: QmPuYtwQRjSLKf3aEGxYtdRzGYn8qhZU8eVkEGqTZ</div>
+                  <div class="terminal-line">5. [PDF] Suffolk Downtown Infrastructure Project</div>
+                  <div class="terminal-line">   Location: Suffolk | Funding: $6.8M | Stakeholders: 6</div>
+                  <div class="terminal-line">   IPFS: QmZLzjZqb1pj9EfQPrwuLUk8ZGQTwBDVQRzBxVa79</div>
+                  <div class="terminal-line">$ <span class="blink">_</span></div>
+                </div>
+                <div class="terminal-input">
+                  <span class="prompt">$</span>
+                  <input type="text" placeholder="Enter command..." class="command-input">
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          <!-- Analysis Tab -->
+          <div id="analysis-tab" class="tab-content">
+            <div class="panel document-analysis">
+              <div class="panel-header">
+                <h3 class="panel-title">DOCUMENT ANALYSIS</h3>
+                <span class="panel-status">⚡</span>
+              </div>
+              <div class="panel-content">
+                <div id="d3-chart"></div>
+              </div>
+            </div>
+          </div>
+          
+          <!-- Treemap Tab -->
+          <div id="treemap-tab" class="tab-content">
+            <div class="panel treemap-visualization">
+              <div class="panel-header">
+                <h3 class="panel-title">FUNDING ALLOCATION TREEMAP</h3>
+                <span class="panel-status">⚡</span>
+              </div>
+              <div class="panel-content">
+                <div id="treemap-container"></div>
+              </div>
+            </div>
+          </div>
+          
+          <!-- Network Tab -->
+          <div id="network-tab" class="tab-content">
+            <div class="panel network-visualization" style="position: relative;">
+              <div class="scan-lines"></div>
+              <div class="crt-effect"></div>
+              <div class="panel-header">
+                <h3 class="panel-title">ENTITY RELATIONSHIP NETWORK</h3>
+                <span class="panel-status">⚡</span>
+              </div>
+              <div class="panel-content">
+                <div id="network-container"></div>
+              </div>
+            </div>
+          </div>
+          
+          <!-- Dashboard Tab with Tile System -->
+          <div id="dashboard-tab" class="tab-content">
+            <div class="tile-container">
+              <!-- Tile 1: Quick Stats -->
+              <div class="tile">
+                <div class="tile-header">
+                  <div class="drag-handle">⋮⋮</div>
+                  <h3 class="tile-title">QUICK STATS</h3>
+                  <div class="tile-actions">
+                    <button class="tile-action tile-settings">⚙️</button>
+                    <button class="tile-action tile-expand">⤢</button>
+                  </div>
+                </div>
+                <div class="tile-content">
+                  <div class="quick-stats">
+                    <div class="stat">
+                      <div class="stat-value">2,574</div>
+                      <div class="stat-label">DOCUMENTS</div>
+                    </div>
+                    <div class="stat">
+                      <div class="stat-value">127</div>
+                      <div class="stat-label">ENTITIES</div>
+                    </div>
+                    <div class="stat">
+                      <div class="stat-value">$86.7M</div>
+                      <div class="stat-label">TOTAL FUNDING</div>
+                    </div>
+                    <div class="stat">
+                      <div class="stat-value">32</div>
+                      <div class="stat-label">PROJECTS</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              
+              <!-- Tile 2: Mini Map -->
+              <div class="tile">
+                <div class="tile-header">
+                  <div class="drag-handle">⋮⋮</div>
+                  <h3 class="tile-title">LOCATION MAP</h3>
+                  <div class="tile-actions">
+                    <button class="tile-action tile-settings">⚙️</button>
+                    <button class="tile-action tile-expand">⤢</button>
+                  </div>
+                </div>
+                <div class="tile-content">
+                  <div id="mini-map-container"></div>
+                </div>
+              </div>
+              
+              <!-- Tile 3: Document Type Pie Chart -->
+              <div class="tile">
+                <div class="tile-header">
+                  <div class="drag-handle">⋮⋮</div>
+                  <h3 class="tile-title">DOCUMENT TYPES</h3>
+                  <div class="tile-actions">
+                    <button class="tile-action tile-settings">⚙️</button>
+                    <button class="tile-action tile-expand">⤢</button>
+                  </div>
+                </div>
+                <div class="tile-content">
+                  <div id="pie-chart-container"></div>
+                </div>
+              </div>
+              
+              <!-- Tile 4: Timeline -->
+              <div class="tile double-width">
+                <div class="tile-header">
+                  <div class="drag-handle">⋮⋮</div>
+                  <h3 class="tile-title">DOCUMENT TIMELINE</h3>
+                  <div class="tile-actions">
+                    <button class="tile-action tile-settings">⚙️</button>
+                    <button class="tile-action tile-expand">⤢</button>
+                  </div>
+                </div>
+                <div class="tile-content">
+                  <div id="mini-timeline-container"></div>
+                </div>
+              </div>
+              
+              <!-- Tile 5: Terminal Mini -->
+              <div class="tile" style="position: relative;">
+                <div class="scan-lines"></div>
+                <div class="crt-effect"></div>
+                <div class="tile-header">
+                  <div class="drag-handle">⋮⋮</div>
+                  <h3 class="tile-title">COMMAND LINE</h3>
+                  <div class="tile-actions">
+                    <button class="tile-action tile-settings">⚙️</button>
+                    <button class="tile-action tile-expand">⤢</button>
+                  </div>
+                </div>
+                <div class="tile-content">
+                  <div class="mini-terminal">
+                    <div class="terminal-output" style="height: 150px;">
+                      <div class="terminal-line">$ status</div>
+                      <div class="terminal-line">System: ONLINE</div>
+                      <div class="terminal-line">Documents: 2,574</div>
+                      <div class="terminal-line">$ <span class="blink">_</span></div>
+                    </div>
+                    <div class="terminal-input">
+                      <span class="prompt">$</span>
+                      <input type="text" placeholder="Enter command..." class="command-input">
+                    </div>
+                  </div>
+                </div>
+              </div>
+              
+              <!-- Tile 6: Mini Network -->
+              <div class="tile double-height">
+                <div class="tile-header">
+                  <div class="drag-handle">⋮⋮</div>
+                  <h3 class="tile-title">KEY RELATIONSHIPS</h3>
+                  <div class="tile-actions">
+                    <button class="tile-action tile-settings">⚙️</button>
+                    <button class="tile-action tile-expand">⤢</button>
+                  </div>
+                </div>
+                <div class="tile-content">
+                  <div id="mini-network-container"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Right Panel -->
+      <div class="right-panel">
+        <!-- Network Graph Visualization -->
+        <div class="panel network-graph">
+          <div class="panel-header">
+            <h3 class="panel-title">NETWORK GRAPH</h3>
+            <span class="panel-status">⚡</span>
+          </div>
+          <div class="panel-content" style="position: relative;">
+            <div class="scan-lines"></div>
+            <div class="crt-effect"></div>
+            <div id="network-container"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Footer with Command Options -->
+      <footer class="footer">
+        <div class="command-list">
+          <span class="command-item">HELP</span>
+          <span class="command-item">SEARCH</span>
+          <span class="command-item">ANALYZE</span>
+          <span class="command-item">VIEW</span>
+          <span class="command-item">FILTER</span>
+        </div>
+        <div class="user-info">
+          <span>PHI-3 MODEL ACTIVE</span> | <span>757BUILT SYSTEM</span>
+        </div>
+        <div class="current-date" id="current-date">2025-05-01</div>
+      </footer>
 
       <!-- #Main ============================ -->
       <div class="page-container">
@@ -516,78 +2203,78 @@
           <div id='mainContent'>
             <div class="row gap-20 masonry pos-r">
               <div class="masonry-sizer col-md-6"></div>
-              <div class="masonry-item  w-100">
+              <div class="masonry-item w-100">
                 <div class="row gap-20">
-                  <!-- #Toatl Visits ==================== -->
+                  <!-- #Document Stats ==================== -->
                   <div class='col-md-3'>
                     <div class="layers bd bgc-white p-20">
                       <div class="layer w-100 mB-10">
-                        <h6 class="lh-1">Total Visits</h6>
+                        <h6 class="lh-1">Total Documents</h6>
                       </div>
                       <div class="layer w-100">
                         <div class="peers ai-sb fxw-nw">
                           <div class="peer peer-greed">
-                            <span id="sparklinedash"></span>
+                            <span id="documentSparkline"></span>
                           </div>
                           <div class="peer">
-                            <span class="d-ib lh-0 va-m fw-600 bdrs-10em pX-15 pY-15 bgc-green-50 c-green-500">+10%</span>
+                            <span class="d-ib lh-0 va-m fw-600 bdrs-10em pX-15 pY-15 bgc-green-50 c-green-500">+24%</span>
                           </div>
                         </div>
                       </div>
                     </div>
                   </div>
 
-                  <!-- #Total Page Views ==================== -->
+                  <!-- #Processing Status ==================== -->
                   <div class='col-md-3'>
                     <div class="layers bd bgc-white p-20">
                       <div class="layer w-100 mB-10">
-                        <h6 class="lh-1">Total Page Views</h6>
+                        <h6 class="lh-1">Processing Status</h6>
                       </div>
                       <div class="layer w-100">
                         <div class="peers ai-sb fxw-nw">
                           <div class="peer peer-greed">
-                            <span id="sparklinedash2"></span>
+                            <span id="processingSparkline"></span>
                           </div>
                           <div class="peer">
-                            <span class="d-ib lh-0 va-m fw-600 bdrs-10em pX-15 pY-15 bgc-red-50 c-red-500">-7%</span>
+                            <span class="d-ib lh-0 va-m fw-600 bdrs-10em pX-15 pY-15 bgc-blue-50 c-blue-500">92%</span>
                           </div>
                         </div>
                       </div>
                     </div>
                   </div>
 
-                  <!-- #Unique Visitors ==================== -->
+                  <!-- #File Types ==================== -->
                   <div class='col-md-3'>
                     <div class="layers bd bgc-white p-20">
                       <div class="layer w-100 mB-10">
-                        <h6 class="lh-1">Unique Visitor</h6>
+                        <h6 class="lh-1">File Types</h6>
                       </div>
                       <div class="layer w-100">
                         <div class="peers ai-sb fxw-nw">
                           <div class="peer peer-greed">
-                            <span id="sparklinedash3"></span>
+                            <span id="fileTypesSparkline"></span>
                           </div>
                           <div class="peer">
-                            <span class="d-ib lh-0 va-m fw-600 bdrs-10em pX-15 pY-15 bgc-purple-50 c-purple-500">~12%</span>
+                            <span class="d-ib lh-0 va-m fw-600 bdrs-10em pX-15 pY-15 bgc-purple-50 c-purple-500">6 types</span>
                           </div>
                         </div>
                       </div>
                     </div>
                   </div>
 
-                  <!-- #Bounce Rate ==================== -->
+                  <!-- #Access Level ==================== -->
                   <div class='col-md-3'>
                     <div class="layers bd bgc-white p-20">
                       <div class="layer w-100 mB-10">
-                        <h6 class="lh-1">Bounce Rate</h6>
+                        <h6 class="lh-1">Access Level</h6>
                       </div>
                       <div class="layer w-100">
                         <div class="peers ai-sb fxw-nw">
                           <div class="peer peer-greed">
-                            <span id="sparklinedash4"></span>
+                            <span id="accessSparkline"></span>
                           </div>
                           <div class="peer">
-                            <span class="d-ib lh-0 va-m fw-600 bdrs-10em pX-15 pY-15 bgc-blue-50 c-blue-500">33%</span>
+                            <span class="d-ib lh-0 va-m fw-600 bdrs-10em pX-15 pY-15 bgc-orange-50 c-orange-500">Admin</span>
                           </div>
                         </div>
                       </div>
@@ -595,492 +2282,155 @@
                   </div>
                 </div>
               </div>
+
+              <!-- 3D Globe Visualization with D3-Geo -->
               <div class="masonry-item col-12">
-                <!-- #Site Visits ==================== -->
                 <div class="bd bgc-white">
-                  <div class="peers fxw-nw@lg+ ai-s">
-                    <div class="peer peer-greed w-70p@lg+ w-100@lg- p-20">
-                      <div class="layers">
-                        <div class="layer w-100 mB-10">
-                          <h6 class="lh-1">Site Visits</h6>
-                        </div>
-                        <div class="layer w-100">
-                          <div id="world-map-marker"></div>
-                        </div>
-                      </div>
+                  <div class="layers">
+                    <div class="layer w-100 p-20">
+                      <h6 class="lh-1">Document Geographic Distribution</h6>
                     </div>
-                    <div class="peer bdL p-20 w-30p@lg+ w-100p@lg-">
-                      <div class="layers">
-                        <div class="layer w-100">
-                          <!-- Progress Bars -->
-                          <div class="layers">
-                            <div class="layer w-100">
-                              <h5 class="mB-5">100k</h5>
-                              <small class="fw-600 c-grey-700">Visitors From USA</small>
-                              <span class="pull-right c-grey-600 fsz-sm">50%</span>
-                              <div class="progress mT-10">
-                                <div class="progress-bar bgc-deep-purple-500" role="progressbar" aria-valuenow="50" aria-valuemin="0" aria-valuemax="100" style="width:50%;"> <span class="sr-only">50% Complete</span></div>
-                              </div>
-                            </div>
-                            <div class="layer w-100 mT-15">
-                              <h5 class="mB-5">1M</h5>
-                              <small class="fw-600 c-grey-700">Visitors From Europe</small>
-                              <span class="pull-right c-grey-600 fsz-sm">80%</span>
-                              <div class="progress mT-10">
-                                <div class="progress-bar bgc-green-500" role="progressbar" aria-valuenow="50" aria-valuemin="0" aria-valuemax="100" style="width:80%;"> <span class="sr-only">80% Complete</span></div>
-                              </div>
-                            </div>
-                            <div class="layer w-100 mT-15">
-                              <h5 class="mB-5">450k</h5>
-                              <small class="fw-600 c-grey-700">Visitors From Australia</small>
-                              <span class="pull-right c-grey-600 fsz-sm">40%</span>
-                              <div class="progress mT-10">
-                                <div class="progress-bar bgc-light-blue-500" role="progressbar" aria-valuenow="50" aria-valuemin="0" aria-valuemax="100" style="width:40%;"> <span class="sr-only">40% Complete</span></div>
-                              </div>
-                            </div>
-                            <div class="layer w-100 mT-15">
-                              <h5 class="mB-5">1B</h5>
-                              <small class="fw-600 c-grey-700">Visitors From India</small>
-                              <span class="pull-right c-grey-600 fsz-sm">90%</span>
-                              <div class="progress mT-10">
-                                <div class="progress-bar bgc-blue-grey-500" role="progressbar" aria-valuenow="50" aria-valuemin="0" aria-valuemax="100" style="width:90%;"> <span class="sr-only">90% Complete</span></div>
-                              </div>
-                            </div>
-                          </div>
-
-                          <!-- Pie Charts -->
-                          <div class="peers pT-20 mT-20 bdT fxw-nw@lg+ jc-sb ta-c gap-10">
-                            <div class="peer">
-                              <div class="easy-pie-chart" data-size='80' data-percent="75" data-bar-color='#f44336'>
-                                <span></span>
-                              </div>
-                              <h6 class="fsz-sm">New Users</h6>
-                            </div>
-                            <div class="peer">
-                              <div class="easy-pie-chart" data-size='80' data-percent="50" data-bar-color='#2196f3'>
-                                <span></span>
-                              </div>
-                              <h6 class="fsz-sm">New Purchases</h6>
-                            </div>
-                            <div class="peer">
-                              <div class="easy-pie-chart" data-size='80' data-percent="90" data-bar-color='#ff9800'>
-                                <span></span>
-                              </div>
-                              <h6 class="fsz-sm">Bounce Rate</h6>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
+                    <div class="layer w-100 p-20">
+                      <div id="globe-container"></div>
                     </div>
                   </div>
                 </div>
               </div>
+
+              <!-- Split Visualization: Leaflet 2D Map + D3 Detail View -->
               <div class="masonry-item col-md-6">
-                <!-- #Monthly Stats ==================== -->
                 <div class="bd bgc-white">
                   <div class="layers">
                     <div class="layer w-100 pX-20 pT-20">
-                      <h6 class="lh-1">Monthly Stats</h6>
+                      <h6 class="lh-1">Document Origins (Leaflet)</h6>
                     </div>
                     <div class="layer w-100 p-20">
-                      <canvas id="line-chart" height="220"></canvas>
-                    </div>
-                    <div class="layer bdT p-20 w-100">
-                      <div class="peers ai-c jc-c gapX-20">
-                        <div class="peer">
-                          <span class="fsz-def fw-600 mR-10 c-grey-800">10% <i class="fa fa-level-up c-green-500"></i></span>
-                          <small class="c-grey-500 fw-600">APPL</small>
-                        </div>
-                        <div class="peer fw-600">
-                          <span class="fsz-def fw-600 mR-10 c-grey-800">2% <i class="fa fa-level-down c-red-500"></i></span>
-                          <small class="c-grey-500 fw-600">Average</small>
-                        </div>
-                        <div class="peer fw-600">
-                          <span class="fsz-def fw-600 mR-10 c-grey-800">15% <i class="fa fa-level-up c-green-500"></i></span>
-                          <small class="c-grey-500 fw-600">Sales</small>
-                        </div>
-                        <div class="peer fw-600">
-                          <span class="fsz-def fw-600 mR-10 c-grey-800">8% <i class="fa fa-level-down c-red-500"></i></span>
-                          <small class="c-grey-500 fw-600">Profit</small>
-                        </div>
-                      </div>
+                      <div id="leaflet-map"></div>
                     </div>
                   </div>
                 </div>
               </div>
+
               <div class="masonry-item col-md-6">
-                <!-- #Todo ==================== -->
-                <div class="bd bgc-white p-20">
+                <div class="bd bgc-white">
                   <div class="layers">
-                    <div class="layer w-100 mB-10">
-                      <h6 class="lh-1">Todo List</h6>
+                    <div class="layer w-100 pX-20 pT-20">
+                      <h6 class="lh-1">Document Type Distribution</h6>
                     </div>
-                    <div class="layer w-100">
-                      <ul class="list-task list-group" data-role="tasklist">
-                        <li class="list-group-item bdw-0" data-role="task">
-                          <div class="checkbox checkbox-circle checkbox-info peers ai-c">
-                            <input type="checkbox" id="inputCall1" name="inputCheckboxesCall" class="peer">
-                            <label for="inputCall1" class=" peers peer-greed js-sb ai-c">
-                              <span class="peer peer-greed">Call John for Dinner</span>
-                            </label>
-                          </div>
-                        </li>
-                        <li class="list-group-item bdw-0" data-role="task">
-                          <div class="checkbox checkbox-circle checkbox-info peers ai-c">
-                            <input type="checkbox" id="inputCall2" name="inputCheckboxesCall" class="peer">
-                            <label for="inputCall2" class=" peers peer-greed js-sb ai-c">
-                              <span class="peer peer-greed">Book Boss Flight</span>
-                              <span class="peer">
-                                <span class="badge badge-pill fl-r badge-success lh-0 p-10">2 Days</span>
-                              </span>
-                            </label>
-                          </div>
-                        </li>
-                        <li class="list-group-item bdw-0" data-role="task">
-                          <div class="checkbox checkbox-circle checkbox-info peers ai-c">
-                            <input type="checkbox" id="inputCall3" name="inputCheckboxesCall" class="peer">
-                            <label for="inputCall3" class=" peers peer-greed js-sb ai-c">
-                              <span class="peer peer-greed">Hit the Gym</span>
-                              <span class="peer">
-                                <span class="badge badge-pill fl-r badge-danger lh-0 p-10">3 Minutes</span>
-                              </span>
-                            </label>
-                          </div>
-                        </li>
-                        <li class="list-group-item bdw-0" data-role="task">
-                          <div class="checkbox checkbox-circle checkbox-info peers ai-c">
-                            <input type="checkbox" id="inputCall4" name="inputCheckboxesCall" class="peer">
-                            <label for="inputCall4" class=" peers peer-greed js-sb ai-c">
-                              <span class="peer peer-greed">Give Purchase Report</span>
-                              <span class="peer">
-                                <span class="badge badge-pill fl-r badge-warning lh-0 p-10">not important</span>
-                              </span>
-                            </label>
-                          </div>
-                        </li>
-                        <li class="list-group-item bdw-0" data-role="task">
-                          <div class="checkbox checkbox-circle checkbox-info peers ai-c">
-                            <input type="checkbox" id="inputCall5" name="inputCheckboxesCall" class="peer">
-                            <label for="inputCall5" class=" peers peer-greed js-sb ai-c">
-                              <span class="peer peer-greed">Watch Game of Thrones Episode</span>
-                              <span class="peer">
-                                <span class="badge badge-pill fl-r badge-info lh-0 p-10">Tomorrow</span>
-                              </span>
-                            </label>
-                          </div>
-                        </li>
-                        <li class="list-group-item bdw-0" data-role="task">
-                          <div class="checkbox checkbox-circle checkbox-info peers ai-c">
-                            <input type="checkbox" id="inputCall6" name="inputCheckboxesCall" class="peer">
-                            <label for="inputCall6" class=" peers peer-greed js-sb ai-c">
-                              <span class="peer peer-greed">Give Purchase report</span>
-                              <span class="peer">
-                                <span class="badge badge-pill fl-r badge-success lh-0 p-10">Done</span>
-                              </span>
-                            </label>
-                          </div>
-                        </li>
-                      </ul>
+                    <div class="layer w-100 p-20">
+                      <div id="d3-chart"></div>
                     </div>
                   </div>
                 </div>
               </div>
-              <div class="masonry-item col-md-6">
-                <!-- #Sales Report ==================== -->
+
+              <!-- Document Timeline -->
+              <div class="masonry-item col-md-12">
                 <div class="bd bgc-white">
                   <div class="layers">
                     <div class="layer w-100 p-20">
-                      <h6 class="lh-1">Sales Report</h6>
+                      <h6 class="lh-1">Document Timeline</h6>
+                    </div>
+                    <div class="layer w-100 p-20">
+                      <div id="timeline-chart"></div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Recent Documents Table -->
+              <div class="masonry-item col-md-12">
+                <div class="bd bgc-white">
+                  <div class="layers">
+                    <div class="layer w-100 p-20">
+                      <h6 class="lh-1">Recent Documents</h6>
                     </div>
                     <div class="layer w-100">
-                      <div class="bgc-light-blue-500 c-white p-20">
-                        <div class="peers ai-c jc-sb gap-40">
-                          <div class="peer peer-greed">
-                            <h5>November 2017</h5>
-                            <p class="mB-0">Sales Report</p>
-                          </div>
-                          <div class="peer">
-                            <h3 class="text-right">$6,000</h3>
-                          </div>
-                        </div>
-                      </div>
                       <div class="table-responsive p-20">
                         <table class="table">
                           <thead>
                             <tr>
-                              <th class=" bdwT-0">Name</th>
-                              <th class=" bdwT-0">Status</th>
-                              <th class=" bdwT-0">Date</th>
-                              <th class=" bdwT-0">Price</th>
+                              <th class="bdwT-0">Document Name</th>
+                              <th class="bdwT-0">Type</th>
+                              <th class="bdwT-0">Location</th>
+                              <th class="bdwT-0">Size</th>
+                              <th class="bdwT-0">Last Modified</th>
+                              <th class="bdwT-0">Actions</th>
                             </tr>
                           </thead>
                           <tbody>
                             <tr>
-                              <td class="fw-600">Item #1 Name</td>
-                              <td><span class="badge bgc-red-50 c-red-700 p-10 lh-0 tt-c badge-pill">Unavailable</span> </td>
-                              <td>Nov 18</td>
-                              <td><span class="text-success">$12</span></td>
+                              <td class="fw-600">Annual Report 2023</td>
+                              <td><span class="badge bgc-blue-50 c-blue-700 p-10 lh-0 tt-c badge-pill">PDF</span></td>
+                              <td>New York</td>
+                              <td>4.2 MB</td>
+                              <td>Today</td>
+                              <td>
+                                <div class="peers mR-15">
+                                  <div class="peer"><i class="ti-eye c-blue-500 td-n c-p" title="View"></i></div>
+                                  <div class="peer mL-5"><i class="ti-pencil c-grey-500 td-n c-p" title="Edit"></i></div>
+                                  <div class="peer mL-5"><i class="ti-trash c-red-500 td-n c-p" title="Delete"></i></div>
+                                </div>
+                              </td>
                             </tr>
                             <tr>
-                              <td class="fw-600">Item #2 Name</td>
-                              <td><span class="badge bgc-deep-purple-50 c-deep-purple-700 p-10 lh-0 tt-c badge-pill">New</span></td>
-                              <td>Nov 19</td>
-                              <td><span class="text-info">$34</span></td>
+                              <td class="fw-600">Client Presentation</td>
+                              <td><span class="badge bgc-green-50 c-green-700 p-10 lh-0 tt-c badge-pill">PPTX</span></td>
+                              <td>London</td>
+                              <td>12.7 MB</td>
+                              <td>Yesterday</td>
+                              <td>
+                                <div class="peers mR-15">
+                                  <div class="peer"><i class="ti-eye c-blue-500 td-n c-p" title="View"></i></div>
+                                  <div class="peer mL-5"><i class="ti-pencil c-grey-500 td-n c-p" title="Edit"></i></div>
+                                  <div class="peer mL-5"><i class="ti-trash c-red-500 td-n c-p" title="Delete"></i></div>
+                                </div>
+                              </td>
                             </tr>
                             <tr>
-                              <td class="fw-600">Item #3 Name</td>
-                              <td><span class="badge bgc-pink-50 c-pink-700 p-10 lh-0 tt-c badge-pill">New</span></td>
-                              <td>Nov 20</td>
-                              <td><span class="text-danger">-$45</span></td>
+                              <td class="fw-600">Budget Analysis</td>
+                              <td><span class="badge bgc-purple-50 c-purple-700 p-10 lh-0 tt-c badge-pill">XLSX</span></td>
+                              <td>Tokyo</td>
+                              <td>2.4 MB</td>
+                              <td>Aug 12</td>
+                              <td>
+                                <div class="peers mR-15">
+                                  <div class="peer"><i class="ti-eye c-blue-500 td-n c-p" title="View"></i></div>
+                                  <div class="peer mL-5"><i class="ti-pencil c-grey-500 td-n c-p" title="Edit"></i></div>
+                                  <div class="peer mL-5"><i class="ti-trash c-red-500 td-n c-p" title="Delete"></i></div>
+                                </div>
+                              </td>
                             </tr>
                             <tr>
-                              <td class="fw-600">Item #4 Name</td>
-                              <td><span class="badge bgc-green-50 c-green-700 p-10 lh-0 tt-c badge-pill">Unavailable</span></td>
-                              <td>Nov 21</td>
-                              <td><span class="text-success">$65</span></td>
+                              <td class="fw-600">Research Report</td>
+                              <td><span class="badge bgc-red-50 c-red-700 p-10 lh-0 tt-c badge-pill">DOCX</span></td>
+                              <td>Paris</td>
+                              <td>8.1 MB</td>
+                              <td>Aug 10</td>
+                              <td>
+                                <div class="peers mR-15">
+                                  <div class="peer"><i class="ti-eye c-blue-500 td-n c-p" title="View"></i></div>
+                                  <div class="peer mL-5"><i class="ti-pencil c-grey-500 td-n c-p" title="Edit"></i></div>
+                                  <div class="peer mL-5"><i class="ti-trash c-red-500 td-n c-p" title="Delete"></i></div>
+                                </div>
+                              </td>
                             </tr>
                             <tr>
-                              <td class="fw-600">Item #5 Name</td>
-                              <td><span class="badge bgc-red-50 c-red-700 p-10 lh-0 tt-c badge-pill">Used</span></td>
-                              <td>Nov 22</td>
-                              <td><span class="text-success">$78</span></td>
-                            </tr>
-                            <tr>
-                              <td class="fw-600">Item #6 Name</td>
-                              <td><span class="badge bgc-orange-50 c-orange-700 p-10 lh-0 tt-c badge-pill">Used</span> </td>
-                              <td>Nov 23</td>
-                              <td><span class="text-danger">-$88</span></td>
-                            </tr>
-                            <tr>
-                              <td class="fw-600">Item #7 Name</td>
-                              <td><span class="badge bgc-yellow-50 c-yellow-700 p-10 lh-0 tt-c badge-pill">Old</span></td>
-                              <td>Nov 22</td>
-                              <td><span class="text-success">$56</span></td>
+                              <td class="fw-600">Project Proposal</td>
+                              <td><span class="badge bgc-orange-50 c-orange-700 p-10 lh-0 tt-c badge-pill">PDF</span></td>
+                              <td>Berlin</td>
+                              <td>3.2 MB</td>
+                              <td>Aug 5</td>
+                              <td>
+                                <div class="peers mR-15">
+                                  <div class="peer"><i class="ti-eye c-blue-500 td-n c-p" title="View"></i></div>
+                                  <div class="peer mL-5"><i class="ti-pencil c-grey-500 td-n c-p" title="Edit"></i></div>
+                                  <div class="peer mL-5"><i class="ti-trash c-red-500 td-n c-p" title="Delete"></i></div>
+                                </div>
+                              </td>
                             </tr>
                           </tbody>
                         </table>
-                       </div>
-                    </div>
-                  </div>
-                  <div class="ta-c bdT w-100 p-20">
-                    <a href="#">Check all the sales</a>
-                  </div>
-                </div>
-              </div>
-              <div class="masonry-item col-md-6">
-                <!-- #Weather ==================== -->
-                <div class="bd bgc-white p-20">
-                  <div class="layers">
-                    <!-- Widget Title -->
-                    <div class="layer w-100 mB-20">
-                      <h6 class="lh-1">Weather</h6>
-                    </div>
-
-                    <!-- Today Weather -->
-                    <div class="layer w-100">
-                      <div class="peers ai-c jc-sb fxw-nw">
-                        <div class="peer peer-greed">
-                          <div class="layers">
-                            <!-- Temprature -->
-                            <div class="layer w-100">
-                              <div class="peers fxw-nw ai-c">
-                                <div class="peer mR-20">
-                                  <h3>32<sup>°F</sup></h3>
-                                </div>
-                                <div class="peer">
-                                  <canvas class="sleet" width="44" height="44"></canvas>
-                                </div>
-                              </div>
-                            </div>
-
-                            <!-- Condition -->
-                            <div class="layer w-100">
-                              <span class="fw-600 c-grey-600">Partly Clouds</span>
-                            </div>
-                          </div>
-                        </div>
-                        <div class="peer">
-                          <div class="layers ai-fe">
-                            <div class="layer">
-                              <h5 class="mB-5">Monday</h5>
-                            </div>
-                            <div class="layer">
-                              <span class="fw-600 c-grey-600">Nov, 01 2017</span>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-
-                    <!-- Today Weather Extended -->
-                    <div class="layer w-100 mY-30">
-                      <div class="layers bdB">
-                        <div class="layer w-100 bdT pY-5">
-                          <div class="peers ai-c jc-sb fxw-nw">
-                            <div class="peer">
-                              <span>Wind</span>
-                            </div>
-                            <div class="peer ta-r">
-                              <span class="fw-600 c-grey-800">10km/h</span>
-                            </div>
-                          </div>
-                        </div>
-                        <div class="layer w-100 bdT pY-5">
-                          <div class="peers ai-c jc-sb fxw-nw">
-                            <div class="peer">
-                              <span>Sunrise</span>
-                            </div>
-                            <div class="peer ta-r">
-                              <span class="fw-600 c-grey-800">05:00 AM</span>
-                            </div>
-                          </div>
-                        </div>
-                        <div class="layer w-100 bdT pY-5">
-                          <div class="peers ai-c jc-sb fxw-nw">
-                            <div class="peer">
-                              <span>Pressure</span>
-                            </div>
-                            <div class="peer ta-r">
-                              <span class="fw-600 c-grey-800">1B</span>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-
-                    <!-- Week Forecast -->
-                    <div class="layer w-100">
-                      <div class="peers peers-greed ai-fs ta-c">
-                        <div class="peer">
-                          <h6 class="mB-10">MON</h6>
-                          <canvas class="sleet" width="30" height="30"></canvas>
-                          <span class="d-b fw-600">32<sup>°F</sup></span>
-                        </div>
-                        <div class="peer">
-                          <h6 class="mB-10">TUE</h6>
-                          <canvas class="clear-day" width="30" height="30"></canvas>
-                          <span class="d-b fw-600">30<sup>°F</sup></span>
-                        </div>
-                        <div class="peer">
-                          <h6 class="mB-10">WED</h6>
-                          <canvas class="partly-cloudy-day" width="30" height="30"></canvas>
-                          <span class="d-b fw-600">28<sup>°F</sup></span>
-                        </div>
-                        <div class="peer">
-                          <h6 class="mB-10">THR</h6>
-                          <canvas class="cloudy" width="30" height="30"></canvas>
-                          <span class="d-b fw-600">32<sup>°F</sup></span>
-                        </div>
-                        <div class="peer">
-                          <h6 class="mB-10">FRI</h6>
-                          <canvas class="snow" width="30" height="30"></canvas>
-                          <span class="d-b fw-600">24<sup>°F</sup></span>
-                        </div>
-                        <div class="peer">
-                          <h6 class="mB-10">SAT</h6>
-                          <canvas class="wind" width="30" height="30"></canvas>
-                          <span class="d-b fw-600">28<sup>°F</sup></span>
-                        </div>
-                        <div class="peer">
-                          <h6 class="mB-10">SUN</h6>
-                          <canvas class="sleet" width="30" height="30"></canvas>
-                          <span class="d-b fw-600">32<sup>°F</sup></span>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-              <div class="masonry-item col-md-6">
-                <!-- #Chat ==================== -->
-                <div class="bd bgc-white">
-                  <div class="layers">
-                    <div class="layer w-100 p-20">
-                      <h6 class="lh-1">Quick Chat</h6>
-                    </div>
-                    <div class="layer w-100">
-                      <!-- Chat Box -->
-                      <div class="bgc-grey-200 p-20 gapY-15">
-                        <!-- Chat Conversation -->
-                        <div class="peers fxw-nw">
-                          <div class="peer mR-20">
-                            <img class="w-2r bdrs-50p" src="https://randomuser.me/api/portraits/men/11.jpg" alt="">
-                          </div>
-                          <div class="peer peer-greed">
-                            <div class="layers ai-fs gapY-5">
-                              <div class="layer">
-                                <div class="peers fxw-nw ai-c pY-3 pX-10 bgc-white bdrs-2 lh-3/2">
-                                  <div class="peer mR-10">
-                                    <small>10:00 AM</small>
-                                  </div>
-                                  <div class="peer-greed">
-                                    <span>Lorem Ipsum is simply dummy text of</span>
-                                  </div>
-                                </div>
-                              </div>
-                              <div class="layer">
-                                <div class="peers fxw-nw ai-c pY-3 pX-10 bgc-white bdrs-2 lh-3/2">
-                                  <div class="peer mR-10">
-                                    <small>10:00 AM</small>
-                                  </div>
-                                  <div class="peer-greed">
-                                    <span>the printing and typesetting industry.</span>
-                                  </div>
-                                </div>
-                              </div>
-                              <div class="layer">
-                                <div class="peers fxw-nw ai-c pY-3 pX-10 bgc-white bdrs-2 lh-3/2">
-                                  <div class="peer mR-10">
-                                    <small>10:00 AM</small>
-                                  </div>
-                                  <div class="peer-greed">
-                                    <span>Lorem Ipsum has been the industry's</span>
-                                  </div>
-                                </div>
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-
-                        <!-- Chat Conversation -->
-                        <div class="peers fxw-nw ai-fe">
-                          <div class="peer ord-1 mL-20">
-                            <img class="w-2r bdrs-50p" src="https://randomuser.me/api/portraits/men/12.jpg" alt="">
-                          </div>
-                          <div class="peer peer-greed ord-0">
-                            <div class="layers ai-fe gapY-10">
-                              <div class="layer">
-                                <div class="peers fxw-nw ai-c pY-3 pX-10 bgc-white bdrs-2 lh-3/2">
-                                  <div class="peer mL-10 ord-1">
-                                    <small>10:00 AM</small>
-                                  </div>
-                                  <div class="peer-greed ord-0">
-                                    <span>Heloo</span>
-                                  </div>
-                                </div>
-                              </div>
-                              <div class="layer">
-                                <div class="peers fxw-nw ai-c pY-3 pX-10 bgc-white bdrs-2 lh-3/2">
-                                  <div class="peer mL-10 ord-1">
-                                    <small>10:00 AM</small>
-                                  </div>
-                                  <div class="peer-greed ord-0">
-                                    <span>??</span>
-                                  </div>
-                                </div>
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                      <!-- Chat Send -->
-                      <div class="p-20 bdT bgc-white">
-                        <div class="pos-r">
-                          <input type="text" class="form-control bdrs-10em m-0" placeholder="Say something...">
-                          <button type="button" class="btn btn-primary bdrs-50p w-2r p-0 h-2r pos-a r-1 t-1">
-                            <i class="fa fa-paper-plane-o"></i>
-                          </button>
-                        </div>
                       </div>
                     </div>
                   </div>
@@ -1092,9 +2442,1475 @@
 
         <!-- ### $App Screen Footer ### -->
         <footer class="bdT ta-c p-30 lh-0 fsz-sm c-grey-600">
-          <span>Copyright © 2017 Designed by <a href="https://colorlib.com" target='_blank' title="Colorlib">Colorlib</a>. All rights reserved.</span>
+          <span>Copyright © 2023 Data Visualization Dashboard. All rights reserved.</span>
         </footer>
       </div>
     </div>
+
+    <!-- Core JavaScript -->
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@4.6.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/perfect-scrollbar@1.5.0/dist/perfect-scrollbar.min.js"></script>
+    
+    <!-- Webpack would normally bundle these, but we'll include them individually -->
+    <script src="assets/scripts/masonry/index.js"></script>
+    <script src="assets/scripts/charts/index.js"></script>
+    <script src="assets/scripts/popover/index.js"></script>
+    <script src="assets/scripts/scrollbar/index.js"></script>
+    <script src="assets/scripts/search/index.js"></script>
+    <script src="assets/scripts/sidebar/index.js"></script>
+    <script src="assets/scripts/skycons/index.js"></script>
+    <script src="assets/scripts/utils/index.js"></script>
+
+    <!-- Visualization Scripts -->
+    <script>
+      // Initialize visualizations when the page loads
+      window.addEventListener('load', function() {
+        // Initialize sparklines for dashboard stats
+        initSparklines();
+        
+        // Initialize 3D globe visualization
+        initGlobe();
+        
+        // Initialize Leaflet map
+        initLeafletMap();
+        
+        // Initialize D3 chart for document types
+        initD3Chart();
+        
+        // Initialize timeline chart
+        initTimelineChart();
+      });
+
+      // Initialize sparklines for the dashboard statistics
+      function initSparklines() {
+        // Simple placeholder for sparklines
+        // In a real implementation, these would use actual data
+        const sparklineOptions = {
+          type: 'line',
+          height: '50',
+          width: '100%',
+          lineColor: '#2196F3',
+          fillColor: 'rgba(33, 150, 243, 0.2)',
+          lineWidth: 2,
+          spotColor: undefined,
+          minSpotColor: undefined,
+          maxSpotColor: undefined,
+          highlightSpotColor: undefined,
+          highlightLineColor: undefined
+        };
+      }
+
+      // Initialize 3D globe visualization with D3-geo
+      function initGlobe() {
+        const width = document.getElementById('globe-container').offsetWidth;
+        const height = 400;
+        const sensitivity = 75;
+        
+        // Create SVG container
+        const svg = d3.select('#globe-container')
+          .append('svg')
+          .attr('width', width)
+          .attr('height', height);
+        
+        // Create a group for the globe
+        const globe = svg.append('g')
+          .attr('transform', `translate(${width/2}, ${height/2})`);
+          
+        // Create a sphere for the globe
+        globe.append('circle')
+          .attr('fill', '#EEE')
+          .attr('stroke', '#000')
+          .attr('stroke-width', '0.2')
+          .attr('r', Math.min(width, height) / 3);
+        
+        // Create a projection for transforming geographic coordinates
+        const projection = d3.geoOrthographic()
+          .scale(Math.min(width, height) / 3)
+          .translate([0, 0]);
+          
+        // Create a path generator for drawing geographic features
+        const path = d3.geoPath().projection(projection);
+        
+        // Create a group for the graticule (coordinate grid)
+        const graticule = d3.geoGraticule();
+        globe.append('path')
+          .datum(graticule())
+          .attr('class', 'graticule')
+          .attr('fill', 'none')
+          .attr('stroke', '#ccc')
+          .attr('stroke-width', '0.3')
+          .attr('d', path);
+          
+        // Load world map data and document locations
+        // Note: In a real implementation, you would load actual GeoJSON data
+        const worldPromise = d3.json('https://raw.githubusercontent.com/holtzy/D3-graph-gallery/master/DATA/world.geojson');
+        
+        // When data is loaded, display it on the globe
+        worldPromise.then(world => {
+          // Draw countries
+          globe.selectAll('.country')
+            .data(world.features)
+            .enter()
+            .append('path')
+            .attr('class', 'country')
+            .attr('d', path)
+            .attr('fill', '#69b3a2')
+            .attr('stroke', '#fff')
+            .attr('stroke-width', '0.3');
+          
+          // Add sample document location markers
+          const documentLocations = [
+            { name: "New York", coordinates: [-74.006, 40.7128], docs: 458 },
+            { name: "London", coordinates: [-0.1278, 51.5074], docs: 327 },
+            { name: "Tokyo", coordinates: [139.6917, 35.6895], docs: 289 },
+            { name: "Paris", coordinates: [2.3522, 48.8566], docs: 198 },
+            { name: "Berlin", coordinates: [13.4050, 52.5200], docs: 156 }
+          ];
+          
+          // Add markers for document locations
+          globe.selectAll('.document-marker')
+            .data(documentLocations)
+            .enter()
+            .append('circle')
+            .attr('class', 'document-marker')
+            .attr('cx', d => projection(d.coordinates)[0])
+            .attr('cy', d => projection(d.coordinates)[1])
+            .attr('r', d => Math.sqrt(d.docs) / 4)
+            .attr('fill', 'red')
+            .attr('stroke', '#fff')
+            .attr('stroke-width', '0.1')
+            .attr('opacity', 0.8);
+            
+          // Enable rotation interaction
+          svg.call(d3.drag().on('drag', event => {
+            const rotate = projection.rotate();
+            const k = sensitivity / projection.scale();
+            projection.rotate([
+              rotate[0] + event.dx * k,
+              rotate[1] - event.dy * k
+            ]);
+            
+            // Update paths and markers when globe is rotated
+            globe.selectAll('path').attr('d', path);
+            globe.selectAll('.document-marker')
+              .attr('cx', d => projection(d.coordinates)[0])
+              .attr('cy', d => projection(d.coordinates)[1]);
+          }));
+        });
+      }
+
+      // Initialize 2D map with Leaflet
+      function initLeafletMap() {
+        // Create Leaflet map
+        const map = L.map('leaflet-map').setView([20, 0], 2);
+        
+        // Add OpenStreetMap tile layer
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+          attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+        }).addTo(map);
+        
+        // Add sample document location markers
+        const documentLocations = [
+          { name: "New York", coordinates: [40.7128, -74.006], docs: 458, type: "PDF" },
+          { name: "London", coordinates: [51.5074, -0.1278], docs: 327, type: "DOCX" },
+          { name: "Tokyo", coordinates: [35.6895, 139.6917], docs: 289, type: "XLSX" },
+          { name: "Paris", coordinates: [48.8566, 2.3522], docs: 198, type: "PDF" },
+          { name: "Berlin", coordinates: [52.5200, 13.4050], docs: 156, type: "PPTX" }
+        ];
+        
+        // Add markers for document locations
+        documentLocations.forEach(location => {
+          const marker = L.circleMarker(location.coordinates, {
+            radius: Math.sqrt(location.docs) / 2,
+            fillColor: getColorForDocType(location.type),
+            color: '#fff',
+            weight: 1,
+            opacity: 1,
+            fillOpacity: 0.8
+          }).addTo(map);
+          
+          // Add popup with location info
+          marker.bindPopup(`
+            <strong>${location.name}</strong><br>
+            Documents: ${location.docs}<br>
+            Type: ${location.type}
+          `);
+        });
+      }
+
+      // Get a color based on document type
+      function getColorForDocType(type) {
+        const colors = {
+          'PDF': '#e41a1c',
+          'DOCX': '#377eb8',
+          'XLSX': '#4daf4a',
+          'PPTX': '#ff7f00',
+          'TXT': '#984ea3',
+          'Other': '#999999'
+        };
+        return colors[type] || colors.Other;
+      }
+
+      // Initialize D3 chart for document type distribution
+      function initD3Chart() {
+        const width = document.getElementById('d3-chart').offsetWidth;
+        const height = 400;
+        const margin = { top: 40, right: 30, bottom: 40, left: 40 };
+        const innerWidth = width - margin.left - margin.right;
+        const innerHeight = height - margin.top - margin.bottom;
+        
+        // Create SVG container
+        const svg = d3.select('#d3-chart')
+          .append('svg')
+          .attr('width', width)
+          .attr('height', height);
+          
+        // Create chart group
+        const chart = svg.append('g')
+          .attr('transform', `translate(${margin.left}, ${margin.top})`);
+        
+        // Sample data for document types
+        const data = [
+          { type: 'PDF', count: 856 },
+          { type: 'DOCX', count: 632 },
+          { type: 'XLSX', count: 452 },
+          { type: 'PPTX', count: 298 },
+          { type: 'TXT', count: 185 },
+          { type: 'Other', count: 134 }
+        ];
+        
+        // Create x and y scales
+        const xScale = d3.scaleBand()
+          .domain(data.map(d => d.type))
+          .range([0, innerWidth])
+          .padding(0.2);
+          
+        const yScale = d3.scaleLinear()
+          .domain([0, d3.max(data, d => d.count)])
+          .range([innerHeight, 0]);
+          
+        // Create and add x and y axes
+        chart.append('g')
+          .attr('transform', `translate(0, ${innerHeight})`)
+          .call(d3.axisBottom(xScale));
+          
+        chart.append('g')
+          .call(d3.axisLeft(yScale));
+          
+        // Create and add bars
+        chart.selectAll('.bar')
+          .data(data)
+          .enter()
+          .append('rect')
+          .attr('class', 'bar')
+          .attr('x', d => xScale(d.type))
+          .attr('y', d => yScale(d.count))
+          .attr('width', xScale.bandwidth())
+          .attr('height', d => innerHeight - yScale(d.count))
+          .attr('fill', d => getColorForDocType(d.type));
+          
+        // Add title
+        svg.append('text')
+          .attr('x', width / 2)
+          .attr('y', 20)
+          .attr('text-anchor', 'middle')
+          .style('font-size', '16px')
+          .text('Document Types Distribution');
+      }
+
+      // Initialize timeline chart
+      function initTimelineChart() {
+        const width = document.getElementById('timeline-chart').offsetWidth;
+        const height = 300;
+        const margin = { top: 20, right: 30, bottom: 30, left: 40 };
+        const innerWidth = width - margin.left - margin.right;
+        const innerHeight = height - margin.top - margin.bottom;
+        
+        // Create SVG container
+        const svg = d3.select('#timeline-chart')
+          .append('svg')
+          .attr('width', width)
+          .attr('height', height);
+          
+        // Create chart group
+        const chart = svg.append('g')
+          .attr('transform', `translate(${margin.left}, ${margin.top})`);
+          
+        // Sample data for document timeline (last 12 months)
+        const currentDate = new Date();
+        const data = Array.from({ length: 12 }, (_, i) => {
+          const date = new Date(currentDate);
+          date.setMonth(currentDate.getMonth() - (11 - i));
+          return {
+            date: date,
+            count: Math.floor(Math.random() * 300) + 100 // Random count between 100-400
+          };
+        });
+        
+        // Create x and y scales
+        const xScale = d3.scaleTime()
+          .domain(d3.extent(data, d => d.date))
+          .range([0, innerWidth]);
+          
+        const yScale = d3.scaleLinear()
+          .domain([0, d3.max(data, d => d.count)])
+          .range([innerHeight, 0]);
+          
+        // Create and add x and y axes
+        chart.append('g')
+          .attr('transform', `translate(0, ${innerHeight})`)
+          .call(d3.axisBottom(xScale).ticks(d3.timeMonth));
+          
+        chart.append('g')
+          .call(d3.axisLeft(yScale));
+          
+        // Create line generator
+        const line = d3.line()
+          .x(d => xScale(d.date))
+          .y(d => yScale(d.count))
+          .curve(d3.curveMonotoneX);
+          
+        // Add the line path
+        chart.append('path')
+          .datum(data)
+          .attr('fill', 'none')
+          .attr('stroke', '#2196F3')
+          .attr('stroke-width', 2)
+          .attr('d', line);
+          
+        // Add circles for data points
+        chart.selectAll('.dot')
+          .data(data)
+          .enter()
+          .append('circle')
+          .attr('class', 'dot')
+          .attr('cx', d => xScale(d.date))
+          .attr('cy', d => yScale(d.count))
+          .attr('r', 5)
+          .attr('fill', '#2196F3');
+      }
+
+      // Function to switch between tabs
+      function activateTab(tabId) {
+        // Hide all tab contents
+        document.querySelectorAll('.tab-content').forEach(tab => {
+          tab.classList.remove('active');
+        });
+        
+        // Deactivate all tab buttons
+        document.querySelectorAll('.tab-button').forEach(button => {
+          button.classList.remove('active');
+        });
+        
+        // Activate the selected tab and its button
+        document.getElementById(tabId).classList.add('active');
+        event.target.classList.add('active');
+      }
+      
+      // Function to switch main view based on menu selection
+      function switchView(viewName) {
+        switch(viewName) {
+          case 'map':
+            activateTab('map-tab');
+            break;
+          case 'network':
+            activateTab('network-tab');
+            break;
+          case 'timeline':
+            // You could add a timeline tab
+            break;
+          case 'terminal':
+            activateTab('terminal-tab');
+            break;
+          case 'dashboard':
+            activateTab('globe-tab');
+            break;
+        }
+      }
+      
+      // Update the current time
+      function updateClock() {
+        const now = new Date();
+        const timeString = now.toLocaleTimeString('en-US', { 
+          hour12: false, 
+          hour: '2-digit', 
+          minute: '2-digit', 
+          second: '2-digit' 
+        });
+        const dateString = now.toLocaleDateString('en-US', {
+          year: 'numeric',
+          month: '2-digit',
+          day: '2-digit'
+        });
+        
+        document.getElementById('current-time').textContent = timeString;
+        if (document.querySelector('.date')) {
+          document.querySelector('.date').textContent = dateString;
+        }
+        if (document.querySelector('.time')) {
+          document.querySelector('.time').textContent = timeString;
+        }
+        
+        setTimeout(updateClock, 1000);
+      }
+      
+      // Initialize clock on load
+      window.addEventListener('load', function() {
+        updateClock();
+      });
+      
+      // Terminal input handling
+      document.addEventListener('DOMContentLoaded', function() {
+        const inputField = document.querySelector('.command-input');
+        if (inputField) {
+          inputField.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+              const command = this.value.trim();
+              if (command) {
+                // Add the command to the terminal output
+                const terminalOutput = document.querySelector('.terminal-output');
+                terminalOutput.innerHTML += `<div class="terminal-line">$ ${command}</div>`;
+                
+                // Process the command (in a real app, this would do something)
+                processCommand(command, terminalOutput);
+                
+                // Clear the input field
+                this.value = '';
+                
+                // Scroll to the bottom of the terminal
+                terminalOutput.scrollTop = terminalOutput.scrollHeight;
+              }
+            }
+          });
+        }
+      });
+      
+      // Process terminal commands
+      function processCommand(command, outputElement) {
+        if (command.toLowerCase().startsWith('help')) {
+          outputElement.innerHTML += `
+            <div class="terminal-line">Available commands:</div>
+            <div class="terminal-line">- query [options]: Search documents</div>
+            <div class="terminal-line">- view [document_id]: View a document</div>
+            <div class="terminal-line">- analyze [document_id]: Analyze a document</div>
+            <div class="terminal-line">- extract [document_id]: Extract entities</div>
+            <div class="terminal-line">- theme [name]: Change theme</div>
+            <div class="terminal-line">- clear: Clear terminal</div>
+          `;
+        } else if (command.toLowerCase() === 'clear') {
+          // Clear all but the last line (which is the prompt)
+          const lines = outputElement.querySelectorAll('.terminal-line');
+          for (let i = 0; i < lines.length - 1; i++) {
+            lines[i].remove();
+          }
+        } else if (command.toLowerCase().startsWith('theme ')) {
+          const themeName = command.split(' ')[1];
+          if (themeManifest[themeName]) {
+            applyTheme(themeName);
+            document.getElementById('theme-select').value = themeName;
+            outputElement.innerHTML += `<div class="terminal-line">Theme changed to ${themeName}</div>`;
+          } else {
+            outputElement.innerHTML += `<div class="terminal-line">Error: Theme "${themeName}" not found</div>`;
+          }
+        } else {
+          outputElement.innerHTML += `<div class="terminal-line">Command not recognized. Type 'help' for available commands.</div>`;
+        }
+        
+        // Always add back the prompt at the end
+        outputElement.innerHTML += `<div class="terminal-line">$ <span class="blink">_</span></div>`;
+      }
+    </script>
+
+    <!-- JavaScript for Terminal Dashboard Functionality -->
+    <script>
+      // Update clock in real-time
+      function updateClock() {
+        const now = new Date();
+        const timeString = now.toLocaleTimeString('en-US', { hour12: false });
+        const dateString = now.toLocaleDateString('en-US', { year: 'numeric', month: '2-digit', day: '2-digit' });
+        
+        document.querySelector('#clock .time').textContent = timeString;
+        document.querySelector('#clock .date').textContent = dateString;
+        document.getElementById('current-time').textContent = timeString;
+        document.getElementById('current-date').textContent = dateString;
+        
+        setTimeout(updateClock, 1000);
+      }
+      
+      // Initialize 3D globe visualization with D3-geo
+      function initGlobe() {
+        const container = document.getElementById('globe-container');
+        if (!container) return;
+        
+        const width = container.clientWidth;
+        const height = container.clientHeight || 300;
+        const sensitivity = 75;
+        
+        // Create SVG container
+        const svg = d3.select('#globe-container')
+          .append('svg')
+          .attr('width', width)
+          .attr('height', height);
+        
+        // Create a group for the globe
+        const globe = svg.append('g')
+          .attr('transform', `translate(${width/2}, ${height/2})`);
+          
+        // Create a sphere for the globe
+        globe.append('circle')
+          .attr('fill', '#0a3b0a')
+          .attr('stroke', '#00ff00')
+          .attr('stroke-width', '0.2')
+          .attr('r', Math.min(width, height) / 3);
+        
+        // Create a projection for transforming geographic coordinates
+        const projection = d3.geoOrthographic()
+          .scale(Math.min(width, height) / 3)
+          .translate([0, 0]);
+          
+        // Create a path generator for drawing geographic features
+        const path = d3.geoPath().projection(projection);
+        
+        // Create a group for the graticule (coordinate grid)
+        const graticule = d3.geoGraticule();
+        globe.append('path')
+          .datum(graticule())
+          .attr('class', 'graticule')
+          .attr('fill', 'none')
+          .attr('stroke', '#005500')
+          .attr('stroke-width', '0.3')
+          .attr('d', path);
+        
+        // Sample document locations in Southeastern Virginia (757 area code)
+        const documentLocations = [
+          { name: "Norfolk", coordinates: [-76.2859, 36.8508], docs: 358, type: "PDF" },
+          { name: "Virginia Beach", coordinates: [-75.9780, 36.8529], docs: 427, type: "DOCX" },
+          { name: "Hampton", coordinates: [-76.3452, 37.0299], docs: 189, type: "PDF" },
+          { name: "Newport News", coordinates: [-76.4343, 37.0871], docs: 256, type: "XLSX" },
+          { name: "Portsmouth", coordinates: [-76.2982, 36.8354], docs: 176, type: "PPTX" },
+          { name: "Chesapeake", coordinates: [-76.2255, 36.7682], docs: 247, type: "PDF" },
+          { name: "Suffolk", coordinates: [-76.5836, 36.7282], docs: 154, type: "DOCX" }
+        ];
+        
+        // Add markers for document locations (will appear when world data is loaded)
+        documentLocations.forEach(location => {
+          globe.append('circle')
+            .attr('class', 'document-marker')
+            .attr('cx', projection(location.coordinates) ? projection(location.coordinates)[0] : 0)
+            .attr('cy', projection(location.coordinates) ? projection(location.coordinates)[1] : 0)
+            .attr('r', Math.sqrt(location.docs) / 8)
+            .attr('fill', getDocTypeColor(location.type))
+            .attr('stroke', '#00ff00')
+            .attr('stroke-width', '0.1')
+            .attr('opacity', 0.8);
+        });
+        
+        // Enable rotation interaction
+        svg.call(d3.drag().on('drag', event => {
+          const rotate = projection.rotate();
+          const k = sensitivity / projection.scale();
+          projection.rotate([
+            rotate[0] + event.dx * k,
+            rotate[1] - event.dy * k
+          ]);
+          
+          // Update paths and markers when globe rotates
+          svg.selectAll('path').attr('d', path);
+          svg.selectAll('.document-marker').attr('cx', d => {
+            const coords = projection(d.coordinates);
+            return coords ? coords[0] : 0;
+          }).attr('cy', d => {
+            const coords = projection(d.coordinates);
+            return coords ? coords[1] : 0;
+          });
+        }));
+      }
+      
+      // Initialize network graph visualization
+      function initNetworkGraph() {
+        // Get the container dimensions
+        const container = document.getElementById('network-container');
+        if (!container) return;
+        
+        const width = container.offsetWidth;
+        const height = container.offsetHeight;
+        
+        // Create SVG
+        const svg = d3.select('#network-container')
+          .append('svg')
+          .attr('width', width)
+          .attr('height', height);
+        
+        // Sample node data
+        const nodes = [
+          { id: "VA Tech", group: 1, size: 20 },
+          { id: "ODU", group: 1, size: 18 },
+          { id: "Norfolk Naval", group: 2, size: 17 },
+          { id: "Hampton Roads", group: 3, size: 15 },
+          { id: "Newport News", group: 3, size: 14 },
+          { id: "Virginia Beach", group: 3, size: 14 },
+          { id: "Department of Energy", group: 4, size: 16 },
+          { id: "DOD", group: 2, size: 18 },
+          { id: "City of Norfolk", group: 3, size: 13 },
+          { id: "NSF", group: 4, size: 15 }
+        ];
+        
+        // Sample link data
+        const links = [
+          { source: "VA Tech", target: "ODU", value: 5 },
+          { source: "VA Tech", target: "NSF", value: 8 },
+          { source: "ODU", target: "Norfolk Naval", value: 6 },
+          { source: "Norfolk Naval", target: "DOD", value: 10 },
+          { source: "Hampton Roads", target: "Newport News", value: 7 },
+          { source: "Hampton Roads", target: "Virginia Beach", value: 7 },
+          { source: "Newport News", target: "Norfolk Naval", value: 6 },
+          { source: "Virginia Beach", target: "City of Norfolk", value: 5 },
+          { source: "Department of Energy", target: "VA Tech", value: 8 },
+          { source: "Department of Energy", target: "Norfolk Naval", value: 4 },
+          { source: "City of Norfolk", target: "ODU", value: 6 },
+          { source: "NSF", target: "ODU", value: 7 }
+        ];
+        
+        // Create force simulation
+        const simulation = d3.forceSimulation(nodes)
+          .force("link", d3.forceLink(links).id(d => d.id).distance(100))
+          .force("charge", d3.forceManyBody().strength(-300))
+          .force("center", d3.forceCenter(width / 2, height / 2));
+        
+        // Add links
+        const link = svg.append("g")
+          .selectAll("line")
+          .data(links)
+          .enter().append("line")
+          .attr("stroke", "var(--primary-color)")
+          .attr("stroke-opacity", 0.6)
+          .attr("stroke-width", d => Math.sqrt(d.value));
+        
+        // Add nodes
+        const node = svg.append("g")
+          .selectAll("circle")
+          .data(nodes)
+          .enter().append("circle")
+          .attr("r", d => d.size)
+          .attr("fill", d => {
+            if (d.group === 1) return "var(--primary-color)";
+            if (d.group === 2) return "var(--accent-color)";
+            if (d.group === 3) return "#5d4ef5";
+            return "#f542e9";
+          })
+          .attr("stroke", "#fff")
+          .attr("stroke-width", 1.5)
+          .attr("opacity", 0.8)
+          .call(d3.drag()
+            .on("start", dragstarted)
+            .on("drag", dragged)
+            .on("end", dragended));
+        
+        // Add node labels
+        const label = svg.append("g")
+          .selectAll("text")
+          .data(nodes)
+          .enter().append("text")
+          .attr("font-size", 10)
+          .attr("font-family", "var(--terminal-font)")
+          .attr("fill", "var(--text-color)")
+          .text(d => d.id)
+          .attr("dx", 12)
+          .attr("dy", ".35em");
+        
+        // Update positions on simulation tick
+        simulation.on("tick", () => {
+          link
+            .attr("x1", d => d.source.x)
+            .attr("y1", d => d.source.y)
+            .attr("x2", d => d.target.x)
+            .attr("y2", d => d.target.y);
+            
+          node
+            .attr("cx", d => d.x)
+            .attr("cy", d => d.y);
+            
+          label
+            .attr("x", d => d.x)
+            .attr("y", d => d.y);
+        });
+        
+        // Drag functions
+        function dragstarted(event, d) {
+          if (!event.active) simulation.alphaTarget(0.3).restart();
+          d.fx = d.x;
+          d.fy = d.y;
+        }
+        
+        function dragged(event, d) {
+          d.fx = event.x;
+          d.fy = event.y;
+        }
+        
+        function dragended(event, d) {
+          if (!event.active) simulation.alphaTarget(0);
+          d.fx = null;
+          d.fy = null;
+        }
+      }
+      
+      // Initialize timeline visualization
+      function initTimeline() {
+        const container = document.getElementById('timeline-container');
+        if (!container) return;
+        
+        const width = container.clientWidth;
+        const height = container.clientHeight || 200;
+        const margin = { top: 20, right: 30, bottom: 30, left: 40 };
+        const innerWidth = width - margin.left - margin.right;
+        const innerHeight = height - margin.top - margin.bottom;
+        
+        // Create SVG container
+        const svg = d3.select('#timeline-container')
+          .append('svg')
+          .attr('width', width)
+          .attr('height', height);
+        
+        // Create chart group
+        const chart = svg.append('g')
+          .attr('transform', `translate(${margin.left}, ${margin.top})`);
+        
+        // Sample data for document timeline (last 12 months)
+        const currentDate = new Date();
+        const data = Array.from({ length: 12 }, (_, i) => {
+          const date = new Date(currentDate);
+          date.setMonth(currentDate.getMonth() - (11 - i));
+          return {
+            date: date,
+            count: Math.floor(Math.random() * 300) + 100 // Random count between 100-400
+          };
+        });
+        
+        // Create x and y scales
+        const xScale = d3.scaleTime()
+          .domain(d3.extent(data, d => d.date))
+          .range([0, innerWidth]);
+        
+        const yScale = d3.scaleLinear()
+          .domain([0, d3.max(data, d => d.count)])
+          .range([innerHeight, 0]);
+        
+        // Create and add x and y axes
+        chart.append('g')
+          .attr('transform', `translate(0, ${innerHeight})`)
+          .call(d3.axisBottom(xScale).ticks(d3.timeMonth))
+          .attr('color', '#00aa00');
+        
+        chart.append('g')
+          .call(d3.axisLeft(yScale))
+          .attr('color', '#00aa00');
+        
+        // Create line generator
+        const line = d3.line()
+          .x(d => xScale(d.date))
+          .y(d => yScale(d.count))
+          .curve(d3.curveMonotoneX);
+        
+        // Add the line path
+        chart.append('path')
+          .datum(data)
+          .attr('fill', 'none')
+          .attr('stroke', '#00ff00')
+          .attr('stroke-width', 2)
+          .attr('d', line);
+        
+        // Add circles for data points
+        chart.selectAll('.dot')
+          .data(data)
+          .enter()
+          .append('circle')
+          .attr('class', 'dot')
+          .attr('cx', d => xScale(d.date))
+          .attr('cy', d => yScale(d.count))
+          .attr('r', 4)
+          .attr('fill', '#00ff00');
+      }
+      
+      // Helper function to get color by document type
+      function getDocTypeColor(type) {
+        const colors = {
+          'PDF': '#e41a1c',
+          'DOCX': '#377eb8',
+          'XLSX': '#4daf4a',
+          'PPTX': '#ff7f00',
+          'TXT': '#984ea3',
+          'Other': '#999999'
+        };
+        return colors[type] || colors.Other;
+      }
+      
+      // Terminal input handling
+      function setupTerminalInput() {
+        const input = document.querySelector('.command-input');
+        if (!input) return;
+        
+        input.addEventListener('keydown', function(event) {
+          if (event.key === 'Enter') {
+            const command = this.value.trim();
+            if (command) {
+              addTerminalOutput(`$ ${command}`);
+              processCommand(command);
+              this.value = '';
+            }
+          }
+        });
+      }
+      
+      // Process terminal commands
+      function processCommand(command) {
+        const lcCommand = command.toLowerCase();
+        
+        if (lcCommand === 'help') {
+          addTerminalOutput('Available commands:');
+          addTerminalOutput('- help: Show this help message');
+          addTerminalOutput('- search [term]: Search for documents');
+          addTerminalOutput('- analyze [entity]: Analyze connections for an entity');
+          addTerminalOutput('- view [id]: View document details');
+          addTerminalOutput('- filter [type]: Filter by document type');
+          addTerminalOutput('- clear: Clear terminal output');
+        } else if (lcCommand.startsWith('search')) {
+          const term = command.substring(7).trim();
+          addTerminalOutput(`Searching for documents matching "${term}"...`);
+          addTerminalOutput('Found 3 documents:');
+          addTerminalOutput('1. Hampton Roads Regional Development Plan 2023-2025');
+          addTerminalOutput('2. Norfolk Naval Base Expansion Documentation');
+          addTerminalOutput('3. ODU Research Paper: Regional Economic Impact');
+        } else if (lcCommand.startsWith('analyze')) {
+          const entity = command.substring(8).trim();
+          addTerminalOutput(`Analyzing connections for "${entity}"...`);
+          addTerminalOutput('Found 5 connected entities and 7 documents');
+          addTerminalOutput('Main funding sources: Federal (65%), State (23%), Private (12%)');
+        } else if (lcCommand === 'clear') {
+          clearTerminalOutput();
+        } else {
+          addTerminalOutput(`Command not recognized: ${command}`);
+          addTerminalOutput('Type "help" for available commands');
+        }
+      }
+      
+      // Add output to terminal
+      function addTerminalOutput(text) {
+        const outputContainer = document.querySelector('.terminal-output');
+        if (!outputContainer) return;
+        
+        const line = document.createElement('div');
+        line.className = 'terminal-line';
+        line.textContent = text;
+        
+        outputContainer.appendChild(line);
+        outputContainer.scrollTop = outputContainer.scrollHeight;
+        
+        // Limit number of lines
+        while (outputContainer.children.length > 100) {
+          outputContainer.removeChild(outputContainer.firstChild);
+        }
+      }
+      
+      // Clear terminal output
+      function clearTerminalOutput() {
+        const outputContainer = document.querySelector('.terminal-output');
+        if (!outputContainer) return;
+        
+        // Remove all lines except the prompt
+        while (outputContainer.children.length > 1) {
+          outputContainer.removeChild(outputContainer.firstChild);
+        }
+        
+        // Add new prompt line
+        const promptLine = document.createElement('div');
+        promptLine.className = 'terminal-line';
+        promptLine.innerHTML = '$ <span class="blink">_</span>';
+        outputContainer.appendChild(promptLine);
+      }
+      
+      // Initialize all visualizations
+      function initializeAllVisualizations() {
+        updateClock();
+        initGlobe();
+        initNetworkGraph();
+        initTimeline();
+        setupTerminalInput();
+      }
+      
+      // Initialize after DOM is fully loaded
+      document.addEventListener('DOMContentLoaded', function() {
+        // Clock starts immediately
+        updateClock();
+        
+        // Setup terminal input
+        setupTerminalInput();
+        
+        // Other visualizations will initialize after boot sequence
+      });
+    </script>
+
+    <!-- Add the new visualization functions at the end of the script section, before the closing </script> tag -->
+    <script>
+      // Initialize treemap visualization
+      function initTreemap() {
+        const width = document.getElementById('treemap-container')?.offsetWidth || 800;
+        const height = document.getElementById('treemap-container')?.offsetHeight || 500;
+        
+        if (!width || !document.getElementById('treemap-container')) return;
+        
+        const svg = d3.select('#treemap-container')
+          .append('svg')
+          .attr('width', width)
+          .attr('height', height);
+          
+        // Sample hierarchical data for treemap
+        const data = {
+          name: "Total Funding",
+          value: 86700000,
+          children: [
+            {
+              name: "Federal",
+              value: 56200000,
+              children: [
+                { name: "DOD", value: 28500000 },
+                { name: "DOE", value: 15700000 },
+                { name: "NSF", value: 8200000 },
+                { name: "Other", value: 3800000 }
+              ]
+            },
+            {
+              name: "State",
+              value: 21800000,
+              children: [
+                { name: "Transportation", value: 9200000 },
+                { name: "Education", value: 7500000 },
+                { name: "Economic Dev", value: 5100000 }
+              ]
+            },
+            {
+              name: "Private",
+              value: 8700000,
+              children: [
+                { name: "Corporations", value: 5200000 },
+                { name: "Foundations", value: 2100000 },
+                { name: "Individual", value: 1400000 }
+              ]
+            }
+          ]
+        };
+        
+        // Create the treemap layout
+        const root = d3.hierarchy(data)
+          .sum(d => d.value)
+          .sort((a, b) => b.value - a.value);
+        
+        const treemapLayout = d3.treemap()
+          .size([width, height])
+          .paddingOuter(10)
+          .paddingTop(20)
+          .paddingInner(5)
+          .round(true);
+        
+        treemapLayout(root);
+        
+        // Create color scale
+        const colorScale = d3.scaleOrdinal()
+          .domain(["Federal", "State", "Private"])
+          .range([
+            "var(--primary-color)", 
+            "#4daf4a", 
+            "#ff7f00"
+          ]);
+        
+        // Draw the treemap rectangles
+        const cell = svg.selectAll("g")
+          .data(root.descendants())
+          .enter()
+          .append("g")
+          .attr("transform", d => `translate(${d.x0},${d.y0})`);
+        
+        cell.append("rect")
+          .attr("width", d => d.x1 - d.x0)
+          .attr("height", d => d.y1 - d.y0)
+          .attr("fill", d => {
+            while (d.depth > 1) d = d.parent;
+            return d.depth === 0 ? "none" : colorScale(d.data.name);
+          })
+          .attr("stroke", "var(--background-color)")
+          .attr("stroke-width", 1)
+          .attr("opacity", d => 1 - d.depth * 0.1);
+        
+        // Add labels
+        cell.append("text")
+          .attr("x", 5)
+          .attr("y", 15)
+          .attr("font-size", d => d.depth === 0 ? 14 : 12)
+          .attr("fill", "var(--text-color)")
+          .text(d => d.data.name)
+          .attr("opacity", d => {
+            // Only show text if there's enough space
+            const width = d.x1 - d.x0;
+            const height = d.y1 - d.y0;
+            return (width > 50 && height > 20) ? 1 : 0;
+          });
+        
+        // Add values
+        cell.append("text")
+          .attr("x", 5)
+          .attr("y", 30)
+          .attr("font-size", 10)
+          .attr("fill", "var(--text-color)")
+          .text(d => d.value >= 1000000 ? `$${d.value/1000000}M` : `$${d.value/1000}K`)
+          .attr("opacity", d => {
+            // Only show text if there's enough space
+            const width = d.x1 - d.x0;
+            const height = d.y1 - d.y0;
+            return (width > 50 && height > 40) ? 1 : 0;
+          });
+      }
+      
+      // Initialize dashboard tiles
+      function initDashboardTiles() {
+        // Initialize mini map if the container exists
+        if (document.getElementById('mini-map-container')) {
+          const miniMap = L.map('mini-map-container', {
+            zoomControl: false,
+            attributionControl: false
+          }).setView([36.8508, -76.2859], 9); // Hampton Roads area
+          
+          L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(miniMap);
+          
+          // Sample data points
+          const locations = [
+            { name: "Norfolk", coords: [36.8508, -76.2859], value: 35 },
+            { name: "Virginia Beach", coords: [36.8529, -75.9780], value: 28 },
+            { name: "Newport News", coords: [37.0311, -76.4397], value: 22 },
+            { name: "Hampton", coords: [37.0299, -76.3452], value: 18 },
+            { name: "Chesapeake", coords: [36.7682, -76.2875], value: 15 }
+          ];
+          
+          // Add markers
+          locations.forEach(loc => {
+            const size = Math.sqrt(loc.value) * 2;
+            L.circleMarker(loc.coords, {
+              radius: size,
+              fillColor: 'var(--primary-color)',
+              fillOpacity: 0.8,
+              color: 'var(--background-color)',
+              weight: 1
+            }).addTo(miniMap).bindTooltip(loc.name);
+          });
+        }
+        
+        // Initialize pie chart if the container exists
+        if (document.getElementById('pie-chart-container')) {
+          const pieWidth = document.getElementById('pie-chart-container').offsetWidth;
+          const pieHeight = document.getElementById('pie-chart-container').offsetHeight;
+          const radius = Math.min(pieWidth, pieHeight) / 2 - 10;
+          
+          const pieSvg = d3.select('#pie-chart-container')
+            .append('svg')
+            .attr('width', pieWidth)
+            .attr('height', pieHeight)
+            .append('g')
+            .attr('transform', `translate(${pieWidth/2}, ${pieHeight/2})`);
+            
+          // Sample data
+          const pieData = [
+            { type: "PDF", count: 856 },
+            { type: "DOCX", count: 632 },
+            { type: "XLSX", count: 452 },
+            { type: "PPTX", count: 298 },
+            { type: "TXT", count: 185 },
+            { type: "Other", count: 134 }
+          ];
+          
+          // Color scale
+          const pieColors = d3.scaleOrdinal()
+            .domain(pieData.map(d => d.type))
+            .range(["#e41a1c", "#377eb8", "#4daf4a", "#ff7f00", "#984ea3", "#999999"]);
+            
+          // Pie layout
+          const pie = d3.pie()
+            .value(d => d.count)
+            .sort(null);
+            
+          // Arc generator
+          const arc = d3.arc()
+            .innerRadius(radius * 0.4) // Donut chart
+            .outerRadius(radius);
+            
+          // Create pie chart segments
+          const segments = pieSvg.selectAll('path')
+            .data(pie(pieData))
+            .enter()
+            .append('path')
+            .attr('d', arc)
+            .attr('fill', d => pieColors(d.data.type))
+            .attr('stroke', 'var(--background-color)')
+            .attr('stroke-width', 1)
+            .style('opacity', 0.9);
+            
+          // Add percentages
+          const total = d3.sum(pieData, d => d.count);
+          
+          pieSvg.selectAll('text')
+            .data(pie(pieData))
+            .enter()
+            .append('text')
+            .text(d => {
+              const percent = Math.round(d.data.count / total * 100);
+              return percent >= 5 ? `${percent}%` : '';
+            })
+            .attr('transform', d => `translate(${arc.centroid(d)})`)
+            .style('text-anchor', 'middle')
+            .style('font-size', '10px')
+            .style('fill', 'white');
+            
+          // Add legend
+          const legend = d3.select('#pie-chart-container')
+            .append('div')
+            .attr('class', 'legend')
+            .style('position', 'absolute')
+            .style('bottom', '5px')
+            .style('left', '5px')
+            .style('font-size', '8px')
+            .style('display', 'flex')
+            .style('flex-wrap', 'wrap')
+            .style('gap', '5px');
+            
+          pieData.forEach((d, i) => {
+            const legendItem = legend.append('div')
+              .style('display', 'flex')
+              .style('align-items', 'center')
+              .style('margin-right', '8px');
+              
+            legendItem.append('div')
+              .style('width', '8px')
+              .style('height', '8px')
+              .style('background', pieColors(d.type))
+              .style('margin-right', '3px');
+              
+            legendItem.append('span')
+              .text(d.type)
+              .style('color', 'var(--text-color)');
+          });
+        }
+        
+        // Initialize mini timeline if the container exists
+        if (document.getElementById('mini-timeline-container')) {
+          const timelineWidth = document.getElementById('mini-timeline-container').offsetWidth;
+          const timelineHeight = document.getElementById('mini-timeline-container').offsetHeight;
+          
+          const tlSvg = d3.select('#mini-timeline-container')
+            .append('svg')
+            .attr('width', timelineWidth)
+            .attr('height', timelineHeight);
+            
+          const margin = {top: 20, right: 20, bottom: 20, left: 40};
+          const width = timelineWidth - margin.left - margin.right;
+          const height = timelineHeight - margin.top - margin.bottom;
+          
+          const g = tlSvg.append('g')
+            .attr('transform', `translate(${margin.left},${margin.top})`);
+            
+          // Sample data
+          const timelineData = Array.from({length: 12}, (_, i) => {
+            const date = new Date();
+            date.setMonth(date.getMonth() - (11 - i));
+            return {
+              date,
+              count: Math.floor(Math.random() * 300) + 100
+            };
+          });
+          
+          // Scales
+          const x = d3.scaleTime()
+            .domain(d3.extent(timelineData, d => d.date))
+            .range([0, width]);
+            
+          const y = d3.scaleLinear()
+            .domain([0, d3.max(timelineData, d => d.count)])
+            .range([height, 0]);
+            
+          // Axes
+          g.append('g')
+            .attr('transform', `translate(0,${height})`)
+            .call(d3.axisBottom(x).ticks(6).tickFormat(d3.timeFormat('%b')))
+            .selectAll('text')
+            .style('font-size', '8px')
+            .style('fill', 'var(--text-color)');
+            
+          g.append('g')
+            .call(d3.axisLeft(y).ticks(5))
+            .selectAll('text')
+            .style('font-size', '8px')
+            .style('fill', 'var(--text-color)');
+            
+          // Line
+          const line = d3.line()
+            .x(d => x(d.date))
+            .y(d => y(d.count))
+            .curve(d3.curveMonotoneX);
+            
+          g.append('path')
+            .datum(timelineData)
+            .attr('fill', 'none')
+            .attr('stroke', 'var(--primary-color)')
+            .attr('stroke-width', 2)
+            .attr('d', line);
+            
+          // Points
+          g.selectAll('.dot')
+            .data(timelineData)
+            .enter()
+            .append('circle')
+            .attr('class', 'dot')
+            .attr('cx', d => x(d.date))
+            .attr('cy', d => y(d.count))
+            .attr('r', 3)
+            .attr('fill', 'var(--primary-color)');
+        }
+        
+        // Initialize mini network graph if the container exists
+        if (document.getElementById('mini-network-container')) {
+          const miniNetworkWidth = document.getElementById('mini-network-container').offsetWidth;
+          const miniNetworkHeight = document.getElementById('mini-network-container').offsetHeight;
+          
+          const netSvg = d3.select('#mini-network-container')
+            .append('svg')
+            .attr('width', miniNetworkWidth)
+            .attr('height', miniNetworkHeight);
+            
+          // Sample data
+          const nodes = [
+            { id: "VA Tech", group: 1, size: 15 },
+            { id: "ODU", group: 1, size: 14 },
+            { id: "Norfolk Naval", group: 2, size: 13 },
+            { id: "Hampton Roads", group: 3, size: 11 },
+            { id: "DOD", group: 2, size: 12 }
+          ];
+          
+          const links = [
+            { source: "VA Tech", target: "ODU", value: 5 },
+            { source: "ODU", target: "Norfolk Naval", value: 6 },
+            { source: "Norfolk Naval", target: "DOD", value: 10 },
+            { source: "Hampton Roads", target: "VA Tech", value: 4 },
+            { source: "Hampton Roads", target: "ODU", value: 3 }
+          ];
+          
+          // Force simulation
+          const simulation = d3.forceSimulation(nodes)
+            .force("link", d3.forceLink(links).id(d => d.id).distance(80))
+            .force("charge", d3.forceManyBody().strength(-150))
+            .force("center", d3.forceCenter(miniNetworkWidth / 2, miniNetworkHeight / 2));
+            
+          // Add links
+          const link = netSvg.append("g")
+            .selectAll("line")
+            .data(links)
+            .enter().append("line")
+            .attr("stroke", "var(--primary-color)")
+            .attr("stroke-opacity", 0.6)
+            .attr("stroke-width", d => Math.sqrt(d.value));
+            
+          // Add nodes
+          const node = netSvg.append("g")
+            .selectAll("circle")
+            .data(nodes)
+            .enter().append("circle")
+            .attr("r", d => d.size)
+            .attr("fill", d => {
+              if (d.group === 1) return "var(--primary-color)";
+              if (d.group === 2) return "var(--accent-color)";
+              return "#5d4ef5";
+            })
+            .attr("stroke", "#fff")
+            .attr("stroke-width", 1)
+            .attr("opacity", 0.8);
+            
+          // Add labels
+          const label = netSvg.append("g")
+            .selectAll("text")
+            .data(nodes)
+            .enter().append("text")
+            .attr("font-size", 8)
+            .attr("font-family", "var(--terminal-font)")
+            .attr("fill", "var(--text-color)")
+            .text(d => d.id)
+            .attr("dx", 8)
+            .attr("dy", ".35em");
+            
+          // Update positions on simulation tick
+          simulation.on("tick", () => {
+            link
+              .attr("x1", d => d.source.x)
+              .attr("y1", d => d.source.y)
+              .attr("x2", d => d.target.x)
+              .attr("y2", d => d.target.y);
+              
+            node
+              .attr("cx", d => d.x)
+              .attr("cy", d => d.y);
+              
+            label
+              .attr("x", d => d.x)
+              .attr("y", d => d.y);
+          });
+        }
+        
+        // Add mini-terminal functionality
+        const miniInput = document.querySelector('.mini-terminal .command-input');
+        const miniOutput = document.querySelector('.mini-terminal .terminal-output');
+        
+        if (miniInput && miniOutput) {
+          miniInput.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+              const command = this.value.trim();
+              if (command) {
+                miniOutput.innerHTML += `<div class="terminal-line">$ ${command}</div>`;
+                
+                if (command === 'help') {
+                  miniOutput.innerHTML += `<div class="terminal-line">Available commands: status, clear, docs</div>`;
+                } else if (command === 'status') {
+                  miniOutput.innerHTML += `<div class="terminal-line">System: ONLINE</div>`;
+                  miniOutput.innerHTML += `<div class="terminal-line">Documents: 2,574</div>`;
+                  miniOutput.innerHTML += `<div class="terminal-line">Processing: ACTIVE</div>`;
+                } else if (command === 'clear') {
+                  miniOutput.innerHTML = '';
+                } else if (command === 'docs') {
+                  miniOutput.innerHTML += `<div class="terminal-line">Recent documents:</div>`;
+                  miniOutput.innerHTML += `<div class="terminal-line">- Hampton Roads Plan.pdf</div>`;
+                  miniOutput.innerHTML += `<div class="terminal-line">- Budget Analysis.xlsx</div>`;
+                } else {
+                  miniOutput.innerHTML += `<div class="terminal-line">Unknown command. Type 'help' for commands.</div>`;
+                }
+                
+                miniOutput.innerHTML += `<div class="terminal-line">$ <span class="blink">_</span></div>`;
+                this.value = '';
+                miniOutput.scrollTop = miniOutput.scrollHeight;
+              }
+            }
+          });
+        }
+        
+        // Tile actions (expand/settings functionality)
+        document.querySelectorAll('.tile-expand').forEach(button => {
+          button.addEventListener('click', function() {
+            const tile = this.closest('.tile');
+            tile.classList.toggle('double-width');
+            tile.classList.toggle('double-height');
+          });
+        });
+      }
+      
+      // Update the initialization function to include new visualizations
+      function initializeAllVisualizations() {
+        initSparklines();
+        initGlobe();
+        initLeafletMap();
+        initD3Chart();
+        initTimelineChart();
+        initNetworkGraph();
+        initTreemap();
+        initDashboardTiles();
+      }
+    </script>
+
+    <!-- Add the following function after the script tag containing initDashboardTiles()
+    // This edit should be placed before the last closing </script> tag -->
+
+    // Menu interaction handling
+    function handleMenuAction(action) {
+      console.log('Menu action:', action);
+      
+      // Handle different menu actions
+      switch (action) {
+        // File menu actions
+        case 'new-query':
+          alert('New Query');
+          break;
+        case 'open':
+          alert('Open File Dialog');
+          break;
+        case 'save':
+          alert('Save Current File');
+          break;
+        case 'save-as':
+          alert('Save As Dialog');
+          break;
+        case 'settings':
+          alert('Settings Panel');
+          break;
+          
+        // Export submenu actions
+        case 'export-pdf':
+        case 'export-csv':
+        case 'export-json':
+        case 'export-png':
+          alert(`Exporting as ${action.split('-')[1].toUpperCase()}`);
+          break;
+          
+        // View menu actions  
+        case 'full-screen':
+          toggleFullScreen();
+          break;
+          
+        // Default for unimplemented actions
+        default:
+          alert(`Action not implemented: ${action}`);
+      }
+    }
+    
+    // Toggle fullscreen mode
+    function toggleFullScreen() {
+      if (!document.fullscreenElement) {
+        document.documentElement.requestFullscreen();
+      } else {
+        if (document.exitFullscreen) {
+          document.exitFullscreen();
+        }
+      }
+    }
+    
+    // Toggle panel visibility
+    function togglePanel(panelId) {
+      const panel = document.getElementById(panelId);
+      if (panel) {
+        panel.classList.toggle('hidden');
+        
+        // Update menu item checked state
+        const menuItem = document.querySelector(`.dropdown-item[onclick*="${panelId}"]`);
+        if (menuItem) {
+          menuItem.classList.toggle('checked', !panel.classList.contains('hidden'));
+        }
+      }
+    }
+    
+    // Add menu activation logic
+    document.addEventListener('DOMContentLoaded', function() {
+      document.querySelectorAll('.menu-item').forEach(menuItem => {
+        menuItem.addEventListener('click', function(e) {
+          // Toggle active state
+          document.querySelectorAll('.menu-item').forEach(item => {
+            if (item !== this) {
+              item.classList.remove('active');
+            }
+          });
+          this.classList.toggle('active');
+          
+          // Prevent event from bubbling to document
+          e.stopPropagation();
+        });
+      });
+      
+      // Close menus when clicking outside
+      document.addEventListener('click', function() {
+        document.querySelectorAll('.menu-item').forEach(item => {
+          item.classList.remove('active');
+        });
+      });
+    });
   </body>
 </html>

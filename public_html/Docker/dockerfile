@@ -1,0 +1,48 @@
+FROM ubuntu:22.04
+
+# Install system dependencies
+RUN apt-get update && apt-get install -y \
+    python3 python3-pip curl git wget gnupg \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install NVIDIA drivers and CUDA support
+RUN wget https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2204/x86_64/cuda-keyring_1.1-1_all.deb && \
+    dpkg -i cuda-keyring_1.1-1_all.deb && \
+    apt-get update && apt-get install -y cuda-minimal-build-12-0 && \
+    rm -rf /var/lib/apt/lists/*
+
+# Install Ollama
+RUN curl -fsSL https://ollama.com/install.sh | sh
+
+# Set up working directory
+WORKDIR /app
+
+# Copy application files
+COPY . /app/
+
+# Install Python requirements
+RUN pip install -r Agent/requirements.txt
+
+# Create data directories
+RUN mkdir -p /app/data/documents /app/data/telemetry
+
+# Set environment variables
+ENV OLLAMA_HOST=0.0.0.0:11434
+ENV PYTHONPATH=/app
+
+# Expose Ollama API port
+EXPOSE 11434
+
+# Set a health check
+HEALTHCHECK --interval=30s --timeout=30s --retries=3 \
+    CMD curl -f http://localhost:11434/api/health || exit 1
+
+# Start Ollama server and the document processor
+CMD service ollama start && \
+    python Agent/enhanced_document_processor.py \
+    --mode worker \
+    --model ${MODEL_NAME:-phi3} \
+    --ollama_base http://localhost:11434 \
+    --storage_path /app/data/documents \
+    --redis_url ${REDIS_URL:-redis://redis:6379/0} \
+    --batch_size 8

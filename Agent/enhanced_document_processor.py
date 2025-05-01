@@ -13,12 +13,18 @@ import hashlib
 import ipfshttpclient
 import networkx as nx
 from pathlib import Path
-from prometheus_client import Gauge
+from prometheus_client import Gauge, Counter
 from opentelemetry import trace
 from functools import lru_cache
 import redis
 from vector_search import upsert_document, similar_docs
 import sys
+import schedule
+import concurrent.futures
+from typing import Dict, List, Optional, Union, Type, Tuple
+import threading
+from dataclasses import dataclass
+from datetime import datetime, timedelta
 
 # Add the parent directory to the system path
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -33,10 +39,18 @@ from llm_client import LLMClient, LLMType
 from job_queue import dequeue_document
 from extraction.locality_detector import add_locality_relations_to_graph
 from graph_db.schema import NodeType, EdgeType, EDGE_TIMESTAMP, SCHEMA_VERSION
+from graph_db.schema import NODE_LICENSE, NODE_SOURCE_URL, NODE_VALUE, NODE_UNIT
 from graph_db.edge_mapping import canonical_edge
 from utils.prompt_hot_reload import start as start_prompt_hot_reload
 from utils.chunking import chunk_document
 from utils.merger import smart_union
+
+# Import telemetry ingestors
+from telemetry_ingestors import (
+    BaseTelemetryIngestor,
+    TrafficDataIngestor,
+    WeatherDataIngestor,
+)
 
 # Set up logging
 logging.basicConfig(
@@ -63,7 +77,24 @@ GRAPH_DATA_PATH = os.path.join(DATA_DIR, 'graph_data.json')
 DOCUMENT_EXTENSIONS = ['.txt', '.pdf', '.docx', '.doc', '.rtf', '.json', '.csv']
 GRAPH_IPNS_KEY = os.getenv('GRAPH_IPNS_KEY', 'self')
 
+# Metrics
 PROCESSING_IN_FLIGHT = Gauge('processing_in_flight', 'Current number of documents being processed')
+TELEMETRY_READINGS_INGESTED = Counter('telemetry_readings_ingested_total', 'Total number of telemetry readings ingested', ['source'])
+TELEMETRY_READINGS_REJECTED = Counter('telemetry_readings_rejected_total', 'Total number of telemetry readings rejected', ['reason'])
+COMPUTE_COST = Counter('compute_cost_dollars', 'Estimated compute cost in dollars')
+GPU_UTILIZATION = Gauge('gpu_utilization_percent', 'GPU utilization percentage', ['gpu_id'])
+BATCH_SIZE = Gauge('batch_size_current', 'Current processing batch size')
+PROCESSING_QUEUE_SIZE = Gauge('processing_queue_size', 'Number of items in processing queue')
+
+@dataclass
+class ComputeConfig:
+    """Configuration for compute resources and cost tracking."""
+    cost_per_hour: float = 50.0  # Cost in dollars per hour
+    gpu_count: int = 16          # Number of H100 GPUs
+    start_time: datetime = None   # When processing started
+    total_cost: float = 0.0      # Running total cost
+    max_budget: float = float('inf')  # Maximum budget in dollars
+    idle_shutdown_minutes: int = 10  # Shutdown after N minutes of idle time
 
 class EnhancedDocumentProcessor:
     def __init__(self, 
@@ -73,14 +104,16 @@ class EnhancedDocumentProcessor:
                  api_base=None,
                  api_key=None,
                  model_name=None,
-                 threads=4, 
-                 ctx_size=8192, 
-                 batch_size=512, 
-                 storage_path="./temp_storage", 
+                 threads=None,  # Now optional, will detect GPU count
+                 ctx_size=32768,  # Increased for DeepSeek models
+                 batch_size=32,   # Optimized for H100s
+                 storage_path="/mnt/storage/temp_storage", 
                  redis_url="redis://localhost:6379/0",
                  replication_factor=2, 
-                 storage_capacity_gb=50.0,
-                 temperature=0.2):
+                 storage_capacity_gb=2000.0,  # Increased for H100 cluster
+                 temperature=0.2,
+                 max_parallel_jobs=32,
+                 compute_config=None):
         """Initialize the document processor with LLM settings.
         
         Args:
@@ -100,16 +133,35 @@ class EnhancedDocumentProcessor:
             temperature: Model temperature setting
         """
         # Initialize parameters
-        self.llm_type = llm_type or os.getenv("LLM_TYPE", "phi3")
+        self.llm_type = llm_type or os.getenv("LLM_TYPE", "ollama")
         self.model_path = model_path
         self.llama_path = llama_path
-        self.api_base = api_base or os.getenv("OPENAI_API_BASE")
+        self.api_base = api_base or os.getenv("OLLAMA_API_BASE", "http://localhost:11434")
         self.api_key = api_key or os.getenv("OPENAI_API_KEY")
-        self.model_name = model_name or os.getenv("LLM_MODEL", "llama-3-70b-instruct")
-        self.threads = threads
+        self.model_name = model_name or os.getenv("LLM_MODEL", "deepseek-r1:70b")
+        
+        # Auto-detect GPU count and optimize threads
+        detected_gpus = self._detect_gpu_count()
+        self.threads = threads or detected_gpus * 2  # 2 threads per GPU is optimal for H100s
         self.ctx_size = ctx_size
         self.batch_size = batch_size
         self.temperature = temperature
+        self.max_parallel_jobs = max_parallel_jobs
+        
+        # Initialize compute cost tracking
+        self.compute_config = compute_config or ComputeConfig(
+            gpu_count=detected_gpus,
+            start_time=datetime.now()
+        )
+        
+        # Thread pool for parallel processing
+        self.executor = concurrent.futures.ThreadPoolExecutor(
+            max_workers=self.max_parallel_jobs
+        )
+        
+        # Processing queue and lock
+        self.job_queue_lock = threading.Lock()
+        self.cost_lock = threading.Lock()
         
         # Initialize LLM client
         self.llm_client = LLMClient(
@@ -144,6 +196,13 @@ class EnhancedDocumentProcessor:
             local_storage_capacity_gb=storage_capacity_gb
         )
         
+        # Set up local storage for telemetry data that can't go on IPFS
+        self.telemetry_storage_path = os.path.join(
+            os.path.dirname(storage_path),
+            'telemetry_data'
+        )
+        os.makedirs(self.telemetry_storage_path, exist_ok=True)
+        
         # Initialize job queue
         self.job_queue = DistributedJobQueue(redis_url=redis_url)
         
@@ -158,16 +217,127 @@ class EnhancedDocumentProcessor:
             "schema_version": SCHEMA_VERSION
         })
         
+        # Initialize telemetry ingestors
+        self.telemetry_ingestors = self._init_telemetry_ingestors()
+        
         logger.info(f"Initialized document processor with worker ID: {self.worker_id}")
         logger.info(f"Using LLM type: {self.llm_type}, Model: {self.model_name if self.llm_type != 'phi3' else 'phi-3'}")
         
-    def _check_gpu_available(self):
-        """Check if GPU is available for processing."""
+    def _detect_gpu_count(self) -> int:
+        """Detect the number of available GPUs for inference."""
         try:
             import torch
-            return torch.cuda.is_available()
+            if torch.cuda.is_available():
+                return torch.cuda.device_count()
+            return 0
         except ImportError:
-            return False
+            # Try with nvidia-smi as fallback
+            try:
+                import subprocess
+                output = subprocess.check_output("nvidia-smi -L", shell=True).decode()
+                # Count number of lines which should equal number of GPUs
+                return len([line for line in output.split('\n') if line.strip().startswith('GPU ')])
+            except:
+                # Default to 16 for H100 cluster if detection fails
+                logger.warning("Could not detect GPU count, defaulting to 16 H100s")
+                return 16
+    
+    def _check_gpu_available(self) -> bool:
+        """Check if GPU is available for inference."""
+        return self._detect_gpu_count() > 0
+        
+    def _get_gpu_utilization(self) -> Dict[int, float]:
+        """Get current GPU utilization for all GPUs.
+        
+        Returns:
+            Dictionary mapping GPU ID to utilization percentage
+        """
+        try:
+            import subprocess
+            output = subprocess.check_output(
+                "nvidia-smi --query-gpu=index,utilization.gpu --format=csv,noheader,nounits", 
+                shell=True
+            ).decode()
+            
+            # Parse the output
+            result = {}
+            for line in output.strip().split('\n'):
+                if line.strip():
+                    gpu_id, util = line.split(',')
+                    result[int(gpu_id)] = float(util)
+                    # Update metrics
+                    GPU_UTILIZATION.labels(gpu_id=gpu_id).set(float(util))
+            
+            return result
+        except Exception as e:
+            logger.warning(f"Error getting GPU utilization: {e}")
+            return {}
+    
+    def _update_compute_cost(self, duration_seconds: float = None):
+        """Update the computed cost based on elapsed time.
+        
+        Args:
+            duration_seconds: Duration in seconds, or None to calculate from start time
+        """
+        with self.cost_lock:
+            if duration_seconds is None and self.compute_config.start_time:
+                # Calculate elapsed time
+                elapsed = datetime.now() - self.compute_config.start_time
+                duration_seconds = elapsed.total_seconds()
+            
+            if duration_seconds:
+                # Calculate cost: cost_per_hour * (seconds / 3600)
+                hourly_cost = self.compute_config.cost_per_hour
+                cost = hourly_cost * (duration_seconds / 3600)
+                
+                # Update total
+                self.compute_config.total_cost += cost
+                
+                # Update metric
+                COMPUTE_COST.inc(cost)
+                
+                logger.info(f"Compute cost: ${cost:.2f} for {duration_seconds/60:.1f} minutes. "  
+                           f"Total: ${self.compute_config.total_cost:.2f}")
+                
+                # Check against budget
+                if self.compute_config.total_cost >= self.compute_config.max_budget:
+                    logger.warning(f"Budget limit reached (${self.compute_config.max_budget})! Shutting down.")
+                    # Initiate graceful shutdown
+                    threading.Thread(target=self._graceful_shutdown).start()
+    
+    def _init_telemetry_ingestors(self) -> Dict[str, BaseTelemetryIngestor]:
+        """Initialize telemetry data ingestors.
+        
+        Returns:
+            Dictionary of ingestor instances by name
+        """
+        # Determine which data should use IPFS vs local storage
+        # We'll use local storage for high-frequency telemetry data
+        # that would create too many small files in IPFS
+        high_frequency_types = ['weather', 'traffic']
+        
+        ingestors = {}
+        
+        # Traffic data ingestor
+        traffic_ingestor = TrafficDataIngestor(
+            graph_client=self.graph_client,
+            storage_client=self.storage if 'traffic' not in high_frequency_types else None,
+            store_in_ipfs='traffic' not in high_frequency_types,
+            local_storage_path=os.path.join(self.telemetry_storage_path, 'traffic')
+        )
+        ingestors['traffic'] = traffic_ingestor
+        
+        # Weather data ingestor
+        weather_ingestor = WeatherDataIngestor(
+            graph_client=self.graph_client,
+            storage_client=self.storage if 'weather' not in high_frequency_types else None,
+            store_in_ipfs='weather' not in high_frequency_types,
+            local_storage_path=os.path.join(self.telemetry_storage_path, 'weather')
+        )
+        ingestors['weather'] = weather_ingestor
+        
+        logger.info(f"Initialized {len(ingestors)} telemetry ingestors")
+        return ingestors
 
     def process_document(self, document_path, metadata=None):
         """Process a document and store results.
@@ -192,55 +362,203 @@ class EnhancedDocumentProcessor:
         # Return processing results
         return results
         
-    def run_processor(self):
-        """Run the document processor in continuous mode, processing from the queue."""
-        logger.info("Starting document processor in continuous mode")
+    def run(self, mode="worker"):
+        """Run the document processor in the specified mode.
+        
+        Args:
+            mode: Operating mode (worker, api, cli, telemetry)
+        """
+        if mode == "worker":
+            self.run_worker()
+        elif mode == "api":
+            self.run_api()
+        elif mode == "cli":
+            self.run_cli()
+        elif mode == "telemetry":
+            self.run_telemetry_ingestors()
+        else:
+            logger.error(f"Unknown mode: {mode}")
+            sys.exit(1)
+
+    def _graceful_shutdown(self):
+        """Perform graceful shutdown of the system."""
+        logger.warning("Initiating graceful shutdown...")
+        
+        # Wait for in-flight jobs to complete with timeout
+        shutdown_timeout = 300  # 5 minutes max wait
+        start_shutdown = time.time()
+        
+        # Check in-flight jobs
+        while PROCESSING_IN_FLIGHT._value.get() > 0:
+            elapsed = time.time() - start_shutdown
+            if elapsed > shutdown_timeout:
+                logger.warning(f"Shutdown timeout after {shutdown_timeout}s. Force exiting.")
+                break
+            
+            logger.info(f"Waiting for {PROCESSING_IN_FLIGHT._value.get()} jobs to complete before shutdown")
+            time.sleep(10)
+        
+        # Shutdown executor
+        logger.info("Shutting down thread pool")
+        self.executor.shutdown(wait=True, cancel_futures=True)
+        
+        # Final cost report
+        self._update_compute_cost()
+        logger.info(f"Final compute cost: ${self.compute_config.total_cost:.2f}")
+        
+        # Exit the process
+        logger.info("Shutdown complete. Exiting.")
+        os._exit(0)
+    
+    def _batch_process_jobs(self, jobs):
+        """Process a batch of jobs in parallel.
+        
+        Args:
+            jobs: List of jobs to process
+        """
+        logger.info(f"Processing batch of {len(jobs)} jobs")
+        BATCH_SIZE.set(len(jobs))
+        
+        # Submit all jobs to thread pool
+        futures = []
+        for job in jobs:
+            PROCESSING_IN_FLIGHT.inc()
+            future = self.executor.submit(self.process_job, job)
+            futures.append((job, future))
+        
+        # Wait for completion
+        for job, future in futures:
+            try:
+                result = future.result(timeout=3600)  # 1-hour timeout per job
+                logger.info(f"Completed job {job['id']}")
+            except Exception as e:
+                logger.error(f"Error processing job {job['id']}: {e}", exc_info=True)
+            finally:
+                PROCESSING_IN_FLIGHT.dec()
+        
+        # Update cost after batch completion
+        self._update_compute_cost()
+    
+    def run_worker(self):
+        """Run in worker mode, processing jobs from the queue."""
+        logger.info(f"Starting document processor worker {self.worker_id}")
+        logger.info(f"Using {self.model_name} on {self.compute_config.gpu_count} H100 GPUs")
+        logger.info(f"Compute cost tracking: ${self.compute_config.cost_per_hour}/hour")
+        
+        # Initialize cost tracking
+        self.compute_config.start_time = datetime.now()
+        
+        # Schedule telemetry data collection
+        self._schedule_telemetry_collection()
+        
+        # Schedule cost updates
+        schedule.every(15).minutes.do(self._update_compute_cost)
+        
+        # Track last activity time for idle shutdown
+        last_activity = time.time()
+        idle_threshold = self.compute_config.idle_shutdown_minutes * 60
         
         while True:
-            # Send heartbeat to indicate this worker is alive
-            self.job_queue.heartbeat()
-            
-            # Check for scheduled IPFS retry uploads
-            if time.time() % 300 < 10:  # Every ~5 minutes
-                self.storage.retry_ipfs_uploads(limit=20)
-                
-            # Check for cleanup of old files
-            if time.time() % 3600 < 10:  # Every ~hour
-                self.storage.cleanup_old_files()
-                
-            # Get the next job from the queue
-            job = self.job_queue.get_job(timeout=5)
-            if not job:
-                logger.debug("No jobs in queue, waiting...")
-                time.sleep(5)
-                continue
-                
-            logger.info(f"Processing job {job['job_id']}")
-            
             try:
-                # Get the document from distributed storage or original path
-                document_path = job.get("document_path")
+                # Check for idle shutdown
+                if time.time() - last_activity > idle_threshold:
+                    logger.warning(f"System idle for {self.compute_config.idle_shutdown_minutes} minutes. "  
+                                  f"Initiating shutdown to save costs.")
+                    self._graceful_shutdown()
                 
-                if document_path.startswith("file_"):
-                    # This is a file ID from distributed storage
-                    local_file = self.storage.get_file(document_path)
-                    if not local_file:
-                        raise FileNotFoundError(f"Could not retrieve file {document_path}")
-                    document_path = local_file
-                    
-                # Process the document
-                result = self.process_document(document_path, job.get("metadata"))
+                # Batch dequeue jobs for efficient processing
+                batch_size = min(self.batch_size, self.max_parallel_jobs)
+                jobs = []
                 
-                # Mark the job as complete
-                self.job_queue.complete_job(job["job_id"], result)
-                logger.info(f"Completed job {job['job_id']}")
+                with self.job_queue_lock:
+                    for _ in range(batch_size):
+                        job = self.job_queue.dequeue_job()
+                        if job:
+                            jobs.append(job)
+                            PROCESSING_QUEUE_SIZE.inc()
+                        else:
+                            break
                 
+                if jobs:
+                    # Process the batch
+                    last_activity = time.time()
+                    self._batch_process_jobs(jobs)
+                else:
+                    # No jobs available
+                    logger.debug("No jobs available, waiting...")
+                    # Run pending scheduled jobs (including telemetry)
+                    schedule.run_pending()
+                    time.sleep(5)
+                    continue
+                
+                # Check for any scheduled tasks
+                schedule.run_pending()
+                
+                # Update GPU metrics periodically
+                self._get_gpu_utilization()
+            
+            except KeyboardInterrupt:
+                logger.info("Shutting down worker")
+                self._graceful_shutdown()
+                break
             except Exception as e:
-                logger.error(f"Error processing job {job['job_id']}: {e}")
-                self.job_queue.fail_job(job["job_id"], str(e))
-                
-            # Brief pause to prevent CPU overuse
-            time.sleep(1)
+                logger.error(f"Unexpected error: {e}", exc_info=True)
+                time.sleep(5)
+
+    def _schedule_telemetry_collection(self):
+        """Schedule telemetry data collection at regular intervals."""
+        # Traffic data every 15 minutes
+        schedule.every(15).minutes.do(self.collect_telemetry_data, 'traffic')
+        
+        # Weather data every hour
+        schedule.every(60).minutes.do(self.collect_telemetry_data, 'weather')
+        
+        logger.info("Scheduled telemetry data collection")
+    
+    def collect_telemetry_data(self, ingestor_name):
+        """Collect telemetry data from the specified ingestor.
+        
+        Args:
+            ingestor_name: Name of the ingestor to run
+            
+        Returns:
+            True to keep the scheduled job running
+        """
+        if ingestor_name not in self.telemetry_ingestors:
+            logger.error(f"Unknown telemetry ingestor: {ingestor_name}")
+            return True
+        
+        ingestor = self.telemetry_ingestors[ingestor_name]
+        logger.info(f"Running telemetry ingestor: {ingestor_name}")
+        
+        try:
+            processed_count = ingestor.run()
+            TELEMETRY_READINGS_INGESTED.labels(source=ingestor_name).inc(processed_count)
+            logger.info(f"Telemetry ingestor {ingestor_name} processed {processed_count} readings")
+        except Exception as e:
+            logger.error(f"Error running telemetry ingestor {ingestor_name}: {e}", exc_info=True)
+        
+        # Return True to keep the scheduled job running
+        return True
+    
+    def run_telemetry_ingestors(self):
+        """Run in telemetry mode, collecting data from external sources."""
+        logger.info("Starting telemetry data collection")
+        
+        # Schedule telemetry collection
+        self._schedule_telemetry_collection()
+        
+        # Run immediately once
+        for name in self.telemetry_ingestors:
+            self.collect_telemetry_data(name)
+        
+        # Keep running the scheduled jobs
+        try:
+            while True:
+                schedule.run_pending()
+                time.sleep(1)
+        except KeyboardInterrupt:
+            logger.info("Shutting down telemetry collection")
 
 # Compatibility layer to make LLMClient work with code expecting Phi3Processor
 class PhiCompatLayer:
@@ -369,9 +687,6 @@ def extract_text_from_document(document_path):
         else:
             logger.warning(f"Unsupported file format: {extension}")
             return ""
-    except Exception as e:
-        logger.error(f"Error extracting text from {document_path}: {e}")
-        return ""
 
 def hash_document(document_path):
     """Add document to IPFS and return the hash"""
@@ -780,8 +1095,8 @@ def update_graph_database(analysis):
                 'source': loc_id,
                 'target': region_node['id'],
                 'relationship': 'located_in_region',
-                'document': doc_name
-            })
+                        'document': doc_name
+                    })
         
         # Save updated graph data
         with open(GRAPH_DATA_PATH, 'w') as f:
@@ -1230,50 +1545,54 @@ def queue_worker(phi3_processor):
         process_document(path, phi3_processor)
 
 def main():
-    parser = argparse.ArgumentParser(description="Enhanced Document Processor with LLM integration")
-    parser.add_argument("--llm-type", choices=["phi3", "openai", "openai_compatible"],
-                      default=os.getenv("LLM_TYPE", "phi3"),
-                      help="LLM backend type")
-    parser.add_argument("--model-path", help="Path to the local model file (for phi3)")
-    parser.add_argument("--llama-path", help="Path to the llama.cpp executable (for phi3)")
-    parser.add_argument("--api-base", help="Base URL for API calls (for openai/openai_compatible)")
-    parser.add_argument("--api-key", help="API key for model access (for openai/openai_compatible)")
-    parser.add_argument("--model-name", help="Model name/identifier (for openai/openai_compatible)")
-    parser.add_argument("--threads", type=int, default=4, help="Number of threads for inference")
-    parser.add_argument("--ctx-size", type=int, default=8192, help="Context size for the model")
-    parser.add_argument("--batch-size", type=int, default=512, help="Batch size for processing")
-    parser.add_argument("--temperature", type=float, default=0.2, help="Model temperature setting")
+    parser = argparse.ArgumentParser(description='Enhanced Document Processor')
+    parser.add_argument('--mode', type=str, default='worker', 
+                        choices=['worker', 'api', 'cli', 'telemetry'],
+                        help='Operating mode')
+    parser.add_argument('--model', type=str, default='deepseek-r1:70b',
+                        help='Ollama model to use for inference')
+    parser.add_argument('--ollama_base', type=str, default='http://localhost:11434',
+                        help='Ollama API base URL')
+    parser.add_argument('--threads', type=int, default=None,
+                        help='Number of threads for inference (auto-detected if not specified)')
+    parser.add_argument('--ctx_size', type=int, default=32768,
+                        help='Context size for model')
+    parser.add_argument('--batch_size', type=int, default=32,
+                        help='Batch size for processing')
+    parser.add_argument('--max_parallel', type=int, default=32,
+                        help='Maximum number of parallel jobs')
+    parser.add_argument('--cost_per_hour', type=float, default=50.0,
+                        help='Compute cost per hour in dollars')
+    parser.add_argument('--max_budget', type=float, default=float('inf'),
+                        help='Maximum budget in dollars')
+    parser.add_argument('--idle_shutdown', type=int, default=10,
+                        help='Shutdown after N minutes of idle time')
+    parser.add_argument('--telemetry_types', type=str, default='traffic,weather',
+                        help='Comma-separated list of telemetry types to collect')
     parser.add_argument("--single-file", help="Process a single file instead of monitoring")
     parser.add_argument("--storage-path", default="./temp_storage", help="Path for temporary document storage")
     parser.add_argument("--redis-url", default="redis://localhost:6379/0", help="Redis connection string")
     parser.add_argument("--replication", type=int, default=2, help="Storage replication factor")
     parser.add_argument("--storage-capacity", type=float, default=50.0, help="Local storage capacity in GB")
-    
+
     args = parser.parse_args()
-    
-    # Validate arguments based on LLM type
-    if args.llm_type == "phi3" and (not args.model_path or not args.llama_path):
-        parser.error("When using llm-type=phi3, both --model-path and --llama-path are required")
-    
-    if args.llm_type in ["openai", "openai_compatible"] and not args.api_base:
-        parser.error(f"When using llm-type={args.llm_type}, --api-base is required")
-    
-    if args.llm_type == "openai" and not args.api_key:
-        parser.error("When using llm-type=openai, --api-key is required")
-    
+
+    # Configure compute tracking
+    compute_config = ComputeConfig(
+        cost_per_hour=args.cost_per_hour,
+        max_budget=args.max_budget,
+        idle_shutdown_minutes=args.idle_shutdown
+    )
+
     processor = EnhancedDocumentProcessor(
-        llm_type=args.llm_type,
-        model_path=args.model_path,
-        llama_path=args.llama_path,
-        api_base=args.api_base,
-        api_key=args.api_key,
-        model_name=args.model_name,
+        llm_type='ollama',
+        model_name=args.model,
+        api_base=args.ollama_base,
         threads=args.threads,
         ctx_size=args.ctx_size,
         batch_size=args.batch_size,
-        storage_path=args.storage_path,
-        redis_url=args.redis_url,
-        replication_factor=args.replication,
+        max_parallel_jobs=args.max_parallel,
+        compute_config=compute_config,
         storage_capacity_gb=args.storage_capacity,
         temperature=args.temperature
     )
@@ -1285,6 +1604,6 @@ def main():
     else:
         logger.info("Starting continuous processing mode")
         processor.run_processor()
-        
+
 if __name__ == "__main__":
     main()

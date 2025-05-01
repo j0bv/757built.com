@@ -1,0 +1,289 @@
+:root {
+    --panel-text: rgb(var(--color_r), var(--color_g), var(--color_b));
+    --panel-border: rgb(calc(var(--color_r) - 20), calc(var(--color_g) - 20), calc(var(--color_b) - 20));
+    --panel-background: rgba(40, 42, 54, 0.4);
+    --term-background: rgba(35, 38, 50, 0.6);
+}
+
+body {
+    background-color: #111;
+    color: var(--panel-text);
+    font-family: "Fira Mono", Inconsolata, monospace;
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    margin: 0;
+    overflow: hidden;
+}
+
+.container {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+}
+
+.upper-section {
+    display: flex;
+    flex: 1;
+    margin-bottom: 6px;
+}
+
+.left-panel-container {
+    width: 17.5%;
+    margin-right: 6px;
+}
+
+.main-terminal-container {
+    flex: 1;
+    margin-right: 6px;
+}
+
+.right-panel-container {
+    width: 17.5%;
+}
+
+.keyboard-container {
+    height: 195px;
+}
+
+.panel {
+    background-color: var(--panel-background);
+    border: 2px solid var(--panel-border);
+    border-radius: 10px;
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.5);
+    color: var(--panel-text);
+    margin-bottom: 6px;
+    overflow: hidden;
+    transition: all 0.2s ease;
+}
+
+/* Main Terminal Panel Styles */
+.main-terminal {
+    background-color: var(--term-background);
+    height: 100%;
+    position: relative;
+}
+
+.terminal-header {
+    background-color: rgba(0, 0, 0, 0.3);
+    border-bottom: 1px solid var(--panel-border);
+    display: flex;
+    justify-content: space-between;
+    padding: 5px 10px;
+}
+
+.terminal-header h3 {
+    color: var(--panel-text);
+    font-size: 14px;
+    margin: 0;
+}
+
+.terminal-content {
+    color: #fff;
+    font-family: "Fira Mono", monospace;
+    font-size: 12px;
+    height: calc(100% - 30px);
+    overflow: auto;
+    padding: 10px;
+}
+
+/* Process List Styles */
+.process-list {
+    height: 100%;
+    overflow: auto;
+}
+
+.process-row {
+    border-bottom: 1px solid rgba(var(--color_r), var(--color_g), var(--color_b), 0.2);
+    display: flex;
+    font-size: 11px;
+    padding: 2px 5px;
+}
+
+.process-header {
+    background-color: rgba(0, 0, 0, 0.3);
+    border-bottom: 1px solid var(--panel-border);
+    font-weight: bold;
+}
+
+.process-pid {
+    width: 50px;
+}
+
+.process-command {
+    flex: 1;
+}
+
+.process-cpu {
+    width: 60px;
+    text-align: right;
+}
+
+.process-mem {
+    width: 60px;
+    text-align: right;
+}
+
+/* System Monitor Styles */
+.system-panel {
+    height: calc(50% - 3px);
+    overflow: hidden;
+}
+
+.system-panel-header {
+    background-color: rgba(0, 0, 0, 0.3);
+    border-bottom: 1px solid var(--panel-border);
+    padding: 5px 10px;
+}
+
+.system-panel-header h1 {
+    color: var(--panel-text);
+    font-size: 14px;
+    margin: 0;
+}
+
+.system-panel-content {
+    height: calc(100% - 30px);
+    overflow: auto;
+    padding: 5px;
+}
+
+/* CPU Usage Graph */
+.cpu-graph {
+    height: 50px;
+    margin-bottom: 5px;
+    position: relative;
+}
+
+.cpu-graph-container {
+    background-color: rgba(0, 0, 0, 0.2);
+    border: 1px solid var(--panel-border);
+    height: 100%;
+    width: 100%;
+}
+
+.cpu-graph-line {
+    fill: none;
+    stroke: rgb(var(--color_r), var(--color_g), var(--color_b));
+    stroke-width: 1.5;
+}
+
+/* Memory Usage Display */
+.memory-blocks {
+    display: grid;
+    grid-template-columns: repeat(16, 1fr);
+    grid-template-rows: repeat(8, 1fr);
+    gap: 2px;
+    height: 120px;
+}
+
+.memory-block {
+    background-color: rgba(var(--color_r), var(--color_g), var(--color_b), 0.2);
+    border: 1px solid rgba(var(--color_r), var(--color_g), var(--color_b), 0.4);
+}
+
+.memory-block.used {
+    background-color: rgba(var(--color_r), var(--color_g), var(--color_b), 0.7);
+}
+
+/* Network Graph */
+.network-graph {
+    height: 120px;
+    margin-top: 10px;
+}
+
+.network-stats {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 5px;
+}
+
+/* Keyboard Styles */
+.keyboard {
+    background-color: var(--panel-background);
+    height: 100%;
+    padding: 5px;
+}
+
+.keyboard-row {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 4px;
+}
+
+.key {
+    background-color: rgba(0, 0, 0, 0.3);
+    border: 1px solid var(--panel-border);
+    border-radius: 4px;
+    color: var(--panel-text);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    height: 25px;
+    margin: 0 2px;
+    min-width: 25px;
+    padding: 0 5px;
+    transition: all 0.1s ease;
+}
+
+.key:hover, .key.active {
+    background-color: rgba(var(--color_r), var(--color_g), var(--color_b), 0.3);
+    box-shadow: 0 0 5px rgba(var(--color_r), var(--color_g), var(--color_b), 0.5);
+}
+
+.key.special {
+    flex: 1;
+}
+
+.key.space {
+    flex: 5;
+}
+
+/* World Map / Globe */
+.world-map {
+    height: 150px;
+    margin-top: 10px;
+    position: relative;
+}
+
+.world-map-header {
+    position: absolute;
+    top: 5px;
+    left: 10px;
+    font-size: 12px;
+    color: var(--panel-text);
+}
+
+/* Clock */
+.clock-panel {
+    align-items: center;
+    display: flex;
+    height: 60px;
+    justify-content: center;
+}
+
+.clock-time {
+    color: rgb(var(--color_r), var(--color_g), var(--color_b));
+    font-family: "Fira Mono", monospace;
+    font-size: 24px;
+    font-weight: bold;
+    text-shadow: 0 0 10px rgba(var(--color_r), var(--color_g), var(--color_b), 0.5);
+}
+
+/* Performance Metrics */
+.metric {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 3px;
+}
+
+.metric-label {
+    color: var(--panel-text);
+    font-size: 11px;
+}
+
+.metric-value {
+    color: #fff;
+    font-size: 11px;
+}

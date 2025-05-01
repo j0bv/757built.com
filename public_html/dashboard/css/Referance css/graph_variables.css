@@ -1,0 +1,105 @@
+:root {
+    /* Base colors */
+    --color_r: 94;
+    --color_g: 250;
+    --color_b: 255;
+    --color_black: #000;
+    --color_light_black: #101010;
+    --color_grey: #333;
+    
+    /* Font settings */
+    --font_main: 'Ubuntu', sans-serif;
+    --font_main_mono: 'Fira Mono', monospace;
+    
+    /* Graph node colors */
+    --graph-node-color-document: #36a3ff;
+    --graph-node-color-person: #ff5e5e;
+    --graph-node-color-locality: #7bff36;
+    --graph-node-color-building: #ffb336;
+    --graph-node-color-project: #9e36ff;
+    --graph-node-color-research-paper: #36ffe8;
+    --graph-node-color-patent: #ff36d0;
+    --graph-node-color-funding: #ffff36;
+    --graph-node-color-dataset: #ff9e36;
+    --graph-node-color-region: #36ff86;
+    --graph-node-color-default: rgb(var(--color_r), var(--color_g), var(--color_b));
+}
+
+/* Augmented UI defaults */
+[augmented-ui] {
+    --aug-border: 0.18vh;
+    --aug-border-bg: rgb(var(--color_r), var(--color_g), var(--color_b));
+    --aug-border-opacity: 0.5;
+    --aug-inset: 0.5vh;
+    box-sizing: border-box;
+    position: relative;
+}
+
+/* Basic animations and transitions */
+@keyframes fadeIn {
+    from {opacity: 0;}
+    to {opacity: 1;}
+}
+
+@keyframes glow {
+    0% { box-shadow: 0 0 5px rgba(var(--color_r), var(--color_g), var(--color_b), 0.5); }
+    50% { box-shadow: 0 0 20px rgba(var(--color_r), var(--color_g), var(--color_b), 0.8); }
+    100% { box-shadow: 0 0 5px rgba(var(--color_r), var(--color_g), var(--color_b), 0.5); }
+}
+
+/* Terminal font styling */
+.terminal-text {
+    font-family: var(--font_main_mono);
+    color: rgb(var(--color_r), var(--color_g), var(--color_b));
+}
+
+/* 757built-UI style border */
+.757built-border {
+    border: 0.18vh solid rgba(var(--color_r), var(--color_g), var(--color_b), 0.5);
+}
+
+/* Terminal output styling */
+.terminal-output {
+    background-color: var(--color_black);
+    color: rgb(var(--color_r), var(--color_g), var(--color_b));
+    padding: 1vh;
+    font-family: var(--font_main_mono);
+    overflow-y: auto;
+    white-space: pre-wrap;
+}
+
+/* Section headers */
+.section-header {
+    font-size: 1.2vh;
+    color: rgb(var(--color_r), var(--color_g), var(--color_b));
+    margin: 0;
+    padding: 0.5vh 0;
+    border-bottom: 0.092vh solid rgba(var(--color_r), var(--color_g), var(--color_b), 0.3);
+}
+
+/* Interactive elements */
+.interactive-item {
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+}
+
+.interactive-item:hover {
+    background-color: rgba(var(--color_r), var(--color_g), var(--color_b), 0.2);
+}
+
+.interactive-item:active {
+    background-color: rgba(var(--color_r), var(--color_g), var(--color_b), 0.4);
+}
+
+/* Status indicators */
+.status-online {
+    color: #5eff5e;
+}
+
+.status-offline {
+    color: #ff5e5e;
+}
+
+.status-warning {
+    color: #ffff5e;
+}
